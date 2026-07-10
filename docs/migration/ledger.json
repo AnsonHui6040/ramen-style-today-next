@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "repository": "AnsonHui6040/ramen-style-today",
+    "commit": "eebf00b7ddfbbe6f01ff598e57f1e17197068a37"
+  },
+  "entries": [
+    {
+      "batch": "0",
+      "status": "in-review",
+      "legacySources": [
+        "README.md",
+        "docs/spec.md",
+        "src/App.tsx",
+        "src/domain/schema.ts",
+        "src/domain/types.ts",
+        "src/domain/questionRules.ts",
+        "src/lib/scoring/scorer.ts",
+        "src/lib/scoring/explainer.ts",
+        "src/lib/catalog/enricher.ts",
+        "src/data/questions.json",
+        "src/data/styles.json",
+        "src/data/catalog.json",
+        "src/features/map/RamenFinderMap.tsx",
+        "src/i18n.ts"
+      ],
+      "newOwners": [
+        "README.md",
+        "RIGHTS.md",
+        "THIRD_PARTY_NOTICES.md",
+        "AGENTS.md",
+        "docs/migration/baseline.md",
+        "docs/migration/ledger.json",
+        "docs/superpowers/specs/2026-07-11-classification-architecture-design.md"
+      ],
+      "transformation": "Architecture audit distilled into a clean-repository design and migration baseline; no runtime code or product data migrated.",
+      "behavior": "no-runtime-change",
+      "verification": [
+        "legacy npm test: 10 files and 63 tests passed",
+        "legacy npm run lint: passed",
+        "legacy npm run build: passed",
+        "new repository ledger JSON parsed successfully",
+        "new repository Markdown links resolved successfully",
+        "new repository incomplete-marker and trailing-whitespace scans passed",
+        "architecture and document quality reviews completed with findings resolved before commit"
+      ]
+    }
+  ]
+}
