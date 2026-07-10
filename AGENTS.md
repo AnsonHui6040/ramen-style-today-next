@@ -6,7 +6,7 @@ This monorepo replaces the low-level architecture of `ramen-style-today` through
 
 ## Current phase
 
-Batch 0 contains design and migration-baseline documents only. Until Batch 1 creates repository tooling and the first synthetic classification index, use the design and `docs/migration/baseline.md` for navigation. Batch 2A replaces that synthetic inventory with migrated question concepts. Do not invent commands, packages, generated artifacts, or source paths that have not been created yet.
+Batch 0 is approved and contains design and migration-baseline documents only. Batch 1 has a reviewed plan at `docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md` but has not created repository tooling or a synthetic classification index yet; until it does, use the approved design and `docs/migration/baseline.md` for navigation. Batch 2A replaces that synthetic inventory with migrated question concepts. Do not invent commands, packages, generated artifacts, or source paths that have not been created yet.
 
 ## Source-of-truth hierarchy
 

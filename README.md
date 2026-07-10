@@ -4,7 +4,7 @@
 
 ## Current status
 
-目前是 Batch 0：只建立架構設計、舊版基準與維護規則，尚未搬入應用程式或分類實作。
+Batch 0 已完成並獲核准：repository 已建立架構設計、舊版基準與維護規則，尚未搬入應用程式或正式分類資料。Batch 1 implementation plan 已完成可執行性審閱，下一步會在獨立分支建立 contracts、diagnostics、compiler shell 與初始索引工具。
 
 舊版 production 與行為基準仍在 [`AnsonHui6040/ramen-style-today`](https://github.com/AnsonHui6040/ramen-style-today)，凍結比較基準為 commit `eebf00b`。
 
@@ -22,6 +22,7 @@ docs/                             架構、分類、決策與遷移文件
 ## Documentation
 
 - [Architecture design](docs/superpowers/specs/2026-07-11-classification-architecture-design.md)
+- [Batch 1 implementation plan](docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md)
 - [Legacy baseline](docs/migration/baseline.md)
 - [Migration ledger](docs/migration/ledger.json)
 - [Repository rules](AGENTS.md)

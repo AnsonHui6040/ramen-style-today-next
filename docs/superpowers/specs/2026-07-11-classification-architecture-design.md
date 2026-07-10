@@ -1,8 +1,8 @@
 # Classification Architecture and Staged Migration Design
 
-- **Status:** Draft for user review
+- **Status:** Approved
 - **Direction approval:** Staged monorepo migration approved by the user on 2026-07-11
-- **Implementation permission:** Not granted until this written specification is reviewed
+- **Written specification approval:** Approved by the user on 2026-07-11
 - **Repository:** `AnsonHui6040/ramen-style-today-next`
 - **Legacy baseline:** `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`
 - **Date:** 2026-07-11

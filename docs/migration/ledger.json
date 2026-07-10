@@ -7,7 +7,8 @@
   "entries": [
     {
       "batch": "0",
-      "status": "in-review",
+      "status": "complete",
+      "foundationCommit": "85ed403fade0c16bfab380bd6b6465fefbacf9a5",
       "legacySources": [
         "README.md",
         "docs/spec.md",
@@ -24,25 +25,66 @@
         "src/features/map/RamenFinderMap.tsx",
         "src/i18n.ts"
       ],
+      "ownedScopes": [
+        "docs/superpowers/plans",
+        "docs/superpowers/specs"
+      ],
       "newOwners": [
+        ".gitignore",
         "README.md",
         "RIGHTS.md",
         "THIRD_PARTY_NOTICES.md",
         "AGENTS.md",
         "docs/migration/baseline.md",
         "docs/migration/ledger.json",
+        "docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md",
         "docs/superpowers/specs/2026-07-11-classification-architecture-design.md"
       ],
       "transformation": "Architecture audit distilled into a clean-repository design and migration baseline; no runtime code or product data migrated.",
       "behavior": "no-runtime-change",
       "verification": [
-        "legacy npm test: 10 files and 63 tests passed",
-        "legacy npm run lint: passed",
-        "legacy npm run build: passed",
-        "new repository ledger JSON parsed successfully",
-        "new repository Markdown links resolved successfully",
-        "new repository incomplete-marker and trailing-whitespace scans passed",
-        "architecture and document quality reviews completed with findings resolved before commit"
+        {
+          "gate": "legacy-tests",
+          "command": "npm test",
+          "outcome": "passed",
+          "evidence": "10 files and 63 tests passed at the frozen legacy baseline"
+        },
+        {
+          "gate": "legacy-lint",
+          "command": "npm run lint",
+          "outcome": "passed",
+          "evidence": "legacy lint completed without errors"
+        },
+        {
+          "gate": "legacy-build",
+          "command": "npm run build",
+          "outcome": "passed",
+          "evidence": "legacy production build completed"
+        },
+        {
+          "gate": "batch0-document-checks",
+          "command": "JSON parse, Markdown link, marker, and whitespace checks",
+          "outcome": "passed",
+          "evidence": "all Batch 0 repository document checks passed"
+        },
+        {
+          "gate": "architecture-review",
+          "command": "independent architecture and document quality reviews",
+          "outcome": "passed",
+          "evidence": "findings were resolved before the foundation commit"
+        },
+        {
+          "gate": "written-approval",
+          "command": "user review",
+          "outcome": "passed",
+          "evidence": "written specification approved by the user on 2026-07-11"
+        },
+        {
+          "gate": "batch1-plan-review",
+          "command": "independent TypeScript API, writing-plan, and documentation-index audits",
+          "outcome": "passed",
+          "evidence": "all execution, type, ownership, index completeness, and CI evidence blockers were resolved before the plan commit"
+        }
       ]
     }
   ]
