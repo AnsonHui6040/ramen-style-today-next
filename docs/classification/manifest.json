@@ -1,0 +1,242 @@
+{
+  "concepts": [
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-shoyu:standard",
+      "key": "intensity/demo-shoyu:standard",
+      "kind": "intensity",
+      "messageIds": [],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-shoyu:medium-thin-straight",
+      "key": "noodle/demo-shoyu:medium-thin-straight",
+      "kind": "noodle",
+      "messageIds": [],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-aburasoba",
+      "key": "option/demo-aburasoba",
+      "kind": "option",
+      "messageIds": [
+        "option-demo-aburasoba"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-chintan",
+      "key": "option/demo-chintan",
+      "kind": "option",
+      "messageIds": [
+        "option-demo-chintan"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-dry",
+      "key": "option/demo-dry",
+      "kind": "option",
+      "messageIds": [
+        "option-demo-dry"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-soup",
+      "key": "option/demo-soup",
+      "kind": "option",
+      "messageIds": [
+        "option-demo-soup"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "default",
+      "key": "policy/default",
+      "kind": "policy",
+      "messageIds": [],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-archetype",
+      "key": "question/demo-archetype",
+      "kind": "question",
+      "messageIds": [
+        "question-demo-archetype"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-form",
+      "key": "question/demo-form",
+      "kind": "question",
+      "messageIds": [
+        "question-demo-form"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "consumers": [
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "demo-shoyu",
+      "key": "style/demo-shoyu",
+      "kind": "style",
+      "messageIds": [
+        "style-demo-shoyu"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts"
+      ]
+    }
+  ],
+  "dataVersion": "684e1a257e576a1f786b99573504cabc07c3064dcf8100881bbe4ab103182096",
+  "modelVersion": "batch1.0.0",
+  "schemaVersion": 1,
+  "synthetic": true
+}

@@ -10,6 +10,8 @@
     "packages/*"
   ],
   "scripts": {
+    "classification:index": "tsx tools/documentation/generate-classification-index.ts --write",
+    "classification:index:check": "tsx tools/documentation/generate-classification-index.ts --check",
     "classification:validate": "tsx tools/validation/validate-classification.ts",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
