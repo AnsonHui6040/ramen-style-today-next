@@ -42,7 +42,7 @@ const existingPaths = new Set(documentationRelations.flatMap((item) => [
   const absolute = resolve(repoRoot, file)
   return repoFiles.has(file) && existsSync(absolute) && statSync(absolute).isFile()
 }))
-const detected = scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'])
+const detected = scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'], repoFiles)
 const built = buildDocumentation(compiled.model, documentationRelations, detected, existingPaths)
 if (built.diagnostics.length) {
   console.error(JSON.stringify(built.diagnostics, null, 2))
@@ -57,13 +57,15 @@ const allowedClassificationFiles = new Set([
   ...outputs.keys(),
   'docs/classification/change-map.md',
 ])
+let hasInvalidOwnedEntry = false
 for (const entry of readdirSync(resolve(repoRoot, 'docs/classification'), { withFileTypes: true })) {
   const relative = `docs/classification/${entry.name}`
   if (!entry.isFile() || !allowedClassificationFiles.has(relative)) {
     console.error(`DOC_INDEX_DRIFT unexpected owned-path entry ${relative}`)
-    process.exitCode = 1
+    hasInvalidOwnedEntry = true
   }
 }
+if (hasInvalidOwnedEntry) process.exit(1)
 for (const [relative, content] of outputs) {
   const file = resolve(repoRoot, relative)
   if (mode === '--write') {

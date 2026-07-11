@@ -30,9 +30,60 @@ describe('core consumer scanner', () => {
         "import '@ramen-style/classification-core/compiler'\n",
       )
 
-      expect([...scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'])]).toEqual([
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps', 'packages', 'tools'],
+        new Set([
+          'apps/web/consumer.ts',
+          'apps/web/consumer.test.ts',
+          'packages/classification-core/src/internal.ts',
+          'tools/documentation/generator.ts',
+        ]),
+      )]).toEqual([
         'apps/web/consumer.ts',
       ])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('finds CommonJS package imports in cts consumers', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-'))
+    try {
+      mkdirSync(join(repoRoot, 'apps/web'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'apps/web/commonjs.cts'),
+        "const core = require('@ramen-style/classification-core/compiler')\n",
+      )
+
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps'],
+        new Set(['apps/web/commonjs.cts']),
+      )]).toEqual(['apps/web/commonjs.cts'])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('excludes consumers outside the eligible repository inventory', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-'))
+    try {
+      mkdirSync(join(repoRoot, 'apps/web'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'apps/web/eligible.ts'),
+        "import '@ramen-style/classification-core'\n",
+      )
+      writeFileSync(
+        join(repoRoot, 'apps/web/ignored-local.ts'),
+        "import '@ramen-style/classification-core'\n",
+      )
+
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps'],
+        new Set(['apps/web/eligible.ts']),
+      )]).toEqual(['apps/web/eligible.ts'])
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
     }

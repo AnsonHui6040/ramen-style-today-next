@@ -19,7 +19,11 @@ function isInfrastructureOrTest(relativePath: string) {
     || relativePath.endsWith('.test.cts')
 }
 
-export function scanCoreConsumers(repoRoot: string, roots: readonly string[]): Set<string> {
+export function scanCoreConsumers(
+  repoRoot: string,
+  roots: readonly string[],
+  eligibleFiles: ReadonlySet<string>,
+): Set<string> {
   const consumers = new Set<string>()
 
   const visit = (absolutePath: string) => {
@@ -35,7 +39,8 @@ export function scanCoreConsumers(repoRoot: string, roots: readonly string[]): S
       if (!entry.isFile() || !['.ts', '.tsx', '.mts', '.cts'].some((suffix) => entry.name.endsWith(suffix))) {
         continue
       }
-      const imports = ts.preProcessFile(readFileSync(child, 'utf8')).importedFiles
+      if (!eligibleFiles.has(relativePath)) continue
+      const imports = ts.preProcessFile(readFileSync(child, 'utf8'), true, true).importedFiles
       if (imports.some(({ fileName }) => fileName === corePackage || fileName.startsWith(`${corePackage}/`))) {
         consumers.add(relativePath)
       }

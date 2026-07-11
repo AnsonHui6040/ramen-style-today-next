@@ -1395,13 +1395,14 @@ git commit -m "Compile synthetic classification model"
 - Create: `tools/documentation/build-index.ts`
 - Create: `tools/documentation/build-index.test.ts`
 - Create: `tools/documentation/generate-classification-index.ts`
+- Create: `tools/documentation/generate-classification-index.test.ts`
 - Create: `docs/classification/change-map.md`
 - Create: `docs/classification/index.md` via generator
 - Create: `docs/classification/manifest.json` via generator
 - Modify: `package.json`
 
 **Interfaces:**
-- Produces: typed `DocumentationRelation[]`, `buildDocumentation(model, relations, detectedConsumers, existingPaths)`, and write/check CLI.
+- Produces: typed `DocumentationRelation[]`, `buildDocumentation(model, relations, detectedConsumers, existingPaths)`, `scanCoreConsumers(repoRoot, roots, eligibleFiles)`, and a write/check CLI that validates every owned-directory entry before writing.
 - Manifest schema: `{ schemaVersion: 1, synthetic, modelVersion, dataVersion, concepts }`.
 
 - [ ] **Step 1: Write failing index completeness tests**
@@ -1548,13 +1549,149 @@ describe('core consumer scanner', () => {
         "import '@ramen-style/classification-core/compiler'\n",
       )
 
-      expect([...scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'])]).toEqual([
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps', 'packages', 'tools'],
+        new Set([
+          'apps/web/consumer.ts',
+          'apps/web/consumer.test.ts',
+          'packages/classification-core/src/internal.ts',
+          'tools/documentation/generator.ts',
+        ]),
+      )]).toEqual([
         'apps/web/consumer.ts',
       ])
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
     }
   })
+
+  test('finds CommonJS package imports in cts consumers', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-'))
+    try {
+      mkdirSync(join(repoRoot, 'apps/web'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'apps/web/commonjs.cts'),
+        "const core = require('@ramen-style/classification-core/compiler')\n",
+      )
+
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps'],
+        new Set(['apps/web/commonjs.cts']),
+      )]).toEqual(['apps/web/commonjs.cts'])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('excludes consumers outside the eligible repository inventory', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-'))
+    try {
+      mkdirSync(join(repoRoot, 'apps/web'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'apps/web/eligible.ts'),
+        "import '@ramen-style/classification-core'\n",
+      )
+      writeFileSync(
+        join(repoRoot, 'apps/web/ignored-local.ts'),
+        "import '@ramen-style/classification-core'\n",
+      )
+
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps'],
+        new Set(['apps/web/eligible.ts']),
+      )]).toEqual(['apps/web/eligible.ts'])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+})
+```
+
+Create `tools/documentation/generate-classification-index.test.ts`:
+
+```ts
+import { execFileSync, spawnSync } from 'node:child_process'
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+
+import { expect, test } from 'vitest'
+
+const sourceRoot = resolve(import.meta.dirname, '../..')
+
+test('write mode rejects an owned output symlink before changing any output', () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
+  const externalRoot = mkdtempSync(join(tmpdir(), 'ramen-index-outside-'))
+  try {
+    const documentationRoot = join(repoRoot, 'tools/documentation')
+    mkdirSync(documentationRoot, { recursive: true })
+    for (const file of [
+      'build-index.ts',
+      'generate-classification-index.ts',
+      'relations.ts',
+      'scan-imports.ts',
+    ]) {
+      cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
+    }
+
+    for (const file of [
+      'packages/classification-core/src/definitions/synthetic.ts',
+      'packages/classification-core/src/compiler/source-schema.ts',
+      'packages/classification-core/src/compiler/compile.ts',
+      'packages/classification-core/src/compiler/compile.test.ts',
+    ]) {
+      const target = join(repoRoot, file)
+      mkdirSync(resolve(target, '..'), { recursive: true })
+      writeFileSync(target, '')
+    }
+    const validation = join(repoRoot, 'tools/validation/validate-classification.ts')
+    mkdirSync(resolve(validation, '..'), { recursive: true })
+    writeFileSync(validation, "import '@ramen-style/classification-core/compiler'\n")
+
+    writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
+    symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
+    execFileSync('git', ['init', '--quiet'], { cwd: repoRoot })
+
+    const classificationRoot = join(repoRoot, 'docs/classification')
+    mkdirSync(classificationRoot, { recursive: true })
+    writeFileSync(join(classificationRoot, 'change-map.md'), '# Change map\n')
+    const manifest = join(classificationRoot, 'manifest.json')
+    writeFileSync(manifest, 'manifest remains unchanged\n')
+    const externalTarget = join(externalRoot, 'outside.md')
+    writeFileSync(externalTarget, 'outside remains unchanged\n')
+    symlinkSync(externalTarget, join(classificationRoot, 'index.md'))
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(sourceRoot, 'node_modules/tsx/dist/cli.mjs'),
+        join(documentationRoot, 'generate-classification-index.ts'),
+        '--write',
+      ],
+      { cwd: repoRoot, encoding: 'utf8' },
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'DOC_INDEX_DRIFT unexpected owned-path entry docs/classification/index.md',
+    )
+    expect(readFileSync(externalTarget, 'utf8')).toBe('outside remains unchanged\n')
+    expect(readFileSync(manifest, 'utf8')).toBe('manifest remains unchanged\n')
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+    rmSync(externalRoot, { recursive: true, force: true })
+  }
 })
 ```
 
@@ -1563,7 +1700,7 @@ describe('core consumer scanner', () => {
 Run:
 
 ```bash
-npx vitest run tools/documentation/build-index.test.ts tools/documentation/scan-imports.test.ts
+npx vitest run tools/documentation/build-index.test.ts tools/documentation/scan-imports.test.ts tools/documentation/generate-classification-index.test.ts
 ```
 
 Expected: FAIL because documentation tooling does not exist.
@@ -1671,7 +1808,11 @@ function isInfrastructureOrTest(relativePath: string) {
     || relativePath.endsWith('.test.cts')
 }
 
-export function scanCoreConsumers(repoRoot: string, roots: readonly string[]): Set<string> {
+export function scanCoreConsumers(
+  repoRoot: string,
+  roots: readonly string[],
+  eligibleFiles: ReadonlySet<string>,
+): Set<string> {
   const consumers = new Set<string>()
 
   const visit = (absolutePath: string) => {
@@ -1687,7 +1828,8 @@ export function scanCoreConsumers(repoRoot: string, roots: readonly string[]): S
       if (!entry.isFile() || !['.ts', '.tsx', '.mts', '.cts'].some((suffix) => entry.name.endsWith(suffix))) {
         continue
       }
-      const imports = ts.preProcessFile(readFileSync(child, 'utf8')).importedFiles
+      if (!eligibleFiles.has(relativePath)) continue
+      const imports = ts.preProcessFile(readFileSync(child, 'utf8'), true, true).importedFiles
       if (imports.some(({ fileName }) => fileName === corePackage || fileName.startsWith(`${corePackage}/`))) {
         consumers.add(relativePath)
       }
@@ -1876,7 +2018,7 @@ export function buildDocumentation(
     '',
     '> Synthetic inventory — not production classification data.',
     '',
-    `Model version: \`${model.modelVersion}\`  `,
+    `Model version: \`${model.modelVersion}\`<br>`,
     `Data version: \`${model.dataVersion}\``,
     '',
     '| Concept | Canonical source | Validators | Consumers | Migrations | Generated owners | Messages | Tests |',
@@ -1948,7 +2090,7 @@ const existingPaths = new Set(documentationRelations.flatMap((item) => [
   const absolute = resolve(repoRoot, file)
   return repoFiles.has(file) && existsSync(absolute) && statSync(absolute).isFile()
 }))
-const detected = scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'])
+const detected = scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'], repoFiles)
 const built = buildDocumentation(compiled.model, documentationRelations, detected, existingPaths)
 if (built.diagnostics.length) {
   console.error(JSON.stringify(built.diagnostics, null, 2))
@@ -1963,13 +2105,15 @@ const allowedClassificationFiles = new Set([
   ...outputs.keys(),
   'docs/classification/change-map.md',
 ])
+let hasInvalidOwnedEntry = false
 for (const entry of readdirSync(resolve(repoRoot, 'docs/classification'), { withFileTypes: true })) {
   const relative = `docs/classification/${entry.name}`
   if (!entry.isFile() || !allowedClassificationFiles.has(relative)) {
     console.error(`DOC_INDEX_DRIFT unexpected owned-path entry ${relative}`)
-    process.exitCode = 1
+    hasInvalidOwnedEntry = true
   }
 }
+if (hasInvalidOwnedEntry) process.exit(1)
 for (const [relative, content] of outputs) {
   const file = resolve(repoRoot, relative)
   if (mode === '--write') {
@@ -1994,14 +2138,14 @@ Add these root scripts:
 Run:
 
 ```bash
-npx vitest run tools/documentation/build-index.test.ts tools/documentation/scan-imports.test.ts
+npx vitest run tools/documentation/build-index.test.ts tools/documentation/scan-imports.test.ts tools/documentation/generate-classification-index.test.ts
 npm run classification:index
 npm run classification:index:check
 npm run lint
 npm run typecheck
 ```
 
-Expected: five documentation tests pass; generated files state synthetic status; check mode exits 0 without modifying files.
+Expected: eight documentation tests pass; generated files state synthetic status; check mode exits 0 without modifying files, and write mode rejects owned-output symlinks before changing any output.
 
 - [ ] **Step 7: Commit index tooling**
 
@@ -2545,6 +2689,7 @@ repository-wide ownership check:
     "packages/classification-core/tsconfig.json",
     "tools/documentation/build-index.test.ts",
     "tools/documentation/build-index.ts",
+    "tools/documentation/generate-classification-index.test.ts",
     "tools/documentation/generate-classification-index.ts",
     "tools/documentation/relations.ts",
     "tools/documentation/scan-imports.test.ts",
@@ -2701,6 +2846,7 @@ expanded inventory after creating the workflow file:
     "packages/classification-core/tsconfig.json",
     "tools/documentation/build-index.test.ts",
     "tools/documentation/build-index.ts",
+    "tools/documentation/generate-classification-index.test.ts",
     "tools/documentation/generate-classification-index.ts",
     "tools/documentation/relations.ts",
     "tools/documentation/scan-imports.test.ts",
