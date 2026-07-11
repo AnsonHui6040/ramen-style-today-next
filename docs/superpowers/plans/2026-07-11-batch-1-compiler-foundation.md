@@ -858,6 +858,7 @@ git commit -m "Define compiler source contracts"
 - Create: `packages/classification-core/src/compiler/index.ts`
 - Create: `packages/classification-core/src/definitions/synthetic.ts`
 - Create: `tools/validation/validate-classification.ts`
+- Modify: `packages/classification-core/tsconfig.json`
 - Modify: `packages/classification-core/src/index.ts`
 - Modify: `package.json`
 
@@ -959,6 +960,22 @@ npx vitest run packages/classification-core/src/compiler/compile.test.ts
 Expected: FAIL because compiler and synthetic definitions do not exist.
 
 - [ ] **Step 3: Add compiled model contracts and stable JSON**
+
+Update `packages/classification-core/tsconfig.json`:
+
+```json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}
+```
 
 Create `packages/classification-core/src/contracts/model.ts`:
 
@@ -1363,7 +1380,7 @@ Expected: four compiler tests pass; CLI prints `"mode":"synthetic"`; all checks 
 - [ ] **Step 8: Commit the compiler shell**
 
 ```bash
-git add package.json packages/classification-core/src tools/validation
+git add docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md package.json packages/classification-core/tsconfig.json packages/classification-core/src tools/validation
 git commit -m "Compile synthetic classification model"
 ```
 

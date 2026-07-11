@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "classification:validate": "tsx tools/validation/validate-classification.ts",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",

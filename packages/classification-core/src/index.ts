@@ -6,3 +6,9 @@ export type {
   DiagnosticSeverity,
 } from './contracts/diagnostic.js'
 export type { DiagnosticCode } from './contracts/diagnostic-codes.js'
+export type {
+  ClassificationModel,
+  ConceptKey,
+  ConceptKind,
+  ConceptRecord,
+} from './contracts/model.js'
