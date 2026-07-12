@@ -24,7 +24,7 @@ docs/                             架構、分類、決策與遷移文件
 - [Architecture design](docs/superpowers/specs/2026-07-11-classification-architecture-design.md)
 - [Batch 1 implementation plan](docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md)
 - [Legacy baseline](docs/migration/baseline.md)
-- [Migration ledger](docs/migration/ledger.json)
+- [Migration ledger](docs/migration/ledger.md) ([machine source](docs/migration/ledger.json))
 - [Repository rules](AGENTS.md)
 - [Rights notice](RIGHTS.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)

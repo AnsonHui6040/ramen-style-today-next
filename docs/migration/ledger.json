@@ -86,6 +86,67 @@
           "evidence": "all execution, type, ownership, index completeness, and CI evidence blockers were resolved before the plan commit"
         }
       ]
+    },
+    {
+      "batch": "1",
+      "status": "in-progress",
+      "legacySources": [],
+      "ownedScopes": [
+        "docs/classification",
+        "packages/classification-core",
+        "tools"
+      ],
+      "newOwners": [
+        ".nvmrc",
+        "docs/classification/change-map.md",
+        "docs/classification/index.md",
+        "docs/classification/manifest.json",
+        "docs/migration/ledger.md",
+        "eslint.config.js",
+        "package-lock.json",
+        "package.json",
+        "packages/classification-core/package.json",
+        "packages/classification-core/src/compiler/collector.test.ts",
+        "packages/classification-core/src/compiler/collector.ts",
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/index.ts",
+        "packages/classification-core/src/compiler/parse.test.ts",
+        "packages/classification-core/src/compiler/parse.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/compiler/stable-json.ts",
+        "packages/classification-core/src/contracts/diagnostic-codes.ts",
+        "packages/classification-core/src/contracts/diagnostic.ts",
+        "packages/classification-core/src/contracts/ids.ts",
+        "packages/classification-core/src/contracts/model.ts",
+        "packages/classification-core/src/contracts/source-path.ts",
+        "packages/classification-core/src/definitions/synthetic.ts",
+        "packages/classification-core/src/index.test.ts",
+        "packages/classification-core/src/index.ts",
+        "packages/classification-core/tsconfig.json",
+        "tools/documentation/build-index.test.ts",
+        "tools/documentation/build-index.ts",
+        "tools/documentation/generate-classification-index.test.ts",
+        "tools/documentation/generate-classification-index.ts",
+        "tools/documentation/relations.ts",
+        "tools/documentation/scan-imports.test.ts",
+        "tools/documentation/scan-imports.ts",
+        "tools/index.ts",
+        "tools/migration/check-ledger.ts",
+        "tools/migration/ledger-check.test.ts",
+        "tools/migration/ledger-check.ts",
+        "tools/migration/ledger-schema.ts",
+        "tools/migration/render-ledger.test.ts",
+        "tools/migration/render-ledger.ts",
+        "tools/tsconfig.json",
+        "tools/validation/validate-classification.ts",
+        "tsconfig.base.json",
+        "tsconfig.json",
+        "vitest.config.ts"
+      ],
+      "transformation": "Created new monorepo contracts, diagnostics, compiler, synthetic inventory, checked documentation index, and ledger tooling without migrating legacy production behavior.",
+      "behavior": "no-production-runtime-change",
+      "verification": []
     }
   ]
 }

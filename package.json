@@ -14,6 +14,9 @@
     "classification:index:check": "tsx tools/documentation/generate-classification-index.ts --check",
     "classification:validate": "tsx tools/validation/validate-classification.ts",
     "lint": "eslint . --max-warnings=0",
+    "migration:ledger": "tsx tools/migration/check-ledger.ts --write",
+    "migration:ledger:check": "tsx tools/migration/check-ledger.ts --check",
+    "migration:ledger:record-ci": "tsx tools/migration/check-ledger.ts --record-ci",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
     "build": "tsc -b packages/classification-core"
