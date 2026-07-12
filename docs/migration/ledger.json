@@ -136,6 +136,8 @@
         "tools/migration/ledger-check.test.ts",
         "tools/migration/ledger-check.ts",
         "tools/migration/ledger-schema.ts",
+        "tools/migration/record-ci.test.ts",
+        "tools/migration/record-ci.ts",
         "tools/migration/render-ledger.test.ts",
         "tools/migration/render-ledger.ts",
         "tools/tsconfig.json",

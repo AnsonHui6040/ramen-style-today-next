@@ -65,6 +65,8 @@ tools/
   migration/render-ledger.test.ts                schema and rendering tests
   migration/ledger-check.ts                      pure repository ownership checks
   migration/ledger-check.test.ts                 missing-owner, scope, and drift tests
+  migration/record-ci.ts                         authenticated atomic CI recorder
+  migration/record-ci.test.ts                    successful authenticated file recording test
   migration/check-ledger.ts                      validation/check CLI
 docs/classification/change-map.md                hand-authored change workflow
 docs/classification/index.md                     generated synthetic navigation
@@ -2164,6 +2166,8 @@ git commit -m "Generate checked classification index"
 - Create: `tools/migration/render-ledger.test.ts`
 - Create: `tools/migration/ledger-check.ts`
 - Create: `tools/migration/ledger-check.test.ts`
+- Create: `tools/migration/record-ci.ts`
+- Create: `tools/migration/record-ci.test.ts`
 - Create: `tools/migration/check-ledger.ts`
 - Create: `docs/migration/ledger.md` via generator
 - Modify: `docs/migration/ledger.json`
@@ -2699,6 +2703,8 @@ repository-wide ownership check:
     "tools/migration/ledger-check.test.ts",
     "tools/migration/ledger-check.ts",
     "tools/migration/ledger-schema.ts",
+    "tools/migration/record-ci.test.ts",
+    "tools/migration/record-ci.ts",
     "tools/migration/render-ledger.test.ts",
     "tools/migration/render-ledger.ts",
     "tools/tsconfig.json",
@@ -2718,14 +2724,14 @@ repository-wide ownership check:
 Run:
 
 ```bash
-npx vitest run tools/migration/render-ledger.test.ts tools/migration/ledger-check.test.ts
+npx vitest run tools/migration/render-ledger.test.ts tools/migration/ledger-check.test.ts tools/migration/record-ci.test.ts
 npm run migration:ledger
 npm run migration:ledger:check
 npm run lint
 npm run typecheck
 ```
 
-Expected: six tests pass; generated Markdown lists Batch 0 as complete and Batch 1 as in progress; every unignored repository file has exactly one ledger owner; checks exit 0.
+Expected: all focused ledger tests pass; generated Markdown lists Batch 0 as complete and Batch 1 as in progress; every unignored repository file has exactly one ledger owner; checks exit 0.
 
 - [ ] **Step 7: Link human-readable ledger and commit**
 
@@ -2764,10 +2770,12 @@ git commit -m "Validate migration ledger"
 object containing schema version 1, the candidate SHA, numeric run ID, and
 repository run URL. Task 7 creates this ignored temporary proof only after its
 workflow-list precheck. At record time, the ledger CLI independently fetches the
-hard-coded GitHub API run resource for
-`AnsonHui6040/ramen-style-today-next`, rejects redirects, and authenticates the
-repository, `ci.yml` workflow, `push` event, current candidate/head SHA, run ID,
-run URL, completed status, and successful conclusion before any ledger write.
+hard-coded GitHub API run and `ci.yml` workflow resources for
+`AnsonHui6040/ramen-style-today-next`, rejects redirects, requires the run's
+immutable `workflow_id` to match the canonical workflow resource ID, and checks
+the exact workflow path/ref form, repository, `push` event, current
+candidate/head SHA, run ID, run URL, completed status, and successful conclusion
+before any ledger write.
 The shell precheck is defense-in-depth, not the mutation trust boundary; callers
 cannot promote a batch with a fabricated internally consistent proof.
 
@@ -2868,6 +2876,8 @@ expanded inventory after creating the workflow file:
     "tools/migration/ledger-check.test.ts",
     "tools/migration/ledger-check.ts",
     "tools/migration/ledger-schema.ts",
+    "tools/migration/record-ci.test.ts",
+    "tools/migration/record-ci.ts",
     "tools/migration/render-ledger.test.ts",
     "tools/migration/render-ledger.ts",
     "tools/tsconfig.json",
@@ -2992,10 +3002,11 @@ npm run migration:ledger:record-ci -- 1 "$CI_PROOF_FILE"
 Expected: the workflow-specific endpoint confirms a successful `push` run for
 the exact candidate SHA and writes a structured proof. The ledger tool then
 independently fetches the fixed repository run resource, requires it to match
-the current Git HEAD and every proof/workflow success field, atomically records
-its SHA and run URL, and promotes Batch 1 to `complete`. A nonexistent run, API
-failure, malformed or redirected response, mismatch, or non-success fails closed
-without writing. Direct SHA and URL arguments are rejected.
+the current Git HEAD and every proof/workflow success field, fetches the fixed
+canonical workflow resource, matches its immutable ID and exact path/ref form,
+atomically records the SHA and run URL, and promotes Batch 1 to `complete`. A
+nonexistent run, API failure, malformed or redirected response, mismatch, or
+non-success fails closed without writing. Direct SHA and URL arguments are rejected.
 
 - [ ] **Step 9: Replace candidate-facing copy after evidence is recorded**
 

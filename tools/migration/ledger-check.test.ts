@@ -54,12 +54,16 @@ function successfulCiProof(overrides: Record<string, unknown> = {}) {
 }
 
 const githubApiRunUrl = 'https://api.github.com/repos/AnsonHui6040/ramen-style-today-next/actions/runs/123'
+const githubApiWorkflowUrl = 'https://api.github.com/repos/AnsonHui6040/ramen-style-today-next/actions/workflows/ci.yml'
+const workflowId = 456
 
 function successfulGithubRun(overrides: Record<string, unknown> = {}) {
   return {
     id: 123,
+    workflow_id: workflowId,
     html_url: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
     head_sha: candidateSha,
+    head_branch: 'main',
     event: 'push',
     status: 'completed',
     conclusion: 'success',
@@ -67,6 +71,14 @@ function successfulGithubRun(overrides: Record<string, unknown> = {}) {
     repository: {
       full_name: 'AnsonHui6040/ramen-style-today-next',
     },
+    ...overrides,
+  }
+}
+
+function canonicalGithubWorkflow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: workflowId,
+    path: '.github/workflows/ci.yml',
     ...overrides,
   }
 }
@@ -89,10 +101,30 @@ function apiResponse(options: ApiResponseOptions = {}) {
   } as Response
 }
 
-function fetchResponse(response: Response, assertion?: (url: string, init: RequestInit) => void) {
+function workflowApiResponse(options: ApiResponseOptions = {}) {
+  const status = options.status ?? 200
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    redirected: options.redirected ?? false,
+    url: options.url ?? githubApiWorkflowUrl,
+    json: async () => options.payload ?? canonicalGithubWorkflow(),
+  } as Response
+}
+
+interface GithubFetchOptions {
+  assertion?: (url: string, init: RequestInit) => void
+  run?: Response
+  workflow?: Response
+}
+
+function githubFetch(options: GithubFetchOptions = {}) {
   return (async (input: string | URL | globalThis.Request, init?: RequestInit) => {
-    assertion?.(String(input), init ?? {})
-    return response
+    const url = String(input)
+    options.assertion?.(url, init ?? {})
+    if (url === githubApiRunUrl) return options.run ?? apiResponse()
+    if (url === githubApiWorkflowUrl) return options.workflow ?? workflowApiResponse()
+    throw new Error(`Unexpected GitHub API URL ${url}`)
   }) as typeof fetch
 }
 
@@ -114,6 +146,7 @@ function createCliFixture(options: CliFixtureOptions = {}) {
     'check-ledger.ts',
     'ledger-check.ts',
     'ledger-schema.ts',
+    'record-ci.ts',
     'render-ledger.ts',
   ]
   for (const file of toolFiles) {
@@ -260,14 +293,19 @@ describe('migration ledger repository checks', () => {
   test('promotes only after the fixed GitHub run resource authenticates the proof', async () => {
     const reviewLedger = structuredClone(ledger)
     reviewLedger.entries[0]!.status = 'in-review'
+    const requestedUrls: string[] = []
     const verified = await verifySuccessfulCiProof(
       successfulCiProof(),
       candidateSha,
-      fetchResponse(apiResponse(), (url, init) => {
-        expect(url).toBe(githubApiRunUrl)
-        expect(init).toMatchObject({ redirect: 'error' })
+      githubFetch({
+        assertion: (url, init) => {
+          requestedUrls.push(url)
+          expect([githubApiRunUrl, githubApiWorkflowUrl]).toContain(url)
+          expect(init).toMatchObject({ redirect: 'error' })
+        },
       }),
     )
+    expect(requestedUrls).toEqual([githubApiRunUrl, githubApiWorkflowUrl])
     const updated = recordSuccessfulCi(reviewLedger, '0', verified)
     const entry = updated.entries[0]!
 
@@ -279,11 +317,27 @@ describe('migration ledger repository checks', () => {
     })
   })
 
+  test('accepts the canonical workflow path with an exact refs heads suffix', async () => {
+    const verified = await verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      githubFetch({
+        run: apiResponse({
+          payload: successfulGithubRun({
+            path: '.github/workflows/ci.yml@refs/heads/main',
+          }),
+        }),
+      }),
+    )
+
+    expect(verified).toMatchObject({ sha: candidateSha, runId: 123 })
+  })
+
   test('rejects an internally consistent fabricated proof when GitHub returns 404', async () => {
     await expect(verifySuccessfulCiProof(
       successfulCiProof(),
       candidateSha,
-      fetchResponse(apiResponse({ status: 404 })),
+      githubFetch({ run: apiResponse({ status: 404 }) }),
     )).rejects.toThrow(/GitHub Actions run 123 was not found/)
   })
 
@@ -291,7 +345,7 @@ describe('migration ledger repository checks', () => {
     await expect(verifySuccessfulCiProof(
       successfulCiProof(),
       candidateSha,
-      fetchResponse(apiResponse({ status: 503 })),
+      githubFetch({ run: apiResponse({ status: 503 }) }),
     )).rejects.toThrow(/GitHub API 503/)
   })
 
@@ -299,7 +353,7 @@ describe('migration ledger repository checks', () => {
     await expect(verifySuccessfulCiProof(
       successfulCiProof(),
       candidateSha,
-      fetchResponse(apiResponse({ payload: {} })),
+      githubFetch({ run: apiResponse({ payload: {} }) }),
     )).rejects.toThrow(/malformed GitHub Actions run response/)
   })
 
@@ -307,7 +361,7 @@ describe('migration ledger repository checks', () => {
     await expect(verifySuccessfulCiProof(
       successfulCiProof(),
       candidateSha,
-      fetchResponse(apiResponse({ redirected: true })),
+      githubFetch({ run: apiResponse({ redirected: true }) }),
     )).rejects.toThrow(/redirected GitHub API response/)
   })
 
@@ -315,18 +369,30 @@ describe('migration ledger repository checks', () => {
     await expect(verifySuccessfulCiProof(
       successfulCiProof(),
       candidateSha,
-      fetchResponse(apiResponse({ url: 'https://example.com/runs/123' })),
+      githubFetch({ run: apiResponse({ url: 'https://example.com/runs/123' }) }),
     )).rejects.toThrow(/unexpected GitHub API response URL/)
   })
 
   test('rejects a proof for a different current candidate', async () => {
-    const fetcher = fetchResponse(apiResponse())
+    const fetcher = githubFetch()
 
     await expect(verifySuccessfulCiProof(
       successfulCiProof(),
       'b'.repeat(40),
       fetcher,
     )).rejects.toThrow(/proof SHA must match current candidate SHA/)
+  })
+
+  test('rejects a canonical workflow resource with a different path', async () => {
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      githubFetch({
+        workflow: workflowApiResponse({
+          payload: canonicalGithubWorkflow({ path: '.github/workflows/other.yml' }),
+        }),
+      }),
+    )).rejects.toThrow(/canonical workflow path mismatch/)
   })
 
   test.each([
@@ -337,12 +403,14 @@ describe('migration ledger repository checks', () => {
     ['event', { event: 'pull_request' }, /event must be push/],
     ['status', { status: 'in_progress' }, /status must be completed/],
     ['conclusion', { conclusion: 'failure' }, /conclusion must be success/],
+    ['workflow ID', { workflow_id: 999 }, /workflow ID mismatch/],
     ['workflow', { path: '.github/workflows/other.yml' }, /workflow must be ci.yml/],
+    ['ambiguous workflow filename', { path: '.github/workflows/ci.yml@evil.yml@main' }, /workflow must be ci.yml/],
   ])('rejects a GitHub run %s mismatch', async (_label, overrides, expected) => {
     await expect(verifySuccessfulCiProof(
       successfulCiProof(),
       candidateSha,
-      fetchResponse(apiResponse({ payload: successfulGithubRun(overrides) })),
+      githubFetch({ run: apiResponse({ payload: successfulGithubRun(overrides) }) }),
     )).rejects.toThrow(expected)
   })
 

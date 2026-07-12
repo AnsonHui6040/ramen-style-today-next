@@ -37,8 +37,10 @@ export type SuccessfulCiProof = z.infer<typeof successfulCiProofSchema>
 
 const githubActionsRunSchema = z.object({
   id: z.number().int().positive(),
+  workflow_id: z.number().int().positive(),
   html_url: z.string().url(),
   head_sha: fullShaSchema,
+  head_branch: z.string().nullable(),
   event: z.string(),
   status: z.string(),
   conclusion: z.string().nullable(),
@@ -47,6 +49,24 @@ const githubActionsRunSchema = z.object({
     full_name: z.string(),
   }),
 })
+
+const githubWorkflowSchema = z.object({
+  id: z.number().int().positive(),
+  path: z.string(),
+})
+
+function matchesCanonicalWorkflowPath(run: z.infer<typeof githubActionsRunSchema>) {
+  const expectedPaths = new Set([
+    workflowPath,
+    `${workflowPath}@${run.head_sha}`,
+  ])
+  if (run.head_branch) {
+    expectedPaths.add(`${workflowPath}@${run.head_branch}`)
+    expectedPaths.add(`${workflowPath}@refs/heads/${run.head_branch}`)
+    expectedPaths.add(`${workflowPath}@refs/tags/${run.head_branch}`)
+  }
+  return expectedPaths.has(run.path)
+}
 
 interface AuthenticatedSuccessfulCiRun {
   readonly [authenticatedRun]: true
@@ -101,9 +121,42 @@ export async function verifySuccessfulCiProof(
   const runResult = githubActionsRunSchema.safeParse(payload)
   if (!runResult.success) throw new Error('Received malformed GitHub Actions run response')
   const run = runResult.data
+
+  const workflowApiUrl = `${githubApiOrigin}/repos/${githubRepository}/actions/workflows/ci.yml`
+  let workflowResponse: Response
+  try {
+    workflowResponse = await fetchImplementation(workflowApiUrl, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'ramen-style-today-next',
+      },
+      redirect: 'error',
+    })
+  } catch (error) {
+    throw new Error('Unable to verify canonical GitHub Actions workflow', { cause: error })
+  }
+  if (workflowResponse.redirected) {
+    throw new Error('Rejected redirected GitHub workflow API response')
+  }
+  if (workflowResponse.url !== workflowApiUrl) {
+    throw new Error('Rejected unexpected GitHub workflow API response URL')
+  }
+  if (!workflowResponse.ok) throw new Error(`GitHub workflow API ${workflowResponse.status}`)
+  let workflowPayload: unknown
+  try {
+    workflowPayload = await workflowResponse.json()
+  } catch (error) {
+    throw new Error('Received malformed GitHub workflow response', { cause: error })
+  }
+  const workflowResult = githubWorkflowSchema.safeParse(workflowPayload)
+  if (!workflowResult.success) throw new Error('Received malformed GitHub workflow response')
+  const workflow = workflowResult.data
+  if (workflow.path !== workflowPath) throw new Error('canonical workflow path mismatch')
+
   if (run.repository.full_name !== githubRepository) {
     throw new Error('GitHub Actions run repository mismatch')
   }
+  if (run.workflow_id !== workflow.id) throw new Error('GitHub Actions run workflow ID mismatch')
   if (run.id !== proof.runId) throw new Error('GitHub Actions run ID mismatch')
   if (run.head_sha !== proof.sha) throw new Error('GitHub Actions run head SHA mismatch')
   const expectedRunUrl = `${githubHtmlOrigin}/${githubRepository}/actions/runs/${proof.runId}`
@@ -113,7 +166,7 @@ export async function verifySuccessfulCiProof(
   if (run.event !== 'push') throw new Error('GitHub Actions run event must be push')
   if (run.status !== 'completed') throw new Error('GitHub Actions run status must be completed')
   if (run.conclusion !== 'success') throw new Error('GitHub Actions run conclusion must be success')
-  if (run.path !== workflowPath && !run.path.startsWith(`${workflowPath}@`)) {
+  if (!matchesCanonicalWorkflowPath(run)) {
     throw new Error('GitHub Actions run workflow must be ci.yml')
   }
 

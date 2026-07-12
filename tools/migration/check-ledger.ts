@@ -10,7 +10,8 @@ import {
 } from 'node:fs'
 import { basename, dirname, relative, resolve } from 'node:path'
 
-import { checkLedger, verifyAndRecordSuccessfulCi } from './ledger-check.js'
+import { checkLedger } from './ledger-check.js'
+import { recordSuccessfulCiFile } from './record-ci.js'
 
 const repoRoot = resolve(import.meta.dirname, '../..')
 const sourceFile = resolve(repoRoot, 'docs/migration/ledger.json')
@@ -132,20 +133,20 @@ async function run() {
       throw new Error('Use --record-ci <batch> <verified-ci-proof-json-file>')
     }
     const [batch, proofFile] = args as [string, string]
-    const input = JSON.parse(readFileSync(sourceFile, 'utf8')) as unknown
     const proof = readVerifiedCiProof(proofFile)
     const expectedCandidateSha = execFileSync(
       'git',
       ['rev-parse', 'HEAD'],
       { cwd: repoRoot, encoding: 'utf8' },
     ).trim()
-    const updated = await verifyAndRecordSuccessfulCi(
-      input,
+    await recordSuccessfulCiFile({
       batch,
-      proof,
       expectedCandidateSha,
-    )
-    atomicWrite(sourceFile, `${JSON.stringify(updated, null, 2)}\n`, 'ledger source')
+      fetchImplementation: globalThis.fetch,
+      proofInput: proof,
+      repoRoot,
+      sourceFile,
+    })
     return
   }
   if (mode !== '--write' && mode !== '--check') throw new Error('Use --write or --check')

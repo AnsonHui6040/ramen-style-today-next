@@ -99,6 +99,8 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `tools/migration/ledger-check.test.ts`
 - `tools/migration/ledger-check.ts`
 - `tools/migration/ledger-schema.ts`
+- `tools/migration/record-ci.test.ts`
+- `tools/migration/record-ci.ts`
 - `tools/migration/render-ledger.test.ts`
 - `tools/migration/render-ledger.ts`
 - `tools/tsconfig.json`
