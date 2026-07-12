@@ -1,5 +1,5 @@
 import type { DiagnosticCode } from './diagnostic-codes.js'
-import { isStableSource } from './source-path.js'
+import { compareCodePoints, isStableSource } from './source-path.js'
 
 export type DiagnosticSeverity = 'error' | 'warning'
 
@@ -43,7 +43,7 @@ export function makeDiagnostic(input: Diagnostic): Diagnostic {
 }
 
 export function compareDiagnostics(left: Diagnostic, right: Diagnostic) {
-  return left.sourceFile.localeCompare(right.sourceFile)
-    || left.path.localeCompare(right.path)
-    || left.code.localeCompare(right.code)
+  return compareCodePoints(left.sourceFile, right.sourceFile)
+    || compareCodePoints(left.path, right.path)
+    || compareCodePoints(left.code, right.code)
 }

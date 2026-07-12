@@ -1,15 +1,6 @@
-import type { MigrationLedger } from './ledger-schema.js'
+import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
-export function compareCodePoints(left: string, right: string) {
-  const leftPoints = Array.from(left, (character) => character.codePointAt(0)!)
-  const rightPoints = Array.from(right, (character) => character.codePointAt(0)!)
-  const sharedLength = Math.min(leftPoints.length, rightPoints.length)
-  for (let index = 0; index < sharedLength; index += 1) {
-    const difference = leftPoints[index]! - rightPoints[index]!
-    if (difference !== 0) return difference
-  }
-  return leftPoints.length - rightPoints.length
-}
+import type { MigrationLedger } from './ledger-schema.js'
 
 export function renderLedger(ledger: MigrationLedger) {
   const sections = [...ledger.entries]

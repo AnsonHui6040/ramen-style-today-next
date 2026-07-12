@@ -1,8 +1,9 @@
 import { z } from 'zod'
+import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
 import type { MigrationLedger } from './ledger-schema.js'
 import { migrationLedgerSchema } from './ledger-schema.js'
-import { compareCodePoints, renderLedger } from './render-ledger.js'
+import { renderLedger } from './render-ledger.js'
 
 export interface LedgerCheckInput {
   input: unknown

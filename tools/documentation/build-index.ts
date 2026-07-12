@@ -1,4 +1,5 @@
 import {
+  compareCodePoints,
   DiagnosticCollector,
   stableJson,
   type ClassificationModel,
@@ -127,7 +128,7 @@ export function buildDocumentation(
     })
   }
 
-  const sorted = (values: readonly string[]) => [...new Set(values)].sort()
+  const sorted = (values: readonly string[]) => [...new Set(values)].sort(compareCodePoints)
   const concepts = model.inventory
     .map((concept) => {
       const relation = relationByKey.get(concept.key)
@@ -147,7 +148,7 @@ export function buildDocumentation(
         tests: sorted(relation?.tests ?? []),
       }
     })
-    .sort((left, right) => left.key.localeCompare(right.key))
+    .sort((left, right) => compareCodePoints(left.key, right.key))
 
   const cell = (values: readonly string[]) => values.length
     ? values.map((value) => `\`${value.replaceAll('|', '\\|')}\``).join('<br>')

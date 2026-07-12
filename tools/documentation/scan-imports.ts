@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
 import * as ts from 'typescript'
+import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
 const corePackage = '@ramen-style/classification-core'
 const ignoredDirectories = new Set(['.git', 'dist', 'node_modules'])
@@ -17,6 +18,44 @@ function isInfrastructureOrTest(relativePath: string) {
     || relativePath.endsWith('.test.tsx')
     || relativePath.endsWith('.test.mts')
     || relativePath.endsWith('.test.cts')
+}
+
+function isCoreSpecifier(value: string) {
+  return value === corePackage || value.startsWith(`${corePackage}/`)
+}
+
+function importsClassificationBehavior(source: string, relativePath: string) {
+  const preprocessedCoreImports = ts.preProcessFile(source, true, true).importedFiles.filter(
+    ({ fileName }) => isCoreSpecifier(fileName),
+  )
+  if (preprocessedCoreImports.length === 0) return false
+
+  const sourceFile = ts.createSourceFile(
+    relativePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+  )
+  let comparatorOnlyImportCount = 0
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)
+      || !ts.isStringLiteral(statement.moduleSpecifier)
+      || !isCoreSpecifier(statement.moduleSpecifier.text)) {
+      continue
+    }
+    const bindings = statement.importClause?.namedBindings
+    const isComparatorOnly = !statement.importClause?.name
+      && bindings !== undefined
+      && ts.isNamedImports(bindings)
+      && bindings.elements.length > 0
+      && bindings.elements.every((element) => (
+        (element.propertyName ?? element.name).text === 'compareCodePoints'
+      ))
+    if (!isComparatorOnly) return true
+    comparatorOnlyImportCount += 1
+  }
+
+  return preprocessedCoreImports.length > comparatorOnlyImportCount
 }
 
 export function scanCoreConsumers(
@@ -40,8 +79,8 @@ export function scanCoreConsumers(
         continue
       }
       if (!eligibleFiles.has(relativePath)) continue
-      const imports = ts.preProcessFile(readFileSync(child, 'utf8'), true, true).importedFiles
-      if (imports.some(({ fileName }) => fileName === corePackage || fileName.startsWith(`${corePackage}/`))) {
+      const source = readFileSync(child, 'utf8')
+      if (importsClassificationBehavior(source, relativePath)) {
         consumers.add(relativePath)
       }
     }
@@ -51,5 +90,5 @@ export function scanCoreConsumers(
     const absoluteRoot = join(repoRoot, root)
     if (existsSync(absoluteRoot)) visit(absoluteRoot)
   }
-  return new Set([...consumers].sort())
+  return new Set([...consumers].sort(compareCodePoints))
 }

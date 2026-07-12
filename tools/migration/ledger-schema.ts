@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
 const repoPathSchema = z.string().min(1).refine(
   (value) => !value.startsWith('/')
@@ -89,7 +90,7 @@ const entrySchema = z.strictObject({
         path: ['verification'],
         message: `complete Batch ${entry.batch} requires exact verification gates: ${[
           ...requiredGates,
-        ].sort().join(', ')}`,
+        ].sort(compareCodePoints).join(', ')}`,
       })
     }
   }

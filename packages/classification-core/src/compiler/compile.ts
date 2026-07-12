@@ -6,6 +6,7 @@ import type {
   ConceptKey,
   ConceptRecord,
 } from '../contracts/model.js'
+import { compareCodePoints } from '../contracts/source-path.js'
 import { DiagnosticCollector } from './collector.js'
 import { parseDefinitionBundle } from './parse.js'
 import { stableJson } from './stable-json.js'
@@ -29,7 +30,7 @@ function duplicateValues(values: readonly string[]) {
     if (seen.has(value)) duplicates.add(value)
     seen.add(value)
   }
-  return [...duplicates].sort()
+  return [...duplicates].sort(compareCodePoints)
 }
 
 function flowHasCycle(questions: readonly { id: string; dependsOn: readonly string[] }[]) {
@@ -104,7 +105,7 @@ function buildInventory(definition: NonNullable<ReturnType<typeof parseDefinitio
     sourceFile: definition.policy.sourceFile,
     messageIds: [],
   })
-  return records.sort((left, right) => left.key.localeCompare(right.key))
+  return records.sort((left, right) => compareCodePoints(left.key, right.key))
 }
 
 export function compileClassification(input: unknown, sourceFile: string): CompileResult {

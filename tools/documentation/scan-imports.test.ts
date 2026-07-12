@@ -88,4 +88,49 @@ describe('core consumer scanner', () => {
       rmSync(repoRoot, { recursive: true, force: true })
     }
   })
+
+  test('excludes comparator-only utility imports without hiding compiler consumers', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-'))
+    try {
+      mkdirSync(join(repoRoot, 'tools/migration'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'tools/migration/order-only.ts'),
+        "import { compareCodePoints } from '@ramen-style/classification-core/compiler'\n",
+      )
+      writeFileSync(
+        join(repoRoot, 'tools/migration/compiler-consumer.ts'),
+        [
+          "import { compareCodePoints, stableJson } from '@ramen-style/classification-core/compiler'",
+          'void compareCodePoints',
+          'void stableJson',
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(
+        join(repoRoot, 'tools/migration/mixed-consumer.cts'),
+        [
+          "import { compareCodePoints } from '@ramen-style/classification-core/compiler'",
+          "const core = require('@ramen-style/classification-core/compiler')",
+          'void compareCodePoints',
+          'void core',
+          '',
+        ].join('\n'),
+      )
+
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['tools'],
+        new Set([
+          'tools/migration/order-only.ts',
+          'tools/migration/compiler-consumer.ts',
+          'tools/migration/mixed-consumer.cts',
+        ]),
+      )]).toEqual([
+        'tools/migration/compiler-consumer.ts',
+        'tools/migration/mixed-consumer.cts',
+      ])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
 })
