@@ -43,6 +43,24 @@ describe('migration ledger', () => {
     expect(() => migrationLedgerSchema.parse(emptyEvidence)).toThrow(/require verification evidence/)
   })
 
+  test('requires the approved exact completion gates for Batch 1', () => {
+    const missingRemote = structuredClone(ledger)
+    missingRemote.entries[1]!.verification = missingRemote.entries[1]!.verification.filter(
+      (item) => item.gate !== 'batch1-remote-ci',
+    )
+    expect(() => migrationLedgerSchema.parse(missingRemote)).toThrow(
+      /complete Batch 1 requires exact verification gates/,
+    )
+
+    const weakenedBatchZero = structuredClone(ledger)
+    weakenedBatchZero.entries[0]!.verification = weakenedBatchZero.entries[0]!.verification.filter(
+      (item) => item.gate !== 'written-approval',
+    )
+    expect(() => migrationLedgerSchema.parse(weakenedBatchZero)).toThrow(
+      /complete Batch 0 requires exact verification gates/,
+    )
+  })
+
   test('rejects control characters in repository paths', () => {
     const newlineOwner = structuredClone(ledger)
     newlineOwner.entries[0]!.newOwners[0] = 'line\nbreak.md'

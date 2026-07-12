@@ -27,7 +27,9 @@ function isJsonPointer(value: string) {
 
 export function makeDiagnostic(input: Diagnostic): Diagnostic {
   if (!isStableSource(input.sourceFile)) {
-    throw new Error('diagnostic sourceFile must be repository-relative POSIX or runtime://')
+    throw new Error(
+      'diagnostic sourceFile must be repository-relative POSIX or runtime:// lower-kebab identifier segments',
+    )
   }
   if (!isJsonPointer(input.path)) {
     throw new Error('diagnostic path must be an RFC 6901 JSON Pointer')

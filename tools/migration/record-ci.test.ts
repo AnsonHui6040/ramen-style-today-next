@@ -48,7 +48,12 @@ test('authenticated recording atomically replaces canonical JSON and cleans its 
         newOwners: ['docs/migration/ledger.json'],
         transformation: 'Authenticated recording fixture.',
         behavior: 'no-runtime-change',
-        verification: [],
+        verification: [{
+          gate: 'batch1-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'local verification passed',
+        }],
       }],
     })
     writeFileSync(sourceFile, `${JSON.stringify(input, null, 2)}\n`)

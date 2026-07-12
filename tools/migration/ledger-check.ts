@@ -93,6 +93,7 @@ export async function verifySuccessfulCiProof(
   proofInput: unknown,
   expectedCandidateSha: string,
   fetchImplementation: typeof fetch,
+  githubToken?: string,
 ): Promise<AuthenticatedSuccessfulCiRun> {
   const proofResult = successfulCiProofSchema.safeParse(proofInput)
   if (!proofResult.success) {
@@ -107,13 +108,15 @@ export async function verifySuccessfulCiProof(
   }
 
   const apiUrl = `${githubApiOrigin}/repos/${githubRepository}/actions/runs/${proof.runId}`
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'ramen-style-today-next',
+  }
+  if (githubToken) headers.Authorization = `Bearer ${githubToken}`
   let response: Response
   try {
     response = await fetchImplementation(apiUrl, {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'ramen-style-today-next',
-      },
+      headers,
       redirect: 'error',
     })
   } catch (error) {
@@ -140,10 +143,7 @@ export async function verifySuccessfulCiProof(
   let workflowResponse: Response
   try {
     workflowResponse = await fetchImplementation(workflowApiUrl, {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'ramen-style-today-next',
-      },
+      headers,
       redirect: 'error',
     })
   } catch (error) {
@@ -194,6 +194,76 @@ export async function verifySuccessfulCiProof(
     runId: proof.runId,
     runUrl: proof.runUrl,
   })
+}
+
+type CommitAncestryCheck = (
+  evidenceSha: string,
+  currentHeadSha: string,
+) => boolean | Promise<boolean>
+
+function proofFromRecordedEvidence(
+  evidence: { commitSha?: string | undefined; runUrl?: string | undefined },
+): SuccessfulCiProof {
+  if (!evidence.commitSha || !evidence.runUrl) {
+    throw new Error('Recorded remote CI evidence is missing commit SHA or run URL')
+  }
+  let runUrl: URL
+  try {
+    runUrl = new URL(evidence.runUrl)
+  } catch (error) {
+    throw new Error('Recorded remote CI run URL is malformed', { cause: error })
+  }
+  const match = /^\/AnsonHui6040\/ramen-style-today-next\/actions\/runs\/([1-9][0-9]*)$/.exec(
+    runUrl.pathname,
+  )
+  if (runUrl.origin !== githubHtmlOrigin
+    || runUrl.username
+    || runUrl.password
+    || runUrl.search
+    || runUrl.hash
+    || !match) {
+    throw new Error('Recorded remote CI run URL must be the canonical repository run URL')
+  }
+  const runId = Number(match[1])
+  if (!Number.isSafeInteger(runId)) {
+    throw new Error('Recorded remote CI run ID is not a safe positive integer')
+  }
+  return successfulCiProofSchema.parse({
+    schemaVersion: 1,
+    sha: evidence.commitSha,
+    runId,
+    runUrl: evidence.runUrl,
+  })
+}
+
+export async function authenticateLedgerRemoteCiEvidence(
+  input: unknown,
+  currentHeadSha: string,
+  fetchImplementation: typeof fetch,
+  isCommitAncestor: CommitAncestryCheck,
+  githubToken?: string,
+): Promise<void> {
+  if (!fullShaSchema.safeParse(currentHeadSha).success) {
+    throw new Error('Current repository HEAD must be a full lowercase SHA')
+  }
+  const ledger = migrationLedgerSchema.parse(input)
+  for (const entry of ledger.entries) {
+    for (const evidence of entry.verification) {
+      if (!evidence.gate.endsWith('-remote-ci')) continue
+      const proof = proofFromRecordedEvidence(evidence)
+      if (!await isCommitAncestor(proof.sha, currentHeadSha)) {
+        throw new Error(
+          `Recorded remote CI commit ${proof.sha} is not an ancestor of current HEAD ${currentHeadSha}`,
+        )
+      }
+      await verifySuccessfulCiProof(
+        proof,
+        proof.sha,
+        fetchImplementation,
+        githubToken,
+      )
+    }
+  }
 }
 
 export function recordSuccessfulCi(

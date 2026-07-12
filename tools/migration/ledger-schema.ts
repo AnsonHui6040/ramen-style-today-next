@@ -30,6 +30,22 @@ const verificationSchema = z.strictObject({
   }
 })
 
+const completionGatePolicies = new Map<string, ReadonlySet<string>>([
+  ['0', new Set([
+    'architecture-review',
+    'batch0-document-checks',
+    'batch1-plan-review',
+    'legacy-build',
+    'legacy-lint',
+    'legacy-tests',
+    'written-approval',
+  ])],
+  ['1', new Set([
+    'batch1-local-verify',
+    'batch1-remote-ci',
+  ])],
+])
+
 const entrySchema = z.strictObject({
   batch: z.string().min(1),
   status: z.enum(['in-review', 'in-progress', 'complete']),
@@ -57,6 +73,26 @@ const entrySchema = z.strictObject({
     })
     gates.add(verification.gate)
   })
+  if (entry.status === 'complete') {
+    const requiredGates = completionGatePolicies.get(entry.batch)
+    if (!requiredGates) {
+      context.addIssue({
+        code: 'custom',
+        path: ['verification'],
+        message: `complete Batch ${entry.batch} has no approved completion gate policy`,
+      })
+    } else {
+      const exact = gates.size === requiredGates.size
+        && [...requiredGates].every((gate) => gates.has(gate))
+      if (!exact) context.addIssue({
+        code: 'custom',
+        path: ['verification'],
+        message: `complete Batch ${entry.batch} requires exact verification gates: ${[
+          ...requiredGates,
+        ].sort().join(', ')}`,
+      })
+    }
+  }
 })
 
 export const migrationLedgerSchema = z.strictObject({

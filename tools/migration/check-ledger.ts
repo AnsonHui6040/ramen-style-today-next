@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import {
   lstatSync,
@@ -10,7 +10,10 @@ import {
 } from 'node:fs'
 import { basename, dirname, relative, resolve } from 'node:path'
 
-import { checkLedger } from './ledger-check.js'
+import {
+  authenticateLedgerRemoteCiEvidence,
+  checkLedger,
+} from './ledger-check.js'
 import { recordSuccessfulCiFile } from './record-ci.js'
 
 const repoRoot = resolve(import.meta.dirname, '../..')
@@ -24,6 +27,21 @@ function repositoryFiles() {
     { cwd: repoRoot, encoding: 'utf8' },
   )
   return new Set(output.split('\0').filter(Boolean))
+}
+
+function isCommitAncestor(evidenceSha: string, currentHeadSha: string) {
+  const exists = spawnSync(
+    'git',
+    ['cat-file', '-e', `${evidenceSha}^{commit}`],
+    { cwd: repoRoot, encoding: 'utf8' },
+  )
+  if (exists.status !== 0) return false
+  const ancestor = spawnSync(
+    'git',
+    ['merge-base', '--is-ancestor', evidenceSha, currentHeadSha],
+    { cwd: repoRoot, encoding: 'utf8' },
+  )
+  return ancestor.status === 0
 }
 
 function pathExists(path: string) {
@@ -176,6 +194,21 @@ async function run() {
     for (const error of result.errors) console.error(`LEDGER_INVALID ${error}`)
     process.exitCode = 1
     return
+  }
+
+  if (mode === '--check') {
+    const currentHeadSha = execFileSync(
+      'git',
+      ['rev-parse', 'HEAD'],
+      { cwd: repoRoot, encoding: 'utf8' },
+    ).trim()
+    await authenticateLedgerRemoteCiEvidence(
+      input,
+      currentHeadSha,
+      globalThis.fetch,
+      isCommitAncestor,
+      process.env.GITHUB_TOKEN,
+    )
   }
 
   if (mode === '--write') {

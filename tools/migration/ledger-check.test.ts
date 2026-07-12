@@ -15,6 +15,7 @@ import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
 import {
+  authenticateLedgerRemoteCiEvidence,
   checkLedger,
   recordSuccessfulCi,
   verifySuccessfulCiProof,
@@ -292,7 +293,10 @@ describe('migration ledger repository checks', () => {
 
   test('promotes only after the fixed GitHub run resource authenticates the proof', async () => {
     const reviewLedger = structuredClone(ledger)
-    reviewLedger.entries[0]!.status = 'in-review'
+    reviewLedger.entries[1]!.status = 'in-review'
+    reviewLedger.entries[1]!.verification = reviewLedger.entries[1]!.verification.filter(
+      (item) => item.gate !== 'batch1-remote-ci',
+    )
     const requestedUrls: string[] = []
     const verified = await verifySuccessfulCiProof(
       successfulCiProof(),
@@ -306,12 +310,12 @@ describe('migration ledger repository checks', () => {
       }),
     )
     expect(requestedUrls).toEqual([githubApiRunUrl, githubApiWorkflowUrl])
-    const updated = recordSuccessfulCi(reviewLedger, '0', verified)
-    const entry = updated.entries[0]!
+    const updated = recordSuccessfulCi(reviewLedger, '1', verified)
+    const entry = updated.entries[1]!
 
     expect(entry.status).toBe('complete')
     expect(entry.verification.at(-1)).toMatchObject({
-      gate: 'batch0-remote-ci',
+      gate: 'batch1-remote-ci',
       commitSha: candidateSha,
       runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
     })
@@ -466,6 +470,79 @@ describe('migration ledger repository checks', () => {
     expect(() => recordSuccessfulCi(reviewLedger, '0', forged)).toThrow(
       /authenticated GitHub Actions run/,
     )
+  })
+
+  test('re-authenticates recorded remote CI evidence instead of trusting ledger fields', async () => {
+    const forgedLedger = structuredClone(ledger)
+    const remote = forgedLedger.entries[1]!.verification.find(
+      (item) => item.gate === 'batch1-remote-ci',
+    )!
+    remote.commitSha = candidateSha
+    remote.runUrl = successfulCiProof().runUrl as string
+
+    await expect(authenticateLedgerRemoteCiEvidence(
+      forgedLedger,
+      'b'.repeat(40),
+      githubFetch({ run: apiResponse({ status: 404 }) }),
+      async () => true,
+    )).rejects.toThrow(/GitHub Actions run 123 was not found/)
+  })
+
+  test('rejects mismatched recorded remote CI evidence', async () => {
+    const mismatchedLedger = structuredClone(ledger)
+    const remote = mismatchedLedger.entries[1]!.verification.find(
+      (item) => item.gate === 'batch1-remote-ci',
+    )!
+    remote.commitSha = candidateSha
+    remote.runUrl = successfulCiProof().runUrl as string
+
+    await expect(authenticateLedgerRemoteCiEvidence(
+      mismatchedLedger,
+      'b'.repeat(40),
+      githubFetch({
+        run: apiResponse({
+          payload: successfulGithubRun({ head_sha: 'c'.repeat(40) }),
+        }),
+      }),
+      async () => true,
+    )).rejects.toThrow(/head SHA mismatch/)
+  })
+
+  test('accepts authenticated historical evidence that is an ancestor of current HEAD', async () => {
+    const historicalLedger = structuredClone(ledger)
+    const remote = historicalLedger.entries[1]!.verification.find(
+      (item) => item.gate === 'batch1-remote-ci',
+    )!
+    remote.commitSha = candidateSha
+    remote.runUrl = successfulCiProof().runUrl as string
+    const ancestryChecks: [string, string][] = []
+
+    await expect(authenticateLedgerRemoteCiEvidence(
+      historicalLedger,
+      'b'.repeat(40),
+      githubFetch(),
+      async (evidenceSha, currentHeadSha) => {
+        ancestryChecks.push([evidenceSha, currentHeadSha])
+        return true
+      },
+    )).resolves.toBeUndefined()
+    expect(ancestryChecks).toEqual([[candidateSha, 'b'.repeat(40)]])
+  })
+
+  test('rejects authenticated evidence outside current repository history', async () => {
+    const unrelatedLedger = structuredClone(ledger)
+    const remote = unrelatedLedger.entries[1]!.verification.find(
+      (item) => item.gate === 'batch1-remote-ci',
+    )!
+    remote.commitSha = candidateSha
+    remote.runUrl = successfulCiProof().runUrl as string
+
+    await expect(authenticateLedgerRemoteCiEvidence(
+      unrelatedLedger,
+      'b'.repeat(40),
+      githubFetch(),
+      async () => false,
+    )).rejects.toThrow(/not an ancestor of current HEAD/)
   })
 })
 

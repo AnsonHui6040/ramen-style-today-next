@@ -43,4 +43,54 @@ describe('structured diagnostics', () => {
       message: 'Bad data path',
     })).toThrow('diagnostic path')
   })
+
+  test('accepts reserved runtime identifier segments and rejects path-like runtime sources', () => {
+    for (const sourceFile of [
+      'runtime://parse-definition-bundle',
+      'runtime://local-storage/legacy-state',
+    ]) {
+      expect(makeDiagnostic({
+        severity: 'error',
+        code: 'STRUCTURE_INVALID',
+        sourceFile,
+        path: '',
+        message: 'Stable runtime source',
+      }).sourceFile).toBe(sourceFile)
+    }
+
+    for (const sourceFile of [
+      'runtime://',
+      'runtime:///Users/private/project/input.json',
+      'runtime://C:/private/input.json',
+      'runtime://C:\\private\\input.json',
+      'runtime://local-storage/./legacy-state',
+      'runtime://local-storage/../legacy-state',
+      'runtime://local-storage//legacy-state',
+      'runtime://https://example.com/input',
+      'runtime://local-storage/legacy_state',
+      'runtime://local-storage/legacy\nstate',
+    ]) {
+      expect(() => makeDiagnostic({
+        severity: 'error',
+        code: 'STRUCTURE_INVALID',
+        sourceFile,
+        path: '',
+        message: 'Unstable runtime source',
+      }), sourceFile).toThrow('diagnostic sourceFile')
+    }
+  })
+
+  test('applies stable runtime source validation to related references', () => {
+    expect(() => makeDiagnostic({
+      severity: 'error',
+      code: 'STRUCTURE_INVALID',
+      sourceFile: 'runtime://parse-definition-bundle',
+      path: '',
+      message: 'Related source is unstable',
+      related: [{
+        sourceFile: 'runtime:///Users/private/related.json',
+        path: '/input',
+      }],
+    })).toThrow('diagnostic related references')
+  })
 })
