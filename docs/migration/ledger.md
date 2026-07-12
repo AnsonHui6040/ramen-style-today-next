@@ -49,7 +49,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `legacy-tests`: `npm test` — passed; 10 files and 63 tests passed at the frozen legacy baseline
 - `written-approval`: `user review` — passed; written specification approved by the user on 2026-07-11
 
-## Batch 1 — in-review
+## Batch 1 — complete
 
 - Behavior: `no-production-runtime-change`
 - Transformation: Created new monorepo contracts, diagnostics, compiler, synthetic inventory, checked documentation index, ledger tooling, and CI without migrating legacy production behavior.
@@ -113,3 +113,6 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 ### Verification
 
 - `batch1-local-verify`: `npm run verify` — passed; lint, tests, typecheck, build, synthetic validation, index drift, and ledger drift checks passed on the acceptance candidate
+- `batch1-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed acceptance candidate completed the Node 24 verify job successfully
+  - Commit: `3cd7ac638f650d783b33f27feb993fbadf35493f`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883

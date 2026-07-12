@@ -89,7 +89,7 @@
     },
     {
       "batch": "1",
-      "status": "in-review",
+      "status": "complete",
       "legacySources": [],
       "ownedScopes": [
         ".github/workflows",
@@ -156,6 +156,14 @@
           "command": "npm run verify",
           "outcome": "passed",
           "evidence": "lint, tests, typecheck, build, synthetic validation, index drift, and ledger drift checks passed on the acceptance candidate"
+        },
+        {
+          "gate": "batch1-remote-ci",
+          "command": "GitHub Actions CI / verify",
+          "outcome": "passed",
+          "evidence": "the pushed acceptance candidate completed the Node 24 verify job successfully",
+          "commitSha": "3cd7ac638f650d783b33f27feb993fbadf35493f",
+          "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883"
         }
       ]
     }

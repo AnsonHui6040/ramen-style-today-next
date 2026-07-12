@@ -4,7 +4,7 @@
 
 ## Current status
 
-Batch 1 compiler foundation 已完成實作，正在執行本地與 GitHub Actions acceptance gate。現階段所有分類內容仍是 synthetic proof inventory，不是正式問卷或評分資料；production migration 只會在 Batch 2A 開始。
+Batch 1 已完成：repository 現在具備 strict TypeScript contracts、structured diagnostics、deterministic compiler shell、雙向檢查的分類索引、migration ledger validator 和 CI。所有分類內容仍是 synthetic proof inventory；正式 questions 與 flow 只會由 Batch 2A 開始遷移。
 
 舊版 production 與行為基準仍在 [`AnsonHui6040/ramen-style-today`](https://github.com/AnsonHui6040/ramen-style-today)，凍結比較基準為 commit `eebf00b`。
 

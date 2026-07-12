@@ -6,7 +6,7 @@ This monorepo replaces the low-level architecture of `ramen-style-today` through
 
 ## Current phase
 
-Batch 1 is an acceptance candidate. Its contracts, diagnostics, compiler, validation CLI, generated index, ledger checks, and CI contain synthetic proof data only. Run `npm run verify` for the complete local gate. Do not begin Batch 2A or treat the synthetic inventory as production until Batch 1 has passed both local and remote CI and its ledger status is `complete`.
+Batch 1 is complete. The repository has strict contracts, structured diagnostics, a deterministic compiler shell, checked classification indexes, migration-ledger validation, and CI; all current classification definitions remain synthetic proof data. Run `npm run verify` before every handoff. Batch 2A may replace the synthetic question inventory only under its separately approved plan; no production scoring, persistence, catalog, Finder, or React behavior is owned here yet.
 
 ## Source-of-truth hierarchy
 
