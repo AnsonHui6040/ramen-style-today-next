@@ -4,7 +4,7 @@
 
 ## Current status
 
-Batch 0 已完成並獲核准：repository 已建立架構設計、舊版基準與維護規則，尚未搬入應用程式或正式分類資料。Batch 1 implementation plan 已完成可執行性審閱，下一步會在獨立分支建立 contracts、diagnostics、compiler shell 與初始索引工具。
+Batch 1 compiler foundation 已完成實作，正在執行本地與 GitHub Actions acceptance gate。現階段所有分類內容仍是 synthetic proof inventory，不是正式問卷或評分資料；production migration 只會在 Batch 2A 開始。
 
 舊版 production 與行為基準仍在 [`AnsonHui6040/ramen-style-today`](https://github.com/AnsonHui6040/ramen-style-today)，凍結比較基準為 commit `eebf00b`。
 

@@ -89,19 +89,17 @@
     },
     {
       "batch": "1",
-      "status": "in-progress",
+      "status": "in-review",
       "legacySources": [],
       "ownedScopes": [
+        ".github/workflows",
         "docs/classification",
         "packages/classification-core",
         "tools"
       ],
       "newOwners": [
+        ".github/workflows/ci.yml",
         ".nvmrc",
-        "docs/classification/change-map.md",
-        "docs/classification/index.md",
-        "docs/classification/manifest.json",
-        "docs/migration/ledger.md",
         "eslint.config.js",
         "package-lock.json",
         "package.json",
@@ -144,11 +142,22 @@
         "tools/validation/validate-classification.ts",
         "tsconfig.base.json",
         "tsconfig.json",
-        "vitest.config.ts"
+        "vitest.config.ts",
+        "docs/classification/change-map.md",
+        "docs/classification/index.md",
+        "docs/classification/manifest.json",
+        "docs/migration/ledger.md"
       ],
-      "transformation": "Created new monorepo contracts, diagnostics, compiler, synthetic inventory, checked documentation index, and ledger tooling without migrating legacy production behavior.",
+      "transformation": "Created new monorepo contracts, diagnostics, compiler, synthetic inventory, checked documentation index, ledger tooling, and CI without migrating legacy production behavior.",
       "behavior": "no-production-runtime-change",
-      "verification": []
+      "verification": [
+        {
+          "gate": "batch1-local-verify",
+          "command": "npm run verify",
+          "outcome": "passed",
+          "evidence": "lint, tests, typecheck, build, synthetic validation, index drift, and ledger drift checks passed on the acceptance candidate"
+        }
+      ]
     }
   ]
 }

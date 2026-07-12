@@ -49,10 +49,10 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `legacy-tests`: `npm test` — passed; 10 files and 63 tests passed at the frozen legacy baseline
 - `written-approval`: `user review` — passed; written specification approved by the user on 2026-07-11
 
-## Batch 1 — in-progress
+## Batch 1 — in-review
 
 - Behavior: `no-production-runtime-change`
-- Transformation: Created new monorepo contracts, diagnostics, compiler, synthetic inventory, checked documentation index, and ledger tooling without migrating legacy production behavior.
+- Transformation: Created new monorepo contracts, diagnostics, compiler, synthetic inventory, checked documentation index, ledger tooling, and CI without migrating legacy production behavior.
 
 ### Legacy sources
 
@@ -60,6 +60,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### New owners
 
+- `.github/workflows/ci.yml`
 - `.nvmrc`
 - `docs/classification/change-map.md`
 - `docs/classification/index.md`
@@ -111,4 +112,4 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Verification
 
-- Pending.
+- `batch1-local-verify`: `npm run verify` — passed; lint, tests, typecheck, build, synthetic validation, index drift, and ledger drift checks passed on the acceptance candidate
