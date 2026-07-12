@@ -317,20 +317,64 @@ describe('migration ledger repository checks', () => {
     })
   })
 
-  test('accepts the canonical workflow path with an exact refs heads suffix', async () => {
+  test.each([
+    [
+      'Task 7 branch',
+      'codex/batch-1-compiler-foundation',
+      '.github/workflows/ci.yml@codex/batch-1-compiler-foundation',
+    ],
+    [
+      'refs heads',
+      'codex/batch-1-compiler-foundation',
+      '.github/workflows/ci.yml@refs/heads/codex/batch-1-compiler-foundation',
+    ],
+    ['refs tags', 'v1.0.0', '.github/workflows/ci.yml@refs/tags/v1.0.0'],
+    ['full SHA', 'main', `.github/workflows/ci.yml@${candidateSha}`],
+  ])('accepts the canonical workflow path with an exact %s suffix', async (
+    _label,
+    headBranch,
+    path,
+  ) => {
     const verified = await verifySuccessfulCiProof(
       successfulCiProof(),
       candidateSha,
       githubFetch({
         run: apiResponse({
           payload: successfulGithubRun({
-            path: '.github/workflows/ci.yml@refs/heads/main',
+            head_branch: headBranch,
+            path,
           }),
         }),
       }),
     )
 
     expect(verified).toMatchObject({ sha: candidateSha, runId: 123 })
+  })
+
+  test.each([
+    [
+      'coupled extra-at filename collision',
+      'evil.yml@main',
+      '.github/workflows/ci.yml@evil.yml@main',
+    ],
+    [
+      'control-character branch',
+      'evil\nmain',
+      '.github/workflows/ci.yml@evil\nmain',
+    ],
+  ])('rejects an ambiguous workflow path with %s', async (_label, headBranch, path) => {
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      githubFetch({
+        run: apiResponse({
+          payload: successfulGithubRun({
+            head_branch: headBranch,
+            path,
+          }),
+        }),
+      }),
+    )).rejects.toThrow(/workflow path is ambiguous/)
   })
 
   test('rejects an internally consistent fabricated proof when GitHub returns 404', async () => {
@@ -405,7 +449,7 @@ describe('migration ledger repository checks', () => {
     ['conclusion', { conclusion: 'failure' }, /conclusion must be success/],
     ['workflow ID', { workflow_id: 999 }, /workflow ID mismatch/],
     ['workflow', { path: '.github/workflows/other.yml' }, /workflow must be ci.yml/],
-    ['ambiguous workflow filename', { path: '.github/workflows/ci.yml@evil.yml@main' }, /workflow must be ci.yml/],
+    ['ambiguous workflow filename', { path: '.github/workflows/ci.yml@evil.yml@main' }, /workflow path is ambiguous/],
   ])('rejects a GitHub run %s mismatch', async (_label, overrides, expected) => {
     await expect(verifySuccessfulCiProof(
       successfulCiProof(),

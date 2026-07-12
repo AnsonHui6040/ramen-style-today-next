@@ -55,7 +55,21 @@ const githubWorkflowSchema = z.object({
   path: z.string(),
 })
 
-function matchesCanonicalWorkflowPath(run: z.infer<typeof githubActionsRunSchema>) {
+function hasWorkflowPathAmbiguity(value: string) {
+  return value.includes('@') || Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0)!
+    return codePoint <= 31 || codePoint === 127
+  })
+}
+
+function canonicalWorkflowPathStatus(
+  run: z.infer<typeof githubActionsRunSchema>,
+): 'match' | 'ambiguous' | 'mismatch' {
+  if (run.head_branch && hasWorkflowPathAmbiguity(run.head_branch)) return 'ambiguous'
+  if (run.path.startsWith(`${workflowPath}@`)) {
+    const suffix = run.path.slice(workflowPath.length + 1)
+    if (suffix.length === 0 || hasWorkflowPathAmbiguity(suffix)) return 'ambiguous'
+  }
   const expectedPaths = new Set([
     workflowPath,
     `${workflowPath}@${run.head_sha}`,
@@ -65,7 +79,7 @@ function matchesCanonicalWorkflowPath(run: z.infer<typeof githubActionsRunSchema
     expectedPaths.add(`${workflowPath}@refs/heads/${run.head_branch}`)
     expectedPaths.add(`${workflowPath}@refs/tags/${run.head_branch}`)
   }
-  return expectedPaths.has(run.path)
+  return expectedPaths.has(run.path) ? 'match' : 'mismatch'
 }
 
 interface AuthenticatedSuccessfulCiRun {
@@ -166,7 +180,11 @@ export async function verifySuccessfulCiProof(
   if (run.event !== 'push') throw new Error('GitHub Actions run event must be push')
   if (run.status !== 'completed') throw new Error('GitHub Actions run status must be completed')
   if (run.conclusion !== 'success') throw new Error('GitHub Actions run conclusion must be success')
-  if (!matchesCanonicalWorkflowPath(run)) {
+  const workflowPathStatus = canonicalWorkflowPathStatus(run)
+  if (workflowPathStatus === 'ambiguous') {
+    throw new Error('GitHub Actions run workflow path is ambiguous')
+  }
+  if (workflowPathStatus === 'mismatch') {
     throw new Error('GitHub Actions run workflow must be ci.yml')
   }
 

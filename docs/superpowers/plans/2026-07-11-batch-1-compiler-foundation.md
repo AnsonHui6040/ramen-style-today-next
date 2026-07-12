@@ -2773,9 +2773,11 @@ workflow-list precheck. At record time, the ledger CLI independently fetches the
 hard-coded GitHub API run and `ci.yml` workflow resources for
 `AnsonHui6040/ramen-style-today-next`, rejects redirects, requires the run's
 immutable `workflow_id` to match the canonical workflow resource ID, and checks
-the exact workflow path/ref form, repository, `push` event, current
-candidate/head SHA, run ID, run URL, completed status, and successful conclusion
-before any ledger write.
+the exact workflow path/ref form. Ambiguous `head_branch` values containing `@`
+or control characters and suffixes containing an extra `@` are rejected before
+constructing allowed branch, `refs/heads`, tag, or SHA forms. The recorder also
+checks the repository, `push` event, current candidate/head SHA, run ID, run URL,
+completed status, and successful conclusion before any ledger write.
 The shell precheck is defense-in-depth, not the mutation trust boundary; callers
 cannot promote a batch with a fabricated internally consistent proof.
 
