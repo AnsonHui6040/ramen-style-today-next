@@ -2759,6 +2759,14 @@ git commit -m "Validate migration ledger"
 - Produces: root `npm run verify` and identical GitHub Actions execution on Node 24.18.0.
 - Acceptance: Batch 1 contains infrastructure and synthetic inventory only.
 
+**Task 6 review integration correction:** remote promotion accepts only
+`--record-ci <batch> <verified-ci-proof-json-file>`. The proof is a strict JSON
+object containing schema version 1, the exact repository and `ci.yml` workflow,
+a `push` event, `completed` status, `success` conclusion, matching candidate and
+workflow-run head SHAs, and a numeric run ID whose repository run URL matches.
+Task 7 must create this ignored temporary proof only after checking the GitHub
+API response; callers cannot promote a batch by passing an arbitrary SHA and URL.
+
 - [ ] **Step 1: Prove the aggregate gate is absent, then add it**
 
 Run:
@@ -2952,8 +2960,12 @@ exits non-zero.
 ```bash
 set -e
 CANDIDATE_SHA="$(git rev-parse HEAD)"
-CANDIDATE_RUN_URL="$(node --input-type=module -e '
-const sha = process.argv[1]
+CI_PROOF_FILE=".superpowers/sdd/batch1-verified-ci-proof.json"
+rm -f "$CI_PROOF_FILE"
+trap 'rm -f "$CI_PROOF_FILE"' EXIT
+node --input-type=module -e '
+import { writeFile } from "node:fs/promises"
+const [sha, proofFile] = process.argv.slice(1)
 const response = await fetch("https://api.github.com/repos/AnsonHui6040/ramen-style-today-next/actions/workflows/ci.yml/runs?branch=codex%2Fbatch-1-compiler-foundation&event=push&per_page=20", {
   headers: { Accept: "application/vnd.github+json", "User-Agent": "ramen-style-today-next" },
 })
@@ -2962,14 +2974,27 @@ const payload = await response.json()
 const run = payload.workflow_runs.find((item) => item.head_sha === sha && item.event === "push")
 if (!run) throw new Error(`No GitHub Actions run found for ${sha}`)
 if (run.status !== "completed" || run.conclusion !== "success") process.exit(1)
-console.log(run.html_url)
-' "$CANDIDATE_SHA")"
-npm run migration:ledger:record-ci -- 1 "$CANDIDATE_SHA" "$CANDIDATE_RUN_URL"
+const proof = {
+  schemaVersion: 1,
+  repository: "AnsonHui6040/ramen-style-today-next",
+  workflow: "ci.yml",
+  event: run.event,
+  status: run.status,
+  conclusion: run.conclusion,
+  candidateSha: sha,
+  headSha: run.head_sha,
+  runId: run.id,
+  runUrl: run.html_url,
+}
+await writeFile(proofFile, `${JSON.stringify(proof, null, 2)}\n`, { flag: "wx" })
+' "$CANDIDATE_SHA" "$CI_PROOF_FILE"
+npm run migration:ledger:record-ci -- 1 "$CI_PROOF_FILE"
 ```
 
 Expected: the workflow-specific endpoint confirms a successful `push` run for
-the exact candidate SHA, then the ledger tool atomically records that SHA and
-run URL and promotes Batch 1 to `complete`.
+the exact candidate SHA and writes a structured verified proof, then the ledger
+tool validates that proof, atomically records its SHA and run URL, and promotes
+Batch 1 to `complete`. Direct SHA and URL arguments are rejected.
 
 - [ ] **Step 9: Replace candidate-facing copy after evidence is recorded**
 

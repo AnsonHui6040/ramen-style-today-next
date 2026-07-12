@@ -5,6 +5,12 @@ const repoPathSchema = z.string().min(1).refine(
     && !value.includes('\\')
     && value.split('/').every((segment) => segment !== '.' && segment !== '..' && segment !== ''),
   'must be a repository-relative POSIX path',
+).refine(
+  (value) => Array.from(value).every((character) => {
+    const codePoint = character.codePointAt(0)!
+    return codePoint > 31 && codePoint !== 127
+  }),
+  'repository paths must not contain control characters',
 )
 
 const verificationSchema = z.strictObject({

@@ -18,13 +18,45 @@ describe('migration ledger', () => {
     expect(rendered.endsWith('\n')).toBe(true)
   })
 
-  test('rejects duplicate batches, duplicate owners, and empty completion evidence', () => {
-    const duplicate = structuredClone(ledger)
-    duplicate.entries.push(structuredClone(duplicate.entries[0]!))
-    expect(() => migrationLedgerSchema.parse(duplicate)).toThrow()
+  test('rejects a duplicate batch independently', () => {
+    const duplicateBatch = structuredClone(ledger)
+    const duplicateEntry = structuredClone(duplicateBatch.entries[0]!)
+    duplicateEntry.newOwners = duplicateEntry.newOwners.map((owner) => `duplicate-batch/${owner}`)
+    duplicateBatch.entries.push(duplicateEntry)
 
+    expect(() => migrationLedgerSchema.parse(duplicateBatch)).toThrow(/duplicate batch/)
+  })
+
+  test('rejects a duplicate owner independently', () => {
+    const duplicateOwner = structuredClone(ledger)
+    const duplicateEntry = structuredClone(duplicateOwner.entries[0]!)
+    duplicateEntry.batch = 'duplicate-owner-only'
+    duplicateOwner.entries.push(duplicateEntry)
+
+    expect(() => migrationLedgerSchema.parse(duplicateOwner)).toThrow(/duplicate owner/)
+  })
+
+  test('rejects empty completion evidence', () => {
     const emptyEvidence = structuredClone(ledger)
     emptyEvidence.entries[0]!.verification = []
-    expect(() => migrationLedgerSchema.parse(emptyEvidence)).toThrow()
+
+    expect(() => migrationLedgerSchema.parse(emptyEvidence)).toThrow(/require verification evidence/)
+  })
+
+  test('rejects control characters in repository paths', () => {
+    const newlineOwner = structuredClone(ledger)
+    newlineOwner.entries[0]!.newOwners[0] = 'line\nbreak.md'
+
+    expect(() => migrationLedgerSchema.parse(newlineOwner)).toThrow(/control characters/)
+  })
+
+  test('orders non-ASCII batch names by Unicode code point', () => {
+    const unordered = structuredClone(ledger)
+    unordered.entries[0]!.batch = 'é'
+    unordered.entries[1]!.batch = 'z'
+
+    const rendered = renderLedger(unordered)
+
+    expect(rendered.indexOf('## Batch z')).toBeLessThan(rendered.indexOf('## Batch é'))
   })
 })

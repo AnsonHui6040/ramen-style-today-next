@@ -1,8 +1,19 @@
 import type { MigrationLedger } from './ledger-schema.js'
 
+export function compareCodePoints(left: string, right: string) {
+  const leftPoints = Array.from(left, (character) => character.codePointAt(0)!)
+  const rightPoints = Array.from(right, (character) => character.codePointAt(0)!)
+  const sharedLength = Math.min(leftPoints.length, rightPoints.length)
+  for (let index = 0; index < sharedLength; index += 1) {
+    const difference = leftPoints[index]! - rightPoints[index]!
+    if (difference !== 0) return difference
+  }
+  return leftPoints.length - rightPoints.length
+}
+
 export function renderLedger(ledger: MigrationLedger) {
   const sections = [...ledger.entries]
-    .sort((left, right) => left.batch.localeCompare(right.batch, undefined, { numeric: true }))
+    .sort((left, right) => compareCodePoints(left.batch, right.batch))
     .flatMap((entry) => [
       `## Batch ${entry.batch} — ${entry.status}`,
       '',
@@ -13,18 +24,18 @@ export function renderLedger(ledger: MigrationLedger) {
       '### Legacy sources',
       '',
       ...(entry.legacySources.length
-        ? [...entry.legacySources].sort().map((source) => `- \`${source}\``)
+        ? [...entry.legacySources].sort(compareCodePoints).map((source) => `- \`${source}\``)
         : ['- None; this batch introduces new infrastructure.']),
       '',
       '### New owners',
       '',
-      ...[...entry.newOwners].sort().map((owner) => `- \`${owner}\``),
+      ...[...entry.newOwners].sort(compareCodePoints).map((owner) => `- \`${owner}\``),
       '',
       '### Verification',
       '',
       ...(entry.verification.length
         ? [...entry.verification]
-            .sort((left, right) => left.gate.localeCompare(right.gate))
+            .sort((left, right) => compareCodePoints(left.gate, right.gate))
             .flatMap((item) => [
               `- \`${item.gate}\`: \`${item.command}\` — ${item.outcome}; ${item.evidence}`,
               ...(item.commitSha ? [`  - Commit: \`${item.commitSha}\``] : []),
