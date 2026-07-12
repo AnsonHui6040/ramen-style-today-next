@@ -10,7 +10,7 @@ import {
 } from 'node:fs'
 import { basename, dirname, relative, resolve } from 'node:path'
 
-import { checkLedger, recordSuccessfulCi } from './ledger-check.js'
+import { checkLedger, verifyAndRecordSuccessfulCi } from './ledger-check.js'
 
 const repoRoot = resolve(import.meta.dirname, '../..')
 const sourceFile = resolve(repoRoot, 'docs/migration/ledger.json')
@@ -123,7 +123,7 @@ function readVerifiedCiProof(file: string) {
   }
 }
 
-function run() {
+async function run() {
   const mode = process.argv[2]
   assertRegularFile(sourceFile, 'ledger source')
   if (mode === '--record-ci') {
@@ -134,7 +134,17 @@ function run() {
     const [batch, proofFile] = args as [string, string]
     const input = JSON.parse(readFileSync(sourceFile, 'utf8')) as unknown
     const proof = readVerifiedCiProof(proofFile)
-    const updated = recordSuccessfulCi(input, batch, proof)
+    const expectedCandidateSha = execFileSync(
+      'git',
+      ['rev-parse', 'HEAD'],
+      { cwd: repoRoot, encoding: 'utf8' },
+    ).trim()
+    const updated = await verifyAndRecordSuccessfulCi(
+      input,
+      batch,
+      proof,
+      expectedCandidateSha,
+    )
     atomicWrite(sourceFile, `${JSON.stringify(updated, null, 2)}\n`, 'ledger source')
     return
   }
@@ -172,9 +182,7 @@ function run() {
   }
 }
 
-try {
-  run()
-} catch (error) {
+void run().catch((error: unknown) => {
   console.error(`LEDGER_INVALID ${error instanceof Error ? error.message : String(error)}`)
   process.exitCode = 1
-}
+})

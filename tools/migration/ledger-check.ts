@@ -20,48 +20,121 @@ export interface LedgerCheckResult {
 }
 
 const fullShaSchema = z.string().regex(/^[0-9a-f]{40}$/)
+const githubRepository = 'AnsonHui6040/ramen-style-today-next'
+const githubApiOrigin = 'https://api.github.com'
+const githubHtmlOrigin = 'https://github.com'
+const workflowPath = '.github/workflows/ci.yml'
+const authenticatedRun = Symbol('authenticated GitHub Actions run')
 
 const successfulCiProofSchema = z.strictObject({
   schemaVersion: z.literal(1),
-  repository: z.string().min(1),
-  workflow: z.string().min(1),
-  event: z.string().min(1),
-  status: z.string().min(1),
-  conclusion: z.string().min(1),
-  candidateSha: fullShaSchema,
-  headSha: fullShaSchema,
+  sha: fullShaSchema,
   runId: z.number().int().positive(),
   runUrl: z.string().url(),
 })
 
 export type SuccessfulCiProof = z.infer<typeof successfulCiProofSchema>
 
+const githubActionsRunSchema = z.object({
+  id: z.number().int().positive(),
+  html_url: z.string().url(),
+  head_sha: fullShaSchema,
+  event: z.string(),
+  status: z.string(),
+  conclusion: z.string().nullable(),
+  path: z.string(),
+  repository: z.object({
+    full_name: z.string(),
+  }),
+})
+
+interface AuthenticatedSuccessfulCiRun {
+  readonly [authenticatedRun]: true
+  readonly sha: string
+  readonly runId: number
+  readonly runUrl: string
+}
+
+export async function verifySuccessfulCiProof(
+  proofInput: unknown,
+  expectedCandidateSha: string,
+  fetchImplementation: typeof fetch,
+): Promise<AuthenticatedSuccessfulCiRun> {
+  const proofResult = successfulCiProofSchema.safeParse(proofInput)
+  if (!proofResult.success) {
+    throw new Error(`Invalid CI proof: ${proofResult.error.issues[0]?.message ?? 'unknown error'}`)
+  }
+  if (!fullShaSchema.safeParse(expectedCandidateSha).success) {
+    throw new Error('Current candidate SHA must be a full lowercase SHA')
+  }
+  const proof = proofResult.data
+  if (proof.sha !== expectedCandidateSha) {
+    throw new Error('CI proof SHA must match current candidate SHA')
+  }
+
+  const apiUrl = `${githubApiOrigin}/repos/${githubRepository}/actions/runs/${proof.runId}`
+  let response: Response
+  try {
+    response = await fetchImplementation(apiUrl, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'ramen-style-today-next',
+      },
+      redirect: 'error',
+    })
+  } catch (error) {
+    throw new Error('Unable to verify GitHub Actions run', { cause: error })
+  }
+  if (response.redirected) throw new Error('Rejected redirected GitHub API response')
+  if (response.url !== apiUrl) throw new Error('Rejected unexpected GitHub API response URL')
+  if (response.status === 404) {
+    throw new Error(`GitHub Actions run ${proof.runId} was not found`)
+  }
+  if (!response.ok) throw new Error(`GitHub API ${response.status}`)
+
+  let payload: unknown
+  try {
+    payload = await response.json()
+  } catch (error) {
+    throw new Error('Received malformed GitHub Actions run response', { cause: error })
+  }
+  const runResult = githubActionsRunSchema.safeParse(payload)
+  if (!runResult.success) throw new Error('Received malformed GitHub Actions run response')
+  const run = runResult.data
+  if (run.repository.full_name !== githubRepository) {
+    throw new Error('GitHub Actions run repository mismatch')
+  }
+  if (run.id !== proof.runId) throw new Error('GitHub Actions run ID mismatch')
+  if (run.head_sha !== proof.sha) throw new Error('GitHub Actions run head SHA mismatch')
+  const expectedRunUrl = `${githubHtmlOrigin}/${githubRepository}/actions/runs/${proof.runId}`
+  if (proof.runUrl !== expectedRunUrl || run.html_url !== proof.runUrl) {
+    throw new Error('GitHub Actions run URL mismatch')
+  }
+  if (run.event !== 'push') throw new Error('GitHub Actions run event must be push')
+  if (run.status !== 'completed') throw new Error('GitHub Actions run status must be completed')
+  if (run.conclusion !== 'success') throw new Error('GitHub Actions run conclusion must be success')
+  if (run.path !== workflowPath && !run.path.startsWith(`${workflowPath}@`)) {
+    throw new Error('GitHub Actions run workflow must be ci.yml')
+  }
+
+  return Object.freeze({
+    [authenticatedRun]: true as const,
+    sha: proof.sha,
+    runId: proof.runId,
+    runUrl: proof.runUrl,
+  })
+}
+
 export function recordSuccessfulCi(
   input: unknown,
   batch: string,
-  proofInput: unknown,
+  verifiedRun: AuthenticatedSuccessfulCiRun,
 ): MigrationLedger {
   const ledger = migrationLedgerSchema.parse(input)
-  const proofResult = successfulCiProofSchema.safeParse(proofInput)
-  if (!proofResult.success) {
-    throw new Error(`Invalid verified CI proof: ${proofResult.error.issues[0]?.message ?? 'unknown error'}`)
-  }
-  const proof = proofResult.data
-  if (proof.repository !== 'AnsonHui6040/ramen-style-today-next'
-    || proof.workflow !== 'ci.yml'
-    || proof.event !== 'push'
-    || proof.status !== 'completed'
-    || proof.conclusion !== 'success') {
-    throw new Error('CI proof must describe this repository ci.yml completed successful push run')
-  }
-  if (proof.candidateSha !== proof.headSha) {
-    throw new Error('CI proof candidate SHA must match CI head SHA')
-  }
-  const parsedUrl = new URL(proof.runUrl)
-  const expectedPath = `/AnsonHui6040/ramen-style-today-next/actions/runs/${proof.runId}`
-  if (parsedUrl.origin !== 'https://github.com'
-    || parsedUrl.pathname.replace(/\/$/u, '') !== expectedPath) {
-    throw new Error('CI proof run URL must match CI run ID for this repository')
+  if (typeof verifiedRun !== 'object'
+    || verifiedRun === null
+    || verifiedRun[authenticatedRun] !== true) {
+    throw new Error('CI promotion requires an authenticated GitHub Actions run')
   }
   const target = ledger.entries.find((entry) => entry.batch === batch)
   if (!target) throw new Error(`Unknown ledger batch ${batch}`)
@@ -83,12 +156,26 @@ export function recordSuccessfulCi(
           command: 'GitHub Actions CI / verify',
           outcome: 'passed',
           evidence: 'the pushed acceptance candidate completed the Node 24 verify job successfully',
-          commitSha: proof.candidateSha,
-          runUrl: proof.runUrl,
+          commitSha: verifiedRun.sha,
+          runUrl: verifiedRun.runUrl,
         },
       ],
     } : entry),
   })
+}
+
+export async function verifyAndRecordSuccessfulCi(
+  input: unknown,
+  batch: string,
+  proofInput: unknown,
+  expectedCandidateSha: string,
+): Promise<MigrationLedger> {
+  const verifiedRun = await verifySuccessfulCiProof(
+    proofInput,
+    expectedCandidateSha,
+    globalThis.fetch,
+  )
+  return recordSuccessfulCi(input, batch, verifiedRun)
 }
 
 export function checkLedger(input: LedgerCheckInput): LedgerCheckResult {

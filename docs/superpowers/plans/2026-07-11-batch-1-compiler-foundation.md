@@ -2761,11 +2761,15 @@ git commit -m "Validate migration ledger"
 
 **Task 6 review integration correction:** remote promotion accepts only
 `--record-ci <batch> <verified-ci-proof-json-file>`. The proof is a strict JSON
-object containing schema version 1, the exact repository and `ci.yml` workflow,
-a `push` event, `completed` status, `success` conclusion, matching candidate and
-workflow-run head SHAs, and a numeric run ID whose repository run URL matches.
-Task 7 must create this ignored temporary proof only after checking the GitHub
-API response; callers cannot promote a batch by passing an arbitrary SHA and URL.
+object containing schema version 1, the candidate SHA, numeric run ID, and
+repository run URL. Task 7 creates this ignored temporary proof only after its
+workflow-list precheck. At record time, the ledger CLI independently fetches the
+hard-coded GitHub API run resource for
+`AnsonHui6040/ramen-style-today-next`, rejects redirects, and authenticates the
+repository, `ci.yml` workflow, `push` event, current candidate/head SHA, run ID,
+run URL, completed status, and successful conclusion before any ledger write.
+The shell precheck is defense-in-depth, not the mutation trust boundary; callers
+cannot promote a batch with a fabricated internally consistent proof.
 
 - [ ] **Step 1: Prove the aggregate gate is absent, then add it**
 
@@ -2976,13 +2980,7 @@ if (!run) throw new Error(`No GitHub Actions run found for ${sha}`)
 if (run.status !== "completed" || run.conclusion !== "success") process.exit(1)
 const proof = {
   schemaVersion: 1,
-  repository: "AnsonHui6040/ramen-style-today-next",
-  workflow: "ci.yml",
-  event: run.event,
-  status: run.status,
-  conclusion: run.conclusion,
-  candidateSha: sha,
-  headSha: run.head_sha,
+  sha,
   runId: run.id,
   runUrl: run.html_url,
 }
@@ -2992,9 +2990,12 @@ npm run migration:ledger:record-ci -- 1 "$CI_PROOF_FILE"
 ```
 
 Expected: the workflow-specific endpoint confirms a successful `push` run for
-the exact candidate SHA and writes a structured verified proof, then the ledger
-tool validates that proof, atomically records its SHA and run URL, and promotes
-Batch 1 to `complete`. Direct SHA and URL arguments are rejected.
+the exact candidate SHA and writes a structured proof. The ledger tool then
+independently fetches the fixed repository run resource, requires it to match
+the current Git HEAD and every proof/workflow success field, atomically records
+its SHA and run URL, and promotes Batch 1 to `complete`. A nonexistent run, API
+failure, malformed or redirected response, mismatch, or non-success fails closed
+without writing. Direct SHA and URL arguments are rejected.
 
 - [ ] **Step 9: Replace candidate-facing copy after evidence is recorded**
 

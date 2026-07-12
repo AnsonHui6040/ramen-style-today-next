@@ -5,17 +5,20 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 
 import { describe, expect, test } from 'vitest'
 
-import { checkLedger, recordSuccessfulCi } from './ledger-check.js'
+import {
+  checkLedger,
+  recordSuccessfulCi,
+  verifySuccessfulCiProof,
+} from './ledger-check.js'
 import { migrationLedgerSchema } from './ledger-schema.js'
 import { renderLedger } from './render-ledger.js'
 
@@ -43,17 +46,54 @@ const candidateSha = 'a'.repeat(40)
 function successfulCiProof(overrides: Record<string, unknown> = {}) {
   return {
     schemaVersion: 1,
-    repository: 'AnsonHui6040/ramen-style-today-next',
-    workflow: 'ci.yml',
-    event: 'push',
-    status: 'completed',
-    conclusion: 'success',
-    candidateSha,
-    headSha: candidateSha,
+    sha: candidateSha,
     runId: 123,
     runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
     ...overrides,
   }
+}
+
+const githubApiRunUrl = 'https://api.github.com/repos/AnsonHui6040/ramen-style-today-next/actions/runs/123'
+
+function successfulGithubRun(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 123,
+    html_url: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+    head_sha: candidateSha,
+    event: 'push',
+    status: 'completed',
+    conclusion: 'success',
+    path: '.github/workflows/ci.yml',
+    repository: {
+      full_name: 'AnsonHui6040/ramen-style-today-next',
+    },
+    ...overrides,
+  }
+}
+
+interface ApiResponseOptions {
+  payload?: unknown
+  redirected?: boolean
+  status?: number
+  url?: string
+}
+
+function apiResponse(options: ApiResponseOptions = {}) {
+  const status = options.status ?? 200
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    redirected: options.redirected ?? false,
+    url: options.url ?? githubApiRunUrl,
+    json: async () => options.payload ?? successfulGithubRun(),
+  } as Response
+}
+
+function fetchResponse(response: Response, assertion?: (url: string, init: RequestInit) => void) {
+  return (async (input: string | URL | globalThis.Request, init?: RequestInit) => {
+    assertion?.(String(input), init ?? {})
+    return response
+  }) as typeof fetch
 }
 
 interface CliFixtureOptions {
@@ -217,10 +257,18 @@ describe('migration ledger repository checks', () => {
     expect(result.errors).toContain('generated ledger Markdown is stale')
   })
 
-  test('promotes only a structured successful CI proof bound to one commit and run', () => {
+  test('promotes only after the fixed GitHub run resource authenticates the proof', async () => {
     const reviewLedger = structuredClone(ledger)
     reviewLedger.entries[0]!.status = 'in-review'
-    const updated = recordSuccessfulCi(reviewLedger, '0', successfulCiProof())
+    const verified = await verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      fetchResponse(apiResponse(), (url, init) => {
+        expect(url).toBe(githubApiRunUrl)
+        expect(init).toMatchObject({ redirect: 'error' })
+      }),
+    )
+    const updated = recordSuccessfulCi(reviewLedger, '0', verified)
     const entry = updated.entries[0]!
 
     expect(entry.status).toBe('complete')
@@ -231,37 +279,81 @@ describe('migration ledger repository checks', () => {
     })
   })
 
-  test('rejects a failed CI proof', () => {
-    const reviewLedger = structuredClone(ledger)
-    reviewLedger.entries[0]!.status = 'in-review'
-
-    expect(() => recordSuccessfulCi(
-      reviewLedger,
-      '0',
-      successfulCiProof({ conclusion: 'failure' }),
-    )).toThrow(/completed successful push run/)
+  test('rejects an internally consistent fabricated proof when GitHub returns 404', async () => {
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      fetchResponse(apiResponse({ status: 404 })),
+    )).rejects.toThrow(/GitHub Actions run 123 was not found/)
   })
 
-  test('rejects a CI proof whose head SHA differs from the candidate', () => {
-    const reviewLedger = structuredClone(ledger)
-    reviewLedger.entries[0]!.status = 'in-review'
-
-    expect(() => recordSuccessfulCi(
-      reviewLedger,
-      '0',
-      successfulCiProof({ headSha: 'b'.repeat(40) }),
-    )).toThrow(/candidate SHA must match CI head SHA/)
+  test('rejects a GitHub API failure', async () => {
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      fetchResponse(apiResponse({ status: 503 })),
+    )).rejects.toThrow(/GitHub API 503/)
   })
 
-  test('rejects a CI proof whose URL does not identify its run ID', () => {
+  test('rejects a malformed GitHub API response', async () => {
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      fetchResponse(apiResponse({ payload: {} })),
+    )).rejects.toThrow(/malformed GitHub Actions run response/)
+  })
+
+  test('rejects a redirected GitHub API response', async () => {
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      fetchResponse(apiResponse({ redirected: true })),
+    )).rejects.toThrow(/redirected GitHub API response/)
+  })
+
+  test('rejects a cross-origin GitHub API response', async () => {
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      fetchResponse(apiResponse({ url: 'https://example.com/runs/123' })),
+    )).rejects.toThrow(/unexpected GitHub API response URL/)
+  })
+
+  test('rejects a proof for a different current candidate', async () => {
+    const fetcher = fetchResponse(apiResponse())
+
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      'b'.repeat(40),
+      fetcher,
+    )).rejects.toThrow(/proof SHA must match current candidate SHA/)
+  })
+
+  test.each([
+    ['repository', { repository: { full_name: 'OtherOwner/other-repository' } }, /repository mismatch/],
+    ['run ID', { id: 999 }, /run ID mismatch/],
+    ['head SHA', { head_sha: 'b'.repeat(40) }, /head SHA mismatch/],
+    ['run URL', { html_url: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/999' }, /run URL mismatch/],
+    ['event', { event: 'pull_request' }, /event must be push/],
+    ['status', { status: 'in_progress' }, /status must be completed/],
+    ['conclusion', { conclusion: 'failure' }, /conclusion must be success/],
+    ['workflow', { path: '.github/workflows/other.yml' }, /workflow must be ci.yml/],
+  ])('rejects a GitHub run %s mismatch', async (_label, overrides, expected) => {
+    await expect(verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      fetchResponse(apiResponse({ payload: successfulGithubRun(overrides) })),
+    )).rejects.toThrow(expected)
+  })
+
+  test('rejects a forged unverified object at the mutation boundary', () => {
     const reviewLedger = structuredClone(ledger)
     reviewLedger.entries[0]!.status = 'in-review'
 
-    expect(() => recordSuccessfulCi(
-      reviewLedger,
-      '0',
-      successfulCiProof({ runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/999' }),
-    )).toThrow(/run URL must match CI run ID/)
+    const forged = successfulCiProof() as unknown as Parameters<typeof recordSuccessfulCi>[2]
+    expect(() => recordSuccessfulCi(reviewLedger, '0', forged)).toThrow(
+      /authenticated GitHub Actions run/,
+    )
   })
 })
 
@@ -330,30 +422,6 @@ describe('migration ledger CLI safety', () => {
       expect(result.stderr).toContain('ledger source must be a regular file')
       expect(readFileSync(fixture.externalLedger, 'utf8')).toBe(externalBefore)
       expect(lstatSync(fixture.ledgerPath).isSymbolicLink()).toBe(true)
-    } finally {
-      fixture.cleanup()
-    }
-  })
-
-  test('atomically replaces canonical JSON from a verified CI proof', () => {
-    const fixture = createCliFixture({ status: 'in-review' })
-    try {
-      const inodeBefore = lstatSync(fixture.ledgerPath).ino
-      const result = fixture.run('--record-ci', '1', fixture.proofPath)
-
-      expect(result.status).toBe(0)
-      expect(lstatSync(fixture.ledgerPath).ino).not.toBe(inodeBefore)
-      const updated = migrationLedgerSchema.parse(JSON.parse(
-        readFileSync(fixture.ledgerPath, 'utf8'),
-      ) as unknown)
-      expect(updated.entries[0]).toMatchObject({ status: 'complete' })
-      expect(updated.entries[0]!.verification.at(-1)).toMatchObject({
-        commitSha: candidateSha,
-        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
-      })
-      expect(readdirSync(dirname(fixture.ledgerPath)).some(
-        (file) => file.includes('.ledger.json.tmp-'),
-      )).toBe(false)
     } finally {
       fixture.cleanup()
     }
