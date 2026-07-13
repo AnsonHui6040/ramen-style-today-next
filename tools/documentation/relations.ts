@@ -108,7 +108,11 @@ const validators = [
   'packages/classification-core/src/compiler/compile.ts',
 ] as const
 const tests = ['packages/classification-core/src/compiler/compile.test.ts'] as const
-const questionConsumers = ['tools/questions/generate-question-model.ts'] as const
+const questionConsumers = [
+  'tools/parity/questions/observable-trace.ts',
+  'tools/parity/questions/parity.ts',
+  'tools/questions/generate-question-model.ts',
+] as const
 
 export const documentationRelations: readonly DocumentationRelation[] = [
   ...questionConceptKeys.map((conceptKey) => ({

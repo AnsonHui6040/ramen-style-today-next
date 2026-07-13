@@ -17,6 +17,7 @@
     "migration:ledger": "tsx tools/migration/check-ledger.ts --write",
     "migration:ledger:check": "tsx tools/migration/check-ledger.ts --check",
     "migration:ledger:record-ci": "tsx tools/migration/check-ledger.ts --record-ci",
+    "parity:questions": "tsx tools/parity/questions/parity.ts",
     "questions:check": "tsx tools/questions/generate-question-model.ts --check",
     "questions:generate": "tsx tools/questions/generate-question-model.ts --write",
     "test": "vitest run",

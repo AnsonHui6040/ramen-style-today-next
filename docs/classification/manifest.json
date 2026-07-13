@@ -47,6 +47,8 @@
     {
       "canonicalSource": "tools/documentation/relations.ts",
       "consumers": [
+        "tools/parity/questions/observable-trace.ts",
+        "tools/parity/questions/parity.ts",
         "tools/questions/generate-question-model.ts"
       ],
       "generatedOwners": [
@@ -71,6 +73,8 @@
     {
       "canonicalSource": "tools/documentation/relations.ts",
       "consumers": [
+        "tools/parity/questions/observable-trace.ts",
+        "tools/parity/questions/parity.ts",
         "tools/questions/generate-question-model.ts"
       ],
       "generatedOwners": [
@@ -95,6 +99,8 @@
     {
       "canonicalSource": "tools/documentation/relations.ts",
       "consumers": [
+        "tools/parity/questions/observable-trace.ts",
+        "tools/parity/questions/parity.ts",
         "tools/questions/generate-question-model.ts"
       ],
       "generatedOwners": [
@@ -119,6 +125,8 @@
     {
       "canonicalSource": "tools/documentation/relations.ts",
       "consumers": [
+        "tools/parity/questions/observable-trace.ts",
+        "tools/parity/questions/parity.ts",
         "tools/questions/generate-question-model.ts"
       ],
       "generatedOwners": [
@@ -165,6 +173,8 @@
     {
       "canonicalSource": "tools/documentation/relations.ts",
       "consumers": [
+        "tools/parity/questions/observable-trace.ts",
+        "tools/parity/questions/parity.ts",
         "tools/questions/generate-question-model.ts"
       ],
       "generatedOwners": [
@@ -190,6 +200,8 @@
     {
       "canonicalSource": "tools/documentation/relations.ts",
       "consumers": [
+        "tools/parity/questions/observable-trace.ts",
+        "tools/parity/questions/parity.ts",
         "tools/questions/generate-question-model.ts"
       ],
       "generatedOwners": [

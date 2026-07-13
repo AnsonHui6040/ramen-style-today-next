@@ -22,6 +22,8 @@ const sourceRoot = resolve(import.meta.dirname, '../..')
 
 function writeRegisteredConsumers(repoRoot: string) {
   for (const [file, importedPackage] of [
+    ['tools/parity/questions/observable-trace.ts', '@ramen-style/classification-core/compiler'],
+    ['tools/parity/questions/parity.ts', '@ramen-style/classification-core/compiler'],
     ['tools/questions/generate-question-model.ts', '@ramen-style/classification-core/compiler'],
     ['tools/validation/validate-classification.ts', '@ramen-style/classification-core/compiler'],
   ] as const) {

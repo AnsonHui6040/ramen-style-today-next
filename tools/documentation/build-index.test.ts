@@ -151,6 +151,8 @@ function deterministicSnapshot(locale: string) {
 
 describe('classification documentation index', () => {
   const detectedCoreConsumers = [
+    'tools/parity/questions/observable-trace.ts',
+    'tools/parity/questions/parity.ts',
     'tools/questions/generate-question-model.ts',
     'tools/validation/validate-classification.ts',
   ] as const

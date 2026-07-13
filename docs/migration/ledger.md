@@ -129,6 +129,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### New owners
 
+- `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`
 - `packages/classification-core/src/compiler/questions/canonicalize.test.ts`
 - `packages/classification-core/src/compiler/questions/canonicalize.ts`
 - `packages/classification-core/src/compiler/questions/compile.test.ts`
@@ -164,6 +165,23 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `packages/classification-core/src/flow/test-fixtures.ts`
 - `packages/classification-core/src/flow/types.ts`
 - `packages/classification-core/src/generated/question-model.ts`
+- `tools/parity/fixtures/questions/expected-divergences.json`
+- `tools/parity/fixtures/questions/legacy-v1/cases.json`
+- `tools/parity/fixtures/questions/legacy-v1/manifest.json`
+- `tools/parity/questions/compare.test.ts`
+- `tools/parity/questions/compare.ts`
+- `tools/parity/questions/contracts.test.ts`
+- `tools/parity/questions/contracts.ts`
+- `tools/parity/questions/extract.ts`
+- `tools/parity/questions/extractor.test.ts`
+- `tools/parity/questions/extractor.ts`
+- `tools/parity/questions/legacy-instrumentation.patch`
+- `tools/parity/questions/observable-trace.test.ts`
+- `tools/parity/questions/observable-trace.ts`
+- `tools/parity/questions/parity.test.ts`
+- `tools/parity/questions/parity.ts`
+- `tools/parity/questions/seeds.json`
+- `tools/parity/questions/test-fixtures.ts`
 - `tools/questions/generate-question-model.test.ts`
 - `tools/questions/generate-question-model.ts`
 
