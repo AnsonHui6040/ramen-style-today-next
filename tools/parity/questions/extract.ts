@@ -80,7 +80,7 @@ export async function main(arguments_: readonly string[]) {
       trackedSourceHashes,
       lockfilePath: 'package-lock.json',
       lockfileHash: 'be7ff42d1012d310916d38c082f63f8b5263981c6bd2ded2ff0f6dabe7fc29d2',
-      patchHash: '3166073d8651ef5c4af576f41aecc4069d4da2646da634a8a1b286d5164c2387',
+      patchHash: 'cbf5018a0d890fcb3d5915cd2c8e9abde3d93178ebcaa4082823d0f5a21809ba',
       seedsHash: 'f7a37a15c9b9fbdbd3b10311d3f11f1efdea548d6ba835605d1a987ca694173b',
       nodeVersion: '24.14.0',
       npmVersion: '11.12.1',

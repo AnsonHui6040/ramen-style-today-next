@@ -1,5 +1,5 @@
 diff --git a/src/App.tsx b/src/App.tsx
-index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..3ba4a8cba5335ece847966a58e5ecffed205f69d 100644
+index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..a7f87257146f1c1c2d7bba732a5a7b944dba8025 100644
 --- a/src/App.tsx
 +++ b/src/App.tsx
 @@ -30,0 +31,53 @@ interface StoredState {
@@ -116,18 +116,16 @@ index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..3ba4a8cba5335ece847966a58e5ecffe
 @@ -509,0 +616,2 @@ function App() {
 +    legacyPendingTransition.current = 'toggle'
 +
-@@ -522,0 +631,8 @@ function App() {
+@@ -522,0 +631,6 @@ function App() {
 +    emitLegacyQuestionObservation({
 +      transition: 'submit',
 +      displayedQuestionId: currentQuestion.id,
-+      visibleOptionIds: currentOptions.map((option) => option.value),
-+      pendingOptionIds: selectedValues,
 +      legacyAnswers: answers,
 +    })
 +
-@@ -528,0 +645 @@ function App() {
+@@ -528,0 +643 @@ function App() {
 +      legacyPendingTransition.current = 'complete'
-@@ -537 +654,11 @@ function App() {
+@@ -537 +652,11 @@ function App() {
 -    const nextState = applyForcedAnswersFromStep(answers, stepIndex + 1)
 +    const nextState = applyForcedAnswersFromStep(
 +      answers,
@@ -140,11 +138,11 @@ index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..3ba4a8cba5335ece847966a58e5ecffe
 +        })
 +      },
 +    )
-@@ -538,0 +666 @@ function App() {
+@@ -538,0 +664 @@ function App() {
 +    legacyPendingTransition.current = 'next'
-@@ -548,0 +677 @@ function App() {
+@@ -548,0 +675 @@ function App() {
 +    legacyPendingTransition.current = 'previous'
-@@ -559,0 +689,2 @@ function App() {
+@@ -559,0 +687,2 @@ function App() {
 +    legacyInitialObserved.current = false
 +    legacyPendingTransition.current = null
 diff --git a/src/parity-question-extractor.test.tsx b/src/parity-question-extractor.test.tsx

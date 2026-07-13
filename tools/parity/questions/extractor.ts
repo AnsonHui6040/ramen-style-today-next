@@ -146,6 +146,8 @@ export interface ExtractorHooks {
   afterExtraction?: () => void
   beforePublishStaging?: (path: string) => void
   afterPublishStaging?: (path: string) => void
+  beforeReleaseLock?: (path: string) => void
+  beforeRemoveBackup?: (path: string) => void
   beforeRollback?: (path: string) => void
 }
 
@@ -992,6 +994,20 @@ export async function runLegacyExtractor(
   let cases: readonly LegacyObservableTraceCase[] = []
   let manifest: unknown
 
+  const releaseLock = (invokePostInstallHook: boolean) => {
+    if (lockDescriptor === undefined && !lockIdentity) return
+    if (invokePostInstallHook) environment.hooks.beforeReleaseLock?.(lock)
+    if (lockDescriptor !== undefined) {
+      closeSync(lockDescriptor)
+      lockDescriptor = undefined
+    }
+    if (lockIdentity) {
+      revalidateRegularFile(lock, lockIdentity, 'extraction lock')
+      unlinkSync(lock)
+      lockIdentity = undefined
+    }
+  }
+
   try {
     legacyRootIdentity = snapshotRegularDirectory(environment.legacyRoot, 'legacy root')
     assertNoFollowPath(environment.toolRoot, { kind: 'directory', allowMissingLeaf: false })
@@ -1431,12 +1447,21 @@ export async function runLegacyExtractor(
     }
   }
 
+  if (!primaryError && published) {
+    try {
+      releaseLock(true)
+    } catch (error) {
+      primaryError = error
+    }
+  }
+
   if (!primaryError && published && backupIdentity) {
     try {
+      environment.hooks.beforeRemoveBackup?.(paths.backup)
       removeOwnedPath(paths.backup, backupIdentity)
       backupIdentity = undefined
     } catch (error) {
-      cleanupErrors.push(error)
+      primaryError = error
     }
   }
 
@@ -1479,20 +1504,10 @@ export async function runLegacyExtractor(
     }
   }
 
-  if (lockDescriptor !== undefined) {
-    try {
-      closeSync(lockDescriptor)
-    } catch (error) {
-      cleanupErrors.push(error)
-    }
-  }
-  if (lockIdentity) {
-    try {
-      revalidateRegularFile(lock, lockIdentity, 'extraction lock')
-      unlinkSync(lock)
-    } catch (error) {
-      cleanupErrors.push(error)
-    }
+  try {
+    releaseLock(false)
+  } catch (error) {
+    cleanupErrors.push(error)
   }
 
   if (primaryError) throw combineErrors(primaryError, cleanupErrors)

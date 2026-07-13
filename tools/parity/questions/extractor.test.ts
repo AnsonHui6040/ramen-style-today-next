@@ -892,6 +892,85 @@ describe('no-follow and transactional publication', () => {
     )).toBe(false)
   })
 
+  test.each([
+    { failure: 'backup-removal', rollbackFails: false },
+    { failure: 'backup-removal', rollbackFails: true },
+    { failure: 'lock-release', rollbackFails: false },
+    { failure: 'lock-release', rollbackFails: true },
+  ] as const)(
+    'rolls back an installed replacement after $failure failure (rollbackFails=$rollbackFails)',
+    async ({ failure, rollbackFails }) => {
+      const fixture = await createExtractorFixture()
+      mkdirSync(fixture.destination, { recursive: true })
+      writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+      const events: string[] = []
+      const hooks = fixture.environment.hooks
+      hooks.afterPublishStaging = () => events.push('installed')
+      hooks.beforeReleaseLock = () => {
+        events.push('release-lock')
+        if (failure === 'lock-release') throw new Error('lock release failure')
+      }
+      hooks.beforeRemoveBackup = () => {
+        events.push('remove-backup')
+        if (failure === 'backup-removal') throw new Error('backup removal failure')
+      }
+      hooks.beforeRollback = () => {
+        events.push('rollback')
+        if (rollbackFails) throw new Error('rollback seam failure')
+      }
+
+      await expect(runLegacyExtractor(fixture.environment, {
+        replace: true,
+        verifyOnly: false,
+      })).rejects.toThrow(`${failure.replace('-', ' ')} failure`)
+
+      const outputParent = dirname(fixture.destination)
+      const retainedBackups = readdirSync(outputParent)
+        .filter((name) => name.includes('.backup-'))
+      if (rollbackFails) {
+        expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
+        expect(retainedBackups).toHaveLength(1)
+        expect(readFileSync(join(
+          outputParent,
+          retainedBackups[0]!,
+          'manifest.json',
+        ), 'utf8')).toBe('old')
+      } else {
+        expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
+        expect(retainedBackups).toEqual([])
+      }
+      expect(readdirSync(outputParent).some((name) => name.includes('.staging-'))).toBe(false)
+      expect(lstatSync(join(outputParent, '.legacy-v1.lock'), {
+        throwIfNoEntry: false,
+      })).toBeUndefined()
+      expect(events).toEqual(failure === 'lock-release'
+        ? ['installed', 'release-lock', 'rollback']
+        : ['installed', 'release-lock', 'remove-backup', 'rollback'])
+    },
+  )
+
+  test('commits a successful replacement after lock release and backup removal', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    const events: string[] = []
+    fixture.environment.hooks.afterPublishStaging = () => events.push('installed')
+    fixture.environment.hooks.beforeReleaseLock = () => events.push('release-lock')
+    fixture.environment.hooks.beforeRemoveBackup = () => events.push('remove-backup')
+
+    const result = await runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })
+
+    expect(result.published).toBe(true)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).not.toBe('old')
+    expect(events).toEqual(['installed', 'release-lock', 'remove-backup'])
+    expect(readdirSync(dirname(fixture.destination)).some((name) => (
+      name.includes('.backup-') || name.includes('.staging-') || name.endsWith('.lock')
+    ))).toBe(false)
+  })
+
   test('revalidates a sensitive path immediately before raw read', async () => {
     const fixture = await createExtractorFixture()
     fixture.environment.hooks.beforeReadRaw = (rawPath) => {
@@ -1014,6 +1093,49 @@ describe('tracked observation patch and seed surface', () => {
       'previous?.displayedQuestionId === observation.displayedQuestionId',
     )
     expect(extractionTestAdditions).toContain('previous?.legacyAnswers !== undefined')
+  })
+
+  test('actual patch emits submit observations with only the fixed submit fields', () => {
+    const patch = readFileSync(patchPath, 'utf8')
+    const addedLines = patch.split('\n')
+      .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+      .map((line) => line.slice(1))
+    const submitStart = addedLines.lastIndexOf(
+      '    emitLegacyQuestionObservation({',
+      addedLines.indexOf("      transition: 'submit'"),
+    )
+    const submitEnd = addedLines.indexOf('    })', submitStart)
+    const submitObservation = addedLines.slice(submitStart, submitEnd + 1)
+    const emittedFields = submitObservation.flatMap((line) => {
+      const match = /^\s+([a-zA-Z]+):/.exec(line)
+      return match?.[1] ? [match[1]] : []
+    })
+    const extractionSurfaceFields = [
+      ...emittedFields,
+      ...(emittedFields.includes('visibleOptionIds')
+        && addedLines.includes(
+          '      ...(disabledOptionIds === undefined ? {} : { disabledOptionIds }),',
+        )
+        ? ['disabledOptionIds']
+        : []),
+    ].sort()
+
+    expect(extractionSurfaceFields).toEqual([
+      'displayedQuestionId',
+      'legacyAnswers',
+      'transition',
+    ])
+  })
+
+  test('binds the production extractor to the corrected patch and App blob identities', () => {
+    const patch = readFileSync(patchPath, 'utf8')
+    const extractSource = readFileSync(join(questionTools, 'extract.ts'), 'utf8')
+    const patchHash = createHash('sha256').update(patch).digest('hex')
+
+    expect(patch).toContain(
+      'index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..a7f87257146f1c1c2d7bba732a5a7b944dba8025 100644',
+    )
+    expect(extractSource).toContain(`patchHash: '${patchHash}'`)
   })
 
   test('keeps seeds input-only with exactly id and actions per case', () => {
