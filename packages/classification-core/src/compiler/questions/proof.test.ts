@@ -9,6 +9,7 @@ import {
   emptyBranchDefinition,
   forcedCycleCompiledModel,
   impossibleCompletionDefinition,
+  transientUnsatisfiableDefinition,
 } from './test-fixtures.js'
 
 describe('question semantic proofs', () => {
@@ -28,6 +29,16 @@ describe('question semantic proofs', () => {
     expect(result.diagnostics.map((item) => item.code)).toEqual([
       'FLOW_IMPOSSIBLE_COMPLETION',
     ])
+  })
+
+  test('rejects a transient reachable unsatisfiable environment before it becomes unreachable', () => {
+    const result = proveQuestionModel(transientUnsatisfiableDefinition)
+
+    expect(result.diagnostics.map((item) => item.code)).toEqual([
+      'FLOW_IMPOSSIBLE_COMPLETION',
+    ])
+    expect(result.coverage.optionIds).not.toContain('transient:exclusive')
+    expect(result.coverage.optionIds).not.toContain('transient:ordinary')
   })
 
   test('detects a repeated canonical key in defensive forced resolution', () => {

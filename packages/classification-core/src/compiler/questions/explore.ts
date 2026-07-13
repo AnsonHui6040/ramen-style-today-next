@@ -12,6 +12,12 @@ import { deriveQuestionGraph, type QuestionGraph } from './dependencies.js'
 
 export type SemanticAnswers = Readonly<Record<string, readonly string[]>>
 
+export interface SemanticAnswerState {
+  readonly submittedAnswers: SemanticAnswers
+  readonly forcedAnswers: SemanticAnswers
+  readonly canonicalAnswers: SemanticAnswers
+}
+
 export interface SemanticSignature {
   readonly conditionTruthVector: readonly boolean[]
   readonly reachableQuestionIds: readonly string[]
@@ -49,8 +55,7 @@ export interface RepresentativeCase {
   readonly signature: SemanticSignature
 }
 
-export interface ReachableSemanticState {
-  readonly answers: SemanticAnswers
+export interface ReachableSemanticState extends SemanticAnswerState {
   readonly signature: SemanticSignature
   readonly signatureKey: string
   readonly complete: boolean
@@ -59,9 +64,8 @@ export interface ReachableSemanticState {
   readonly successorSignatureKeys: readonly string[]
 }
 
-export interface ForcedResolution {
+export interface ForcedResolution extends SemanticAnswerState {
   readonly status: 'fixed' | 'cycle' | 'upper-bound'
-  readonly answers: SemanticAnswers
   readonly iterations: number
   readonly upperBound: number
   readonly repeatedStateKey?: string
@@ -93,15 +97,13 @@ interface QuestionFacts {
   readonly decisionSelectionType: 'implicit-all' | 'all' | 'only' | 'none'
 }
 
-interface QueuedState {
-  readonly answers: SemanticAnswers
+interface QueuedState extends SemanticAnswerState {
   readonly signature: SemanticSignature
   readonly signatureKey: string
   readonly forcedResolution: ForcedResolution
 }
 
-interface MutableReachableState {
-  answers: SemanticAnswers
+interface MutableReachableState extends SemanticAnswerState {
   signature: SemanticSignature
   signatureKey: string
   complete: boolean
@@ -319,10 +321,10 @@ function classifyAnswer(
 
 export function semanticSignature(
   questions: readonly CanonicalQuestion[],
-  answers: SemanticAnswers,
+  state: SemanticAnswerState,
   validSelectionKeysByQuestion: Readonly<Record<string, readonly string[]>> = {},
 ): SemanticSignature {
-  const facts = deriveQuestionFacts(questions, answers)
+  const facts = deriveQuestionFacts(questions, state.canonicalAnswers)
   const allowedOptionIdsByQuestion: Record<string, readonly string[]> = {}
   const effectiveSelectionBounds: Record<string, { readonly min: number; readonly max: number }> = {}
   const forcedEligibility: Record<string, 'interactive' | 'forced' | 'unreachable'> = {}
@@ -335,13 +337,13 @@ export function semanticSignature(
     answerValidity[question.id] = classifyAnswer(
       question,
       item,
-      answers,
+      state.submittedAnswers,
       new Set(validSelectionKeysByQuestion[question.id] ?? []),
     )
   }
   return {
     conditionTruthVector: conditionNodesForQuestions(questions).map((condition) => (
-      evaluateCondition(condition, answers)
+      evaluateCondition(condition, state.canonicalAnswers)
     )),
     reachableQuestionIds: questions.filter((question) => facts[question.id]!.reachable)
       .map(({ id }) => id),
@@ -363,11 +365,15 @@ export function normalizeSemanticAnswers(
   )))
 }
 
-function answerStateKey(
+function resolvedStateKey(
   questions: readonly CanonicalQuestion[],
-  answers: SemanticAnswers,
+  forcedAnswers: SemanticAnswers,
+  canonicalAnswers: SemanticAnswers,
 ) {
-  return stableJson(normalizeSemanticAnswers(questions, answers))
+  return stableJson({
+    forcedAnswers: normalizeSemanticAnswers(questions, forcedAnswers),
+    canonicalAnswers: normalizeSemanticAnswers(questions, canonicalAnswers),
+  })
 }
 
 function withAnswer(
@@ -391,6 +397,22 @@ function withoutAnswer(
   )))
 }
 
+function mergeCanonicalAnswers(
+  questions: readonly CanonicalQuestion[],
+  submittedAnswers: SemanticAnswers,
+  forcedAnswers: SemanticAnswers,
+) {
+  return Object.fromEntries(questions.flatMap((question) => {
+    if (hasOwn(forcedAnswers, question.id)) {
+      return [[question.id, forcedAnswers[question.id] ?? []] as const]
+    }
+    if (hasOwn(submittedAnswers, question.id)) {
+      return [[question.id, submittedAnswers[question.id] ?? []] as const]
+    }
+    return []
+  }))
+}
+
 export function forcedIterationBound(questions: readonly CanonicalQuestion[]) {
   return questions.length + questions.reduce((sum, question) => sum + question.options.length, 0) + 1
 }
@@ -398,12 +420,13 @@ export function forcedIterationBound(questions: readonly CanonicalQuestion[]) {
 export function resolveForcedAnswers(
   questions: readonly CanonicalQuestion[],
   topologicalOrder: readonly string[],
-  initialAnswers: SemanticAnswers = {},
+  initialSubmittedAnswers: SemanticAnswers = {},
 ): ForcedResolution {
-  let answers: SemanticAnswers = normalizeSemanticAnswers(questions, initialAnswers)
-  const forcedQuestionIds = new Set<string>()
+  const submittedAnswers = normalizeSemanticAnswers(questions, initialSubmittedAnswers)
+  let forcedAnswers: SemanticAnswers = {}
+  let canonicalAnswers = mergeCanonicalAnswers(questions, submittedAnswers, forcedAnswers)
   const upperBound = forcedIterationBound(questions)
-  const seen = new Set([answerStateKey(questions, answers)])
+  const seen = new Set([resolvedStateKey(questions, forcedAnswers, canonicalAnswers)])
   const questionById = new Map(questions.map((question) => [question.id, question]))
   const orderedQuestions = [
     ...topologicalOrder.flatMap((questionId) => {
@@ -416,32 +439,50 @@ export function resolveForcedAnswers(
   for (let iteration = 1; iteration <= upperBound; iteration += 1) {
     let changed = false
     for (const question of orderedQuestions) {
-      const facts = questionFacts(question, answers)
+      const facts = questionFacts(question, canonicalAnswers)
       if (facts.forcedEligibility === 'forced') {
         const forcedOptionIds = [facts.allowedOptionIds[0]!]
-        if (selectionKey(question, answers[question.id] ?? []) !== JSON.stringify(forcedOptionIds)) {
-          answers = withAnswer(questions, answers, question.id, forcedOptionIds)
+        if (
+          !hasOwn(forcedAnswers, question.id)
+          || selectionKey(question, forcedAnswers[question.id] ?? []) !== JSON.stringify(forcedOptionIds)
+        ) {
+          forcedAnswers = withAnswer(questions, forcedAnswers, question.id, forcedOptionIds)
           changed = true
         }
-        forcedQuestionIds.add(question.id)
-      } else if (forcedQuestionIds.has(question.id) && hasOwn(answers, question.id)) {
-        answers = withoutAnswer(questions, answers, question.id)
-        forcedQuestionIds.delete(question.id)
+      } else if (hasOwn(forcedAnswers, question.id)) {
+        forcedAnswers = withoutAnswer(questions, forcedAnswers, question.id)
         changed = true
       }
+      canonicalAnswers = mergeCanonicalAnswers(questions, submittedAnswers, forcedAnswers)
     }
-    if (!changed) return { status: 'fixed', answers, iterations: iteration, upperBound }
-    const key = answerStateKey(questions, answers)
+    if (!changed) return {
+      status: 'fixed',
+      submittedAnswers,
+      forcedAnswers,
+      canonicalAnswers,
+      iterations: iteration,
+      upperBound,
+    }
+    const key = resolvedStateKey(questions, forcedAnswers, canonicalAnswers)
     if (seen.has(key)) return {
       status: 'cycle',
-      answers,
+      submittedAnswers,
+      forcedAnswers,
+      canonicalAnswers,
       iterations: iteration,
       upperBound,
       repeatedStateKey: key,
     }
     seen.add(key)
   }
-  return { status: 'upper-bound', answers, iterations: upperBound, upperBound }
+  return {
+    status: 'upper-bound',
+    submittedAnswers,
+    forcedAnswers,
+    canonicalAnswers,
+    iterations: upperBound,
+    upperBound,
+  }
 }
 
 function referencedOptionGroups(questions: readonly CanonicalQuestion[]) {
@@ -492,6 +533,7 @@ function referencedOptionGroups(questions: readonly CanonicalQuestion[]) {
 
 function makeRepresentativeCases(
   questions: readonly CanonicalQuestion[],
+  topologicalOrder: readonly string[],
   states: readonly ReachableSemanticState[],
   validSelectionKeysByQuestion: Readonly<Record<string, readonly string[]>>,
 ) {
@@ -501,13 +543,14 @@ function makeRepresentativeCases(
   const add = (
     kind: RepresentativeKind,
     question: CanonicalQuestion,
-    baseAnswers: SemanticAnswers,
+    baseState: ReachableSemanticState,
     optionIds?: readonly string[],
   ) => {
-    const answers = optionIds === undefined
-      ? withoutAnswer(questions, baseAnswers, question.id)
-      : withAnswer(questions, baseAnswers, question.id, optionIds)
-    const signature = semanticSignature(questions, answers, validSelectionKeysByQuestion)
+    const submittedAnswers = optionIds === undefined
+      ? withoutAnswer(questions, baseState.submittedAnswers, question.id)
+      : withAnswer(questions, baseState.submittedAnswers, question.id, optionIds)
+    const resolved = resolveForcedAnswers(questions, topologicalOrder, submittedAnswers)
+    const signature = semanticSignature(questions, resolved, validSelectionKeysByQuestion)
     const key = `${kind}\0${question.id}\0${JSON.stringify(optionIds)}\0${stableJson(signature)}`
     if (seen.has(key)) return
     seen.add(key)
@@ -520,24 +563,25 @@ function makeRepresentativeCases(
   }
 
   for (const state of states) {
-    const facts = deriveQuestionFacts(questions, state.answers)
+    const facts = deriveQuestionFacts(questions, state.canonicalAnswers)
     for (const question of questions) {
       const item = facts[question.id]!
       if (!item.reachable) continue
-      add('unanswered', question, state.answers)
+      add('unanswered', question, state)
 
       const minimum = item.legalSelections.find((selection) => selection.length === item.bounds.min)
-      if (minimum) add('minimum', question, state.answers, minimum)
-      const maximum = [...item.legalSelections].reverse()
-        .find((selection) => selection.length === item.bounds.max)
-      if (maximum) add('maximum', question, state.answers, maximum)
+      if (minimum) add('minimum', question, state, minimum)
+      const maximum = item.legalSelections.reduce<readonly string[] | undefined>((largest, selection) => (
+        largest === undefined || selection.length > largest.length ? selection : largest
+      ), undefined)
+      if (maximum) add('maximum', question, state, maximum)
 
       const belowCount = item.bounds.min - 1
       if (belowCount >= 0 && belowCount <= question.options.length) {
         add(
           'below-minimum',
           question,
-          state.answers,
+          state,
           question.options.slice(0, belowCount).map(({ id }) => id),
         )
       }
@@ -545,44 +589,44 @@ function makeRepresentativeCases(
       if (aboveCount <= question.options.length) add(
         'above-maximum',
         question,
-        state.answers,
+        state,
         question.options.slice(0, aboveCount).map(({ id }) => id),
       )
 
       const exclusiveOptions = question.options.filter(({ exclusive }) => exclusive)
       const ordinary = question.options.find(({ exclusive }) => !exclusive)
       for (const exclusive of exclusiveOptions) {
-        add('exclusive', question, state.answers, [exclusive.id])
+        add('exclusive', question, state, [exclusive.id])
         if (ordinary) add(
           'exclusive-conflict',
           question,
-          state.answers,
+          state,
           canonicalSelection(question, [exclusive.id, ordinary.id]),
         )
       }
       if (item.forcedEligibility === 'forced') add(
         'forced-singleton',
         question,
-        state.answers,
+        state,
         [item.allowedOptionIds[0]!],
       )
-      if (item.allowedOptionIds.length === 0) add('empty-branch', question, state.answers, [])
+      if (item.allowedOptionIds.length === 0) add('empty-branch', question, state, [])
       const currentLegalKeys = new Set(item.legalSelections.map((selection) => JSON.stringify(selection)))
       for (const key of validSelectionKeysByQuestion[question.id] ?? []) {
         if (!currentLegalKeys.has(key)) add(
           'stale',
           question,
-          state.answers,
+          state,
           JSON.parse(key) as string[],
         )
       }
       if (item.decisionSelectionType === 'all') {
-        add('allow-all', question, state.answers, minimum ?? [])
+        add('allow-all', question, state, minimum ?? [])
       }
       for (const optionIds of namedGroups[question.id] ?? []) add(
         'condition-combination',
         question,
-        state.answers,
+        state,
         optionIds,
       )
     }
@@ -608,11 +652,13 @@ export function exploreQuestionSemantics(
   const queue: QueuedState[] = []
   const queuedKeys = new Set<string>()
 
-  const resolveState = (answers: SemanticAnswers): QueuedState => {
-    const forcedResolution = resolveForcedAnswers(questions, order, answers)
-    const signature = semanticSignature(questions, forcedResolution.answers)
+  const resolveState = (submittedAnswers: SemanticAnswers): QueuedState => {
+    const forcedResolution = resolveForcedAnswers(questions, order, submittedAnswers)
+    const signature = semanticSignature(questions, forcedResolution)
     return {
-      answers: forcedResolution.answers,
+      submittedAnswers: forcedResolution.submittedAnswers,
+      forcedAnswers: forcedResolution.forcedAnswers,
+      canonicalAnswers: forcedResolution.canonicalAnswers,
       signature,
       signatureKey: stableJson(signature),
       forcedResolution,
@@ -630,35 +676,51 @@ export function exploreQuestionSemantics(
     const queued = queue.shift()!
     if (queued.forcedResolution.status !== 'fixed') forcedFailures.push(queued.forcedResolution)
     if (queued.forcedResolution.status === 'fixed') {
-      const idempotence = resolveForcedAnswers(questions, order, queued.answers)
+      const idempotence = resolveForcedAnswers(questions, order, queued.submittedAnswers)
       if (
         idempotence.status !== 'fixed'
-        || answerStateKey(questions, idempotence.answers) !== answerStateKey(questions, queued.answers)
+        || resolvedStateKey(
+          questions,
+          idempotence.forcedAnswers,
+          idempotence.canonicalAnswers,
+        ) !== resolvedStateKey(questions, queued.forcedAnswers, queued.canonicalAnswers)
       ) {
         forcedNonIdempotentStateKeys.add(queued.signatureKey)
       }
     }
-    const facts = deriveQuestionFacts(questions, queued.answers)
+    const facts = deriveQuestionFacts(questions, queued.canonicalAnswers)
     for (const question of questions) {
       const item = facts[question.id]!
       if (!item.reachable) continue
       coveredQuestions.add(question.id)
-      item.allowedOptionIds.forEach((optionId) => coveredOptions.add(`${question.id}:${optionId}`))
+      item.legalSelections.flat().forEach((optionId) => (
+        coveredOptions.add(`${question.id}:${optionId}`)
+      ))
       item.legalSelections.forEach((selection) => (
         validKeySets.get(question.id)?.add(JSON.stringify(selection))
       ))
     }
 
-    const complete = queued.signature.reachableQuestionIds.every((questionId) => (
-      queued.signature.answerValidity[questionId] === 'valid'
-    ))
+    const complete = queued.signature.reachableQuestionIds.every((questionId) => {
+      const question = questions.find(({ id }) => id === questionId)!
+      const item = facts[questionId]!
+      if (item.forcedEligibility === 'forced') return classifyAnswer(
+        question,
+        item,
+        queued.canonicalAnswers,
+        new Set(),
+      ) === 'valid'
+      return queued.signature.answerValidity[questionId] === 'valid'
+    })
     const nextQuestionId = complete ? undefined : order.find((questionId) => (
       queued.signature.forcedEligibility[questionId] === 'interactive'
       && queued.signature.answerValidity[questionId] === 'missing'
     ))
     const nextFacts = nextQuestionId ? facts[nextQuestionId] : undefined
     const state: MutableReachableState = {
-      answers: queued.answers,
+      submittedAnswers: queued.submittedAnswers,
+      forcedAnswers: queued.forcedAnswers,
+      canonicalAnswers: queued.canonicalAnswers,
       signature: queued.signature,
       signatureKey: queued.signatureKey,
       complete,
@@ -669,7 +731,12 @@ export function exploreQuestionSemantics(
     mutableStates.push(state)
     if (!nextQuestionId || !nextFacts) continue
     for (const selection of nextFacts.legalSelections) {
-      const child = resolveState(withAnswer(questions, queued.answers, nextQuestionId, selection))
+      const child = resolveState(withAnswer(
+        questions,
+        queued.submittedAnswers,
+        nextQuestionId,
+        selection,
+      ))
       if (!state.successorSignatureKeys.includes(child.signatureKey)) {
         state.successorSignatureKeys.push(child.signatureKey)
       }
@@ -687,12 +754,13 @@ export function exploreQuestionSemantics(
   }))
   const representativeCases = makeRepresentativeCases(
     questions,
+    order,
     reachableStates,
     validSelectionKeysByQuestion,
   )
   const representativeByKey = new Map<string, SemanticSignature>()
   for (const state of reachableStates) {
-    const signature = semanticSignature(questions, state.answers, validSelectionKeysByQuestion)
+    const signature = semanticSignature(questions, state, validSelectionKeysByQuestion)
     representativeByKey.set(stableJson(signature), signature)
   }
   for (const item of representativeCases) {
@@ -702,8 +770,8 @@ export function exploreQuestionSemantics(
   return {
     questions,
     graph,
-    signatures: reachableStates.filter(({ complete }) => complete).map(({ answers }) => (
-      semanticSignature(questions, answers, validSelectionKeysByQuestion)
+    signatures: reachableStates.filter(({ complete }) => complete).map((state) => (
+      semanticSignature(questions, state, validSelectionKeysByQuestion)
     )),
     representativeSignatures: [...representativeByKey.values()],
     representativeCases,

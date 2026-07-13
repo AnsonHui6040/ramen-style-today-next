@@ -114,6 +114,80 @@ export const namedCombinationDefinition = [
   }),
 ] as const satisfies readonly QuestionDefinitionSource[]
 
+export const forcedToInteractiveDefinition = [
+  question('gate', 0, ['on']),
+  question('forced-target', 1, ['forced', 'manual'], {
+    allowedOptions: [
+      {
+        when: {
+          type: 'not',
+          condition: { type: 'answered', questionId: 'gate' },
+        },
+        selection: { type: 'only', optionIds: ['forced'] },
+      },
+      {
+        when: { type: 'answered', questionId: 'gate' },
+        selection: { type: 'all' },
+      },
+    ],
+    autoAnswer: { type: 'single-allowed-option' },
+  }),
+] as const satisfies readonly QuestionDefinitionSource[]
+
+export const transientUnsatisfiableDefinition = [
+  question('transient', 0, ['exclusive', 'ordinary'], {
+    availableWhen: {
+      type: 'not',
+      condition: { type: 'answered', questionId: 'trigger' },
+    },
+    selection: {
+      type: 'multiple',
+      min: 1,
+      max: 2,
+      overrides: [{
+        when: {
+          type: 'not',
+          condition: { type: 'answered', questionId: 'trigger' },
+        },
+        min: 2,
+        max: 2,
+      }],
+    },
+    options: [
+      {
+        id: 'exclusive',
+        order: 0,
+        messageIds: { label: 'option-transient-exclusive-label' },
+        exclusive: true,
+      },
+      {
+        id: 'ordinary',
+        order: 1,
+        messageIds: { label: 'option-transient-ordinary-label' },
+      },
+    ],
+  }),
+  question('trigger', 1, ['on']),
+] as const satisfies readonly QuestionDefinitionSource[]
+
+export const maximumRepresentativeDefinition = [
+  question('branch', 0, ['restricted', 'open']),
+  question('maximum-target', 1, ['a', 'b', 'c'], {
+    availableWhen: { type: 'answered', questionId: 'branch' },
+    selection: { type: 'multiple', min: 1, max: 3 },
+    allowedOptions: [
+      {
+        when: { type: 'answer-includes', questionId: 'branch', optionId: 'restricted' },
+        selection: { type: 'only', optionIds: ['a'] },
+      },
+      {
+        when: { type: 'answer-includes', questionId: 'branch', optionId: 'open' },
+        selection: { type: 'all' },
+      },
+    ],
+  }),
+] as const satisfies readonly QuestionDefinitionSource[]
+
 export const impossibleCompletionDefinition = [
   question('trigger', 0, ['value']),
   question('impossible', 1, ['exclusive', 'ordinary'], {

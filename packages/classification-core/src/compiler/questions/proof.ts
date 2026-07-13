@@ -17,12 +17,12 @@ import {
   exploreQuestionSemantics,
   normalizeSemanticAnswers,
   resolveForcedAnswers,
+  type SemanticAnswerState,
   type SemanticAnswers,
 } from './explore.js'
 
-export interface ForcedFixedPointProof {
+export interface ForcedFixedPointProof extends SemanticAnswerState {
   readonly diagnostics: readonly Diagnostic[]
-  readonly answers: SemanticAnswers
   readonly iterations: number
   readonly upperBound: number
 }
@@ -173,11 +173,17 @@ export function proveForcedFixedPoint(
     const repeated = resolveForcedAnswers(
       model.questions,
       model.topologicalOrder,
-      resolution.answers,
+      resolution.submittedAnswers,
     )
     if (
       repeated.status !== 'fixed'
-      || stableJson(repeated.answers) !== stableJson(resolution.answers)
+      || stableJson({
+        forcedAnswers: repeated.forcedAnswers,
+        canonicalAnswers: repeated.canonicalAnswers,
+      }) !== stableJson({
+        forcedAnswers: resolution.forcedAnswers,
+        canonicalAnswers: resolution.canonicalAnswers,
+      })
     ) collector.error({
       code: 'FLOW_FORCED_NON_IDEMPOTENT',
       sourceFile: proofSource,
@@ -187,7 +193,9 @@ export function proveForcedFixedPoint(
   }
   return {
     diagnostics: collector.toArray(),
-    answers: resolution.answers,
+    submittedAnswers: resolution.submittedAnswers,
+    forcedAnswers: resolution.forcedAnswers,
+    canonicalAnswers: resolution.canonicalAnswers,
     iterations: resolution.iterations,
     upperBound: resolution.upperBound,
   }
@@ -258,6 +266,16 @@ export function proveQuestionModel(
   const questionIndex = new Map(questions.map(({ id }, index) => [id, index]))
   const coveredQuestionIds = new Set(exploration.coverage.questionIds)
   const coveredOptionIds = new Set(exploration.coverage.optionIds)
+  const unsatisfiableQuestionIds = new Set<string>()
+  for (const state of exploration.reachableStates) {
+    const facts = deriveQuestionFacts(questions, state.canonicalAnswers)
+    for (const question of questions) {
+      const item = facts[question.id]!
+      if (item.reachable && item.legalSelections.length === 0) {
+        unsatisfiableQuestionIds.add(question.id)
+      }
+    }
+  }
   for (const question of questions) {
     const index = questionIndex.get(question.id)!
     if (!coveredQuestionIds.has(question.id)) {
@@ -269,6 +287,7 @@ export function proveQuestionModel(
       )
       continue
     }
+    if (unsatisfiableQuestionIds.has(question.id)) continue
     for (const [optionIndex, option] of question.options.entries()) {
       if (!coveredOptionIds.has(`${question.id}:${option.id}`)) emit(
         'FLOW_DEAD_OPTION',
@@ -303,23 +322,37 @@ export function proveQuestionModel(
   }
 
   for (const state of exploration.reachableStates) {
-    const normalized = normalizeSemanticAnswers(questions, state.answers)
-    if (stableJson(normalizeSemanticAnswers(questions, normalized)) !== stableJson(normalized)) emit(
+    const normalizedSubmitted = normalizeSemanticAnswers(questions, state.submittedAnswers)
+    const normalizedCanonical = normalizeSemanticAnswers(questions, state.canonicalAnswers)
+    if (
+      stableJson(normalizeSemanticAnswers(questions, normalizedSubmitted))
+        !== stableJson(normalizedSubmitted)
+      || stableJson(normalizeSemanticAnswers(questions, normalizedCanonical))
+        !== stableJson(normalizedCanonical)
+    ) emit(
       'FLOW_FORCED_NON_IDEMPOTENT',
       '/questions',
       'Canonical answer normalization is not idempotent',
     )
-    const facts = deriveQuestionFacts(questions, state.answers)
+    const facts = deriveQuestionFacts(questions, state.canonicalAnswers)
     for (const question of questions) {
       const item = facts[question.id]!
       if (!item.reachable) continue
       const index = questionIndex.get(question.id)!
-      if (item.allowedOptionIds.length === 0 && item.bounds.min > 0) emit(
-        'FLOW_EMPTY_BRANCH',
-        `/questions/${index}/allowedOptions`,
-        `Reachable question ${question.id} has no allowed options`,
-        question.id,
-      )
+      if (item.legalSelections.length === 0) {
+        if (item.allowedOptionIds.length === 0 && item.bounds.min > 0) emit(
+          'FLOW_EMPTY_BRANCH',
+          `/questions/${index}/allowedOptions`,
+          `Reachable question ${question.id} has no allowed options`,
+          question.id,
+        )
+        else emit(
+          'FLOW_IMPOSSIBLE_COMPLETION',
+          `/questions/${index}/selection`,
+          `Reachable question ${question.id} has no legal selection`,
+          question.id,
+        )
+      }
       if (question.initialUiOptionIds.length > 0 && item.forcedEligibility === 'interactive') {
         const initialKey = JSON.stringify(question.initialUiOptionIds)
         const legalKeys = new Set(item.legalSelections.map((selection) => JSON.stringify(selection)))
@@ -330,17 +363,19 @@ export function proveQuestionModel(
           question.id,
         )
       }
-      if (
-        item.forcedEligibility === 'forced'
-        && state.signature.answerValidity[question.id] !== 'valid'
-      ) emit(
-        'FLOW_FORCED_NON_IDEMPOTENT',
-        `/questions/${index}/autoAnswer`,
-        `Forced answer for ${question.id} is not legal at fixed point`,
-        question.id,
-      )
+      if (item.forcedEligibility === 'forced') {
+        const forcedAnswer = state.canonicalAnswers[question.id]
+        const forcedKey = forcedAnswer === undefined ? undefined : JSON.stringify(forcedAnswer)
+        const legalKeys = new Set(item.legalSelections.map((selection) => JSON.stringify(selection)))
+        if (forcedKey === undefined || !legalKeys.has(forcedKey)) emit(
+          'FLOW_FORCED_NON_IDEMPOTENT',
+          `/questions/${index}/autoAnswer`,
+          `Forced answer for ${question.id} is not legal at fixed point`,
+          question.id,
+        )
+      }
     }
-    for (const [questionId, answer] of Object.entries(state.answers)) {
+    for (const [questionId, answer] of Object.entries(state.canonicalAnswers)) {
       const question = questions.find(({ id }) => id === questionId)
       if (!question) continue
       const exclusive = new Set(question.options.filter(({ exclusive }) => exclusive).map(({ id }) => id))
@@ -353,9 +388,11 @@ export function proveQuestionModel(
     }
     if (state.complete) {
       const completeIsValid = state.signature.reachableQuestionIds.every((questionId) => (
-        state.signature.answerValidity[questionId] === 'valid'
+        state.signature.forcedEligibility[questionId] === 'forced'
+          ? Object.prototype.hasOwnProperty.call(state.forcedAnswers, questionId)
+          : state.signature.answerValidity[questionId] === 'valid'
       )) && questions.filter(({ id }) => !state.signature.reachableQuestionIds.includes(id))
-        .every(({ id }) => !Object.prototype.hasOwnProperty.call(state.answers, id))
+        .every(({ id }) => !Object.prototype.hasOwnProperty.call(state.canonicalAnswers, id))
       if (!completeIsValid) emit(
         'FLOW_IMPOSSIBLE_COMPLETION',
         '/questions',
@@ -376,8 +413,8 @@ export function proveQuestionModel(
       )
       continue
     }
-    const facts = deriveQuestionFacts(questions, state.answers)[nextQuestionId]!
-    if (facts.allowedOptionIds.length === 0 && facts.bounds.min > 0) continue
+    const facts = deriveQuestionFacts(questions, state.canonicalAnswers)[nextQuestionId]!
+    if (facts.legalSelections.length === 0) continue
     emit(
       'FLOW_IMPOSSIBLE_COMPLETION',
       `/questions/${questionIndex.get(nextQuestionId)!}/selection`,
