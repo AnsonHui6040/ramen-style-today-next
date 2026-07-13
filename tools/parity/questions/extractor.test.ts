@@ -1,17 +1,22 @@
 import {
+  closeSync,
+  constants,
   cpSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   readdirSync,
+  realpathSync,
+  renameSync,
   rmSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { createHash } from 'node:crypto'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, test } from 'vitest'
@@ -27,7 +32,7 @@ import {
   type ExtractorEnvironment,
   type SpawnRequest,
 } from './extractor.js'
-import { parseExtractArguments } from './extract.js'
+import { parseExtractArguments, projectExtractorResultForCli } from './extract.js'
 
 const roots: string[] = []
 const hash = (character: string) => character.repeat(64)
@@ -36,6 +41,7 @@ const treeHash = 'b'.repeat(40)
 const fixtureOriginalApp = 'export default function App() { return null }\n'
 const fixturePatchedApp = 'export default function App() { return "instrumented" }\n'
 const fixturePatchedTest = 'export const observer = true\n'
+const publicationCleanupAttempts = 3
 
 function gitBlobHash(content: string) {
   return createHash('sha1')
@@ -170,6 +176,33 @@ interface ExtractorFixture {
 
 function sha256File(file: string) {
   return createHash('sha256').update(readFileSync(file)).digest('hex')
+}
+
+function publicationLockPath(destination: string) {
+  return join(dirname(destination), `.${basename(destination)}.lock`)
+}
+
+function acquireCooperativePublicationLock(destination: string) {
+  const lockPath = publicationLockPath(destination)
+  const descriptor = openSync(
+    lockPath,
+    constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
+    0o600,
+  )
+  writeFileSync(descriptor, 'cooperative-author\n')
+  closeSync(descriptor)
+  return lockPath
+}
+
+function expectCooperativePublicationLockHeld(destination: string) {
+  try {
+    const unexpectedLock = acquireCooperativePublicationLock(destination)
+    unlinkSync(unexpectedLock)
+  } catch (error) {
+    expect((error as NodeJS.ErrnoException).code).toBe('EEXIST')
+    return
+  }
+  throw new Error('second cooperative author acquired the publication lock')
 }
 
 async function createExtractorFixture(
@@ -892,62 +925,203 @@ describe('no-follow and transactional publication', () => {
     )).toBe(false)
   })
 
-  test.each([
-    { failure: 'backup-removal', rollbackFails: false },
-    { failure: 'backup-removal', rollbackFails: true },
-    { failure: 'lock-release', rollbackFails: false },
-    { failure: 'lock-release', rollbackFails: true },
-  ] as const)(
-    'rolls back an installed replacement after $failure failure (rollbackFails=$rollbackFails)',
-    async ({ failure, rollbackFails }) => {
-      const fixture = await createExtractorFixture()
-      mkdirSync(fixture.destination, { recursive: true })
-      writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
-      const events: string[] = []
-      const hooks = fixture.environment.hooks
-      hooks.afterPublishStaging = () => events.push('installed')
-      hooks.beforeReleaseLock = () => {
-        events.push('release-lock')
-        if (failure === 'lock-release') throw new Error('lock release failure')
-      }
-      hooks.beforeRemoveBackup = () => {
-        events.push('remove-backup')
-        if (failure === 'backup-removal') throw new Error('backup removal failure')
-      }
-      hooks.beforeRollback = () => {
-        events.push('rollback')
-        if (rollbackFails) throw new Error('rollback seam failure')
-      }
+  test('does not mutate a second author target when post-commit cleanup persistently fails', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'author-a-previous')
+    const outputParent = dirname(fixture.destination)
+    const authorBStaging = join(outputParent, '.author-b-staging')
+    const authorBPrevious = join(outputParent, '.author-b-previous')
+    let authorBLock: string | undefined
+    let cleanupAttempts = 0
 
-      await expect(runLegacyExtractor(fixture.environment, {
+    fixture.environment.hooks.beforeRemoveBackup = () => {
+      cleanupAttempts += 1
+      if (cleanupAttempts === 1) {
+        authorBLock = acquireCooperativePublicationLock(fixture.destination)
+        mkdirSync(authorBStaging)
+        writeFileSync(join(authorBStaging, 'manifest.json'), 'author-b-visible-target')
+        renameSync(fixture.destination, authorBPrevious)
+        renameSync(authorBStaging, fixture.destination)
+        rmSync(authorBPrevious, { recursive: true })
+      }
+      throw new Error(`persistent cleanup failure with secret ${'x'.repeat(500)}`)
+    }
+
+    let result: Awaited<ReturnType<typeof runLegacyExtractor>>
+    try {
+      result = await runLegacyExtractor(fixture.environment, {
         replace: true,
         verifyOnly: false,
-      })).rejects.toThrow(`${failure.replace('-', ' ')} failure`)
-
-      const outputParent = dirname(fixture.destination)
-      const retainedBackups = readdirSync(outputParent)
-        .filter((name) => name.includes('.backup-'))
-      if (rollbackFails) {
-        expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
-        expect(retainedBackups).toHaveLength(1)
-        expect(readFileSync(join(
-          outputParent,
-          retainedBackups[0]!,
-          'manifest.json',
-        ), 'utf8')).toBe('old')
-      } else {
-        expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
-        expect(retainedBackups).toEqual([])
+      })
+    } finally {
+      if (authorBLock && lstatSync(authorBLock, { throwIfNoEntry: false })) {
+        unlinkSync(authorBLock)
       }
-      expect(readdirSync(outputParent).some((name) => name.includes('.staging-'))).toBe(false)
-      expect(lstatSync(join(outputParent, '.legacy-v1.lock'), {
-        throwIfNoEntry: false,
-      })).toBeUndefined()
-      expect(events).toEqual(failure === 'lock-release'
-        ? ['installed', 'release-lock', 'rollback']
-        : ['installed', 'release-lock', 'remove-backup', 'rollback'])
-    },
-  )
+    }
+
+    expect(cleanupAttempts).toBe(publicationCleanupAttempts)
+    expect(result.status).toBe('published-with-cleanup-warning')
+    expect(result.published).toBe(true)
+    if (result.status !== 'published-with-cleanup-warning') {
+      throw new Error('missing publication cleanup warning')
+    }
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8'))
+      .toBe('author-b-visible-target')
+    expect(result.warning.cleanupAttempts).toBe(publicationCleanupAttempts)
+  })
+
+  test('retains one verified recovery backup after the fixed cleanup retry budget', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    let cleanupAttempts = 0
+    fixture.environment.hooks.beforeRemoveBackup = () => {
+      cleanupAttempts += 1
+      throw new Error(`cleanup failed\nSECRET=${'s'.repeat(500)}`)
+    }
+
+    const result = await runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })
+
+    expect(result.status).toBe('published-with-cleanup-warning')
+    expect(result.published).toBe(true)
+    if (result.status !== 'published-with-cleanup-warning') {
+      throw new Error('missing publication cleanup warning')
+    }
+    expect(result.warning).toEqual({
+      code: 'backup-cleanup-failed',
+      recoveryBackupPath: result.warning.recoveryBackupPath,
+      cleanupAttempts: publicationCleanupAttempts,
+      message: 'Published fixtures; retained a verified recovery backup after backup cleanup failed.',
+    })
+    expect(result.warning.message.length).toBeLessThanOrEqual(300)
+    expect(result.warning.message).not.toContain('SECRET')
+    expect(cleanupAttempts).toBe(publicationCleanupAttempts)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).not.toBe('old')
+    const retainedBackups = readdirSync(dirname(fixture.destination))
+      .filter((name) => name.includes('.backup-'))
+    expect(retainedBackups).toHaveLength(1)
+    expect(realpathSync(result.warning.recoveryBackupPath)).toBe(result.warning.recoveryBackupPath)
+    expect(readFileSync(join(
+      result.warning.recoveryBackupPath,
+      'manifest.json',
+    ), 'utf8')).toBe('old')
+    expect(lstatSync(result.warning.recoveryBackupPath).isDirectory()).toBe(true)
+    expect(lstatSync(result.warning.recoveryBackupPath).isSymbolicLink()).toBe(false)
+    expect(lstatSync(publicationLockPath(fixture.destination), {
+      throwIfNoEntry: false,
+    })).toBeUndefined()
+    const secondAuthorLock = acquireCooperativePublicationLock(fixture.destination)
+    unlinkSync(secondAuthorLock)
+  })
+
+  test('restores and verifies the original before a second author can enter', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    const events: string[] = []
+    const hooks = fixture.environment.hooks as typeof fixture.environment.hooks & {
+      afterRollbackVerified?: (destination: string) => void
+    }
+    hooks.afterPublishStaging = () => {
+      events.push('installed-validation-failed')
+      throw new Error('installed content validation failure')
+    }
+    hooks.beforeRollback = () => {
+      events.push('rollback-start')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+    hooks.afterRollbackVerified = () => {
+      events.push('restored-identity-verified')
+      expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('installed content validation failure')
+
+    expect(events).toEqual([
+      'installed-validation-failed',
+      'rollback-start',
+      'restored-identity-verified',
+    ])
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
+    const secondAuthorLock = acquireCooperativePublicationLock(fixture.destination)
+    unlinkSync(secondAuthorLock)
+  })
+
+  test('treats a proven-held release failure as pre-commit recovery under ownership', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    const events: string[] = []
+    const hooks = fixture.environment.hooks as typeof fixture.environment.hooks & {
+      afterRollbackVerified?: (destination: string) => void
+    }
+    hooks.beforeReleaseLock = () => {
+      events.push('commit-release-held')
+      throw new Error('lock release held failure')
+    }
+    hooks.beforeRollback = () => {
+      events.push('rollback-under-lock')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+    hooks.afterRollbackVerified = () => {
+      events.push('restored-identity-verified')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('lock release held failure')
+
+    expect(events).toEqual([
+      'commit-release-held',
+      'rollback-under-lock',
+      'restored-identity-verified',
+    ])
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
+    const secondAuthorLock = acquireCooperativePublicationLock(fixture.destination)
+    unlinkSync(secondAuthorLock)
+  })
+
+  test('does not perform unlocked rollback when release state is indeterminate', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    let rollbackCalls = 0
+    fixture.environment.hooks.beforeReleaseLock = (lockPath) => unlinkSync(lockPath)
+    fixture.environment.hooks.beforeRollback = () => {
+      rollbackCalls += 1
+    }
+
+    const error = await runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    }).then(() => undefined, (caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).message).toBe(
+      'publication lock release is indeterminate; recovery required',
+    )
+    expect((error as Error).message.length).toBeLessThanOrEqual(300)
+    expect(rollbackCalls).toBe(0)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).not.toBe('old')
+    const retainedBackups = readdirSync(dirname(fixture.destination))
+      .filter((name) => name.includes('.backup-'))
+    expect(retainedBackups).toHaveLength(1)
+    expect(readFileSync(join(
+      dirname(fixture.destination),
+      retainedBackups[0]!,
+      'manifest.json',
+    ), 'utf8')).toBe('old')
+  })
 
   test('commits a successful replacement after lock release and backup removal', async () => {
     const fixture = await createExtractorFixture()
@@ -963,12 +1137,26 @@ describe('no-follow and transactional publication', () => {
       verifyOnly: false,
     })
 
-    expect(result.published).toBe(true)
+    expect(result).toMatchObject({ status: 'published', published: true })
+    expect('warning' in result).toBe(false)
     expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).not.toBe('old')
     expect(events).toEqual(['installed', 'release-lock', 'remove-backup'])
     expect(readdirSync(dirname(fixture.destination)).some((name) => (
       name.includes('.backup-') || name.includes('.staging-') || name.endsWith('.lock')
     ))).toBe(false)
+  })
+
+  test('preserves trace evidence without entering publication in verify-only mode', async () => {
+    const fixture = await createExtractorFixture()
+
+    const result = await runLegacyExtractor(fixture.environment, { verifyOnly: true })
+
+    expect(result.status).toBe('verified')
+    expect(result.published).toBe(false)
+    expect(result.cases).toHaveLength(1)
+    expect(result.manifest).toBeDefined()
+    expect(result.ignoredFingerprintsAfter).toEqual(result.ignoredFingerprintsBefore)
+    expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
   })
 
   test('revalidates a sensitive path immediately before raw read', async () => {
@@ -1201,5 +1389,45 @@ describe('extract CLI arguments', () => {
     { arguments_: ['--legacy', '/tmp/legacy', '--unknown'] },
   ])('rejects invalid arguments $arguments_', ({ arguments_ }) => {
     expect(() => parseExtractArguments(arguments_)).toThrow('Usage:')
+  })
+
+  test('projects exact bounded publication warning JSON without process failure metadata', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    fixture.environment.hooks.beforeRemoveBackup = () => {
+      throw new Error('persistent CLI cleanup failure')
+    }
+    const result = await runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })
+    if (result.status !== 'published-with-cleanup-warning') {
+      throw new Error('missing publication cleanup warning')
+    }
+
+    expect(projectExtractorResultForCli(result, 'replace')).toEqual({
+      mode: 'replace',
+      caseCount: 1,
+      status: 'published-with-cleanup-warning',
+      published: true,
+      warning: result.warning,
+      ignoredFingerprintsBefore: result.ignoredFingerprintsBefore,
+      ignoredFingerprintsAfter: result.ignoredFingerprintsAfter,
+    })
+  })
+
+  test('projects verify-only as unpublished while retaining its status', async () => {
+    const fixture = await createExtractorFixture()
+    const result = await runLegacyExtractor(fixture.environment, { verifyOnly: true })
+
+    expect(projectExtractorResultForCli(result, 'verify-only')).toEqual({
+      mode: 'verify-only',
+      caseCount: 1,
+      status: 'verified',
+      published: false,
+      ignoredFingerprintsBefore: result.ignoredFingerprintsBefore,
+      ignoredFingerprintsAfter: result.ignoredFingerprintsAfter,
+    })
   })
 })

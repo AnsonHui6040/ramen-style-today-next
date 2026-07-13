@@ -7,6 +7,7 @@ import {
   legacySourceIdentity,
   runLegacyExtractor,
   sanitizeExternalError,
+  type LegacyExtractorResult,
 } from './extractor.js'
 
 interface ExtractArguments {
@@ -16,6 +17,25 @@ interface ExtractArguments {
 }
 
 const usage = 'Usage: extract.ts --legacy <absolute-path> [--replace|--verify-only]'
+
+export type ExtractMode = 'create' | 'replace' | 'verify-only'
+
+export function projectExtractorResultForCli(
+  result: LegacyExtractorResult,
+  mode: ExtractMode,
+) {
+  const projection = {
+    mode,
+    caseCount: result.cases.length,
+    status: result.status,
+    published: result.published,
+    ignoredFingerprintsBefore: result.ignoredFingerprintsBefore,
+    ignoredFingerprintsAfter: result.ignoredFingerprintsAfter,
+  }
+  return result.status === 'published-with-cleanup-warning'
+    ? { ...projection, warning: result.warning }
+    : projection
+}
 
 export function parseExtractArguments(arguments_: readonly string[]): ExtractArguments {
   let legacy: string | undefined
@@ -90,13 +110,12 @@ export async function main(arguments_: readonly string[]) {
     replace: parsed.replace,
     verifyOnly: parsed.verifyOnly,
   })
-  process.stdout.write(`${JSON.stringify({
-    mode: parsed.verifyOnly ? 'verify-only' : parsed.replace ? 'replace' : 'create',
-    caseCount: result.cases.length,
-    published: result.published,
-    ignoredFingerprintsBefore: result.ignoredFingerprintsBefore,
-    ignoredFingerprintsAfter: result.ignoredFingerprintsAfter,
-  }, null, 2)}\n`)
+  const mode = parsed.verifyOnly ? 'verify-only' : parsed.replace ? 'replace' : 'create'
+  process.stdout.write(`${JSON.stringify(
+    projectExtractorResultForCli(result, mode),
+    null,
+    2,
+  )}\n`)
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

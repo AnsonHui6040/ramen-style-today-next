@@ -7,6 +7,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   unlinkSync,
@@ -149,6 +150,7 @@ export interface ExtractorHooks {
   beforeReleaseLock?: (path: string) => void
   beforeRemoveBackup?: (path: string) => void
   beforeRollback?: (path: string) => void
+  afterRollbackVerified?: (destination: string) => void
 }
 
 export interface ExtractorEnvironment {
@@ -188,12 +190,57 @@ export interface RunLegacyExtractorOptions {
   readonly verifyOnly: boolean
 }
 
-export interface LegacyExtractorResult {
+interface LegacyExtractorEvidence {
   readonly cases: readonly LegacyObservableTraceCase[]
   readonly manifest: unknown
-  readonly published: boolean
   readonly ignoredFingerprintsBefore: readonly IgnoredPathFingerprint[]
   readonly ignoredFingerprintsAfter: readonly IgnoredPathFingerprint[]
+}
+
+export interface PublicationCleanupWarning {
+  readonly code: 'backup-cleanup-failed'
+  readonly recoveryBackupPath: string
+  readonly cleanupAttempts: number
+  readonly message: string
+}
+
+export interface PublicationError {
+  readonly code: 'publication-failed' | 'recovery-required'
+  readonly message: string
+}
+
+export type PublicationResult =
+  | {
+      readonly status: 'published'
+      readonly published: true
+    }
+  | {
+      readonly status: 'published-with-cleanup-warning'
+      readonly published: true
+      readonly warning: PublicationCleanupWarning
+    }
+  | {
+      readonly status: 'failed'
+      readonly published: false
+      readonly error: PublicationError
+    }
+
+type SuccessfulPublicationResult = Extract<PublicationResult, { readonly published: true }>
+
+export type LegacyExtractorResult = LegacyExtractorEvidence & (
+  | {
+      readonly status: 'verified'
+      readonly published: false
+      readonly warning?: never
+    }
+  | SuccessfulPublicationResult
+)
+
+type LockReleaseState = 'held' | 'released' | 'indeterminate'
+
+interface LockReleaseResult {
+  readonly state: LockReleaseState
+  readonly error?: unknown
 }
 
 interface FileIdentity {
@@ -219,6 +266,11 @@ interface RawTraceCase {
 const sandboxProfile = '(version 1)(allow default)(deny network*)'
 const extractionSeed = 'ramen-question-observable-v1'
 const maximumExternalMessageLength = 300
+const publicationCleanupAttemptLimit = 3
+const publicationCleanupWarningMessage =
+  'Published fixtures; retained a verified recovery backup after backup cleanup failed.'
+const indeterminateLockReleaseMessage =
+  'publication lock release is indeterminate; recovery required'
 const defaultAuthoringSources = extractorAuthoringSourcePaths.map((relativePath) => ({
   relativePath,
   path: fileURLToPath(new URL(`./${basename(relativePath)}`, import.meta.url)),
@@ -942,6 +994,38 @@ function removeOwnedPath(path: string, expected?: FileIdentity) {
   rmSync(path, { recursive: true, force: true })
 }
 
+function regularFileIdentityMatches(path: string, expected: FileIdentity) {
+  const stats = lstatIfPresent(path)
+  return Boolean(
+    stats
+    && stats.isFile()
+    && !stats.isSymbolicLink()
+    && identitiesEqual(expected, statsIdentity(stats)),
+  )
+}
+
+// This authoring transaction assumes cooperative non-privileged local authors on the
+// declared macOS host; it does not claim safety against a hostile same-user race
+// between the final no-follow revalidation and the operating-system filesystem call.
+function verifyRecoveryBackupPath(
+  path: string,
+  expected: FileIdentity,
+  recoveryParent: string,
+) {
+  if (dirname(resolve(path)) !== resolve(recoveryParent)) {
+    throw new Error('recovery backup escaped the approved same-parent boundary')
+  }
+  assertNoFollowPath(recoveryParent, { kind: 'directory', allowMissingLeaf: false })
+  revalidateRegularDirectory(path, expected, 'recovery backup')
+  const canonicalParent = realpathSync(recoveryParent)
+  const canonicalPath = realpathSync(path)
+  if (dirname(canonicalPath) !== canonicalParent) {
+    throw new Error('recovery backup canonical path escaped the approved boundary')
+  }
+  revalidateRegularDirectory(path, expected, 'recovery backup')
+  return canonicalPath
+}
+
 function combineErrors(primary: unknown, secondary: readonly unknown[]) {
   const primaryMessage = sanitizeExternalError(primary, maximumExternalMessageLength)
   if (secondary.length === 0) return new Error(primaryMessage)
@@ -986,7 +1070,11 @@ export async function runLegacyExtractor(
   let worktreeAttempted = false
   let backupIdentity: FileIdentity | undefined
   let installedOutputIdentity: FileIdentity | undefined
-  let published = false
+  let publicationTargetMutated = false
+  let preCommitRecoveryComplete = true
+  let publicationCommitted = false
+  let indeterminateRelease = false
+  let publicationWarning: PublicationCleanupWarning | undefined
   let primaryError: unknown
   const cleanupErrors: unknown[] = []
   let ignoredBefore: readonly IgnoredPathFingerprint[] = []
@@ -994,18 +1082,37 @@ export async function runLegacyExtractor(
   let cases: readonly LegacyObservableTraceCase[] = []
   let manifest: unknown
 
-  const releaseLock = (invokePostInstallHook: boolean) => {
-    if (lockDescriptor === undefined && !lockIdentity) return
-    if (invokePostInstallHook) environment.hooks.beforeReleaseLock?.(lock)
-    if (lockDescriptor !== undefined) {
-      closeSync(lockDescriptor)
-      lockDescriptor = undefined
-    }
-    if (lockIdentity) {
+  const releaseLock = (invokePostInstallHook: boolean): LockReleaseResult => {
+    if (lockDescriptor === undefined && !lockIdentity) return { state: 'released' }
+    try {
+      if (invokePostInstallHook) environment.hooks.beforeReleaseLock?.(lock)
+      if (lockDescriptor !== undefined) {
+        closeSync(lockDescriptor)
+        lockDescriptor = undefined
+      }
+      if (!lockIdentity) {
+        return {
+          state: 'indeterminate',
+          error: new Error('extraction lock identity is unavailable'),
+        }
+      }
       revalidateRegularFile(lock, lockIdentity, 'extraction lock')
       unlinkSync(lock)
       lockIdentity = undefined
+      return { state: 'released' }
+    } catch (error) {
+      return {
+        state: lockIdentity && regularFileIdentityMatches(lock, lockIdentity)
+          ? 'held'
+          : 'indeterminate',
+        error,
+      }
     }
+  }
+
+  const assertPublicationLockHeld = () => {
+    if (!lockIdentity) throw new Error('publication lock ownership is not proven')
+    revalidateRegularFile(lock, lockIdentity, 'extraction lock')
   }
 
   try {
@@ -1421,8 +1528,10 @@ export async function runLegacyExtractor(
           'existing output',
         )
         renameSync(environment.destination, paths.backup)
-        revalidateRegularDirectory(paths.backup, existingOutputIdentity, 'backup output')
         backupIdentity = existingOutputIdentity
+        publicationTargetMutated = true
+        preCommitRecoveryComplete = false
+        revalidateRegularDirectory(paths.backup, existingOutputIdentity, 'backup output')
       }
       if (!stagingIdentity) throw new Error('staging output is missing')
       environment.hooks.beforePublishStaging?.(paths.staging)
@@ -1435,62 +1544,96 @@ export async function runLegacyExtractor(
       renameSync(paths.staging, environment.destination)
       stagingIdentity = undefined
       installedOutputIdentity = replacementIdentity
+      publicationTargetMutated = true
+      preCommitRecoveryComplete = false
       revalidateRegularDirectory(
         environment.destination,
         replacementIdentity,
         'installed output',
       )
       environment.hooks.afterPublishStaging?.(environment.destination)
-      published = true
     } catch (error) {
       primaryError = error
     }
   }
 
-  if (!primaryError && published) {
-    try {
-      releaseLock(true)
-    } catch (error) {
-      primaryError = error
+  if (!primaryError && installedOutputIdentity) {
+    const releaseResult = releaseLock(true)
+    if (releaseResult.state === 'released') {
+      publicationCommitted = true
+    } else if (releaseResult.state === 'held') {
+      primaryError = releaseResult.error ?? new Error('publication lock release failed while held')
+    } else {
+      indeterminateRelease = true
+      primaryError = new Error(indeterminateLockReleaseMessage)
     }
   }
 
-  if (!primaryError && published && backupIdentity) {
-    try {
-      environment.hooks.beforeRemoveBackup?.(paths.backup)
-      removeOwnedPath(paths.backup, backupIdentity)
-      backupIdentity = undefined
-    } catch (error) {
-      primaryError = error
-    }
-  }
-
-  if (primaryError && installedOutputIdentity) {
-    try {
-      removeOwnedPath(environment.destination, installedOutputIdentity)
-      installedOutputIdentity = undefined
-      published = false
-    } catch (error) {
-      cleanupErrors.push(error)
-    }
-  }
-
-  if (primaryError && backupIdentity) {
-    try {
-      environment.hooks.beforeRollback?.(paths.backup)
-      revalidateRegularDirectory(paths.backup, backupIdentity, 'backup output')
-      if (lstatIfPresent(environment.destination)) {
-        throw new Error('rollback destination is not empty')
+  if (publicationCommitted && backupIdentity) {
+    const retainedBackupIdentity = backupIdentity
+    for (let attempt = 1; attempt <= publicationCleanupAttemptLimit; attempt += 1) {
+      try {
+        environment.hooks.beforeRemoveBackup?.(paths.backup)
+        removeOwnedPath(paths.backup, retainedBackupIdentity)
+        backupIdentity = undefined
+        break
+      } catch {
+        if (attempt !== publicationCleanupAttemptLimit) continue
+        try {
+          const recoveryBackupPath = verifyRecoveryBackupPath(
+            paths.backup,
+            retainedBackupIdentity,
+            outputParent,
+          )
+          publicationWarning = {
+            code: 'backup-cleanup-failed',
+            recoveryBackupPath,
+            cleanupAttempts: attempt,
+            message: publicationCleanupWarningMessage,
+          }
+        } catch {
+          primaryError = new Error(
+            'published target committed but recovery backup verification failed; recovery required',
+          )
+        }
       }
-      const previousOutputIdentity = backupIdentity
-      renameSync(paths.backup, environment.destination)
-      backupIdentity = undefined
-      revalidateRegularDirectory(
-        environment.destination,
-        previousOutputIdentity,
-        'restored output',
-      )
-      published = false
+    }
+  }
+
+  if (
+    primaryError
+    && publicationTargetMutated
+    && !publicationCommitted
+    && !indeterminateRelease
+  ) {
+    try {
+      preCommitRecoveryComplete = false
+      assertPublicationLockHeld()
+      if (installedOutputIdentity) {
+        removeOwnedPath(environment.destination, installedOutputIdentity)
+        installedOutputIdentity = undefined
+      }
+      assertPublicationLockHeld()
+      if (backupIdentity) {
+        environment.hooks.beforeRollback?.(paths.backup)
+        revalidateRegularDirectory(paths.backup, backupIdentity, 'backup output')
+        if (lstatIfPresent(environment.destination)) {
+          throw new Error('rollback destination is not empty')
+        }
+        const previousOutputIdentity = backupIdentity
+        renameSync(paths.backup, environment.destination)
+        backupIdentity = undefined
+        revalidateRegularDirectory(
+          environment.destination,
+          previousOutputIdentity,
+          'restored output',
+        )
+      } else if (lstatIfPresent(environment.destination)) {
+        throw new Error('rollback failed to restore the original absent destination')
+      }
+      assertPublicationLockHeld()
+      environment.hooks.afterRollbackVerified?.(environment.destination)
+      preCommitRecoveryComplete = true
     } catch (error) {
       cleanupErrors.push(error)
     }
@@ -1504,21 +1647,38 @@ export async function runLegacyExtractor(
     }
   }
 
-  try {
-    releaseLock(false)
-  } catch (error) {
-    cleanupErrors.push(error)
+  if (!publicationCommitted && !indeterminateRelease && preCommitRecoveryComplete) {
+    const releaseResult = releaseLock(false)
+    if (releaseResult.state === 'held') {
+      cleanupErrors.push(
+        releaseResult.error ?? new Error('publication lock release failed while held'),
+      )
+    } else if (releaseResult.state === 'indeterminate') {
+      cleanupErrors.push(new Error(indeterminateLockReleaseMessage))
+    }
   }
 
   if (primaryError) throw combineErrors(primaryError, cleanupErrors)
   if (cleanupErrors.length > 0) throw combineErrors('extractor cleanup failed', cleanupErrors)
-  return {
+  const evidence: LegacyExtractorEvidence = {
     cases,
     manifest,
-    published,
     ignoredFingerprintsBefore: ignoredBefore,
     ignoredFingerprintsAfter: ignoredAfter,
   }
+  if (options.verifyOnly) {
+    return { ...evidence, status: 'verified', published: false }
+  }
+  if (!publicationCommitted) throw new Error('publication did not reach its commit point')
+  if (publicationWarning) {
+    return {
+      ...evidence,
+      status: 'published-with-cleanup-warning',
+      published: true,
+      warning: publicationWarning,
+    }
+  }
+  return { ...evidence, status: 'published', published: true }
 }
 
 function snapshotRegularDirectory(path: string, label: string) {
