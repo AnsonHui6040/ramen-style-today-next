@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
-import { isAbsolute, relative, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import * as ts from 'typescript'
@@ -14,6 +14,24 @@ const nodeNextOptions = {
   target: ts.ScriptTarget.ES2024,
   resolveJsonModule: true,
 } satisfies ts.CompilerOptions
+const runtimeFileExtensions = new Set<string>([
+  ts.Extension.Js,
+  ts.Extension.Jsx,
+  ts.Extension.Mjs,
+  ts.Extension.Cjs,
+])
+const emitCapableExtensions = new Set<string>([
+  ts.Extension.Ts,
+  ts.Extension.Tsx,
+  ts.Extension.Mts,
+  ts.Extension.Cts,
+  ...runtimeFileExtensions,
+])
+const declarationExtensions = new Set<string>([
+  ts.Extension.Dts,
+  ts.Extension.Dmts,
+  ts.Extension.Dcts,
+])
 
 export type RuntimeImportReason =
   | 'forbidden-module:node'
@@ -130,12 +148,22 @@ function forbiddenPathReason(relativePath: string): RuntimeImportReason | undefi
 
 function resolveLocalImport(repoRoot: string, fromFile: string, specifier: string) {
   if (specifier.startsWith('.')) {
-    return ts.resolveModuleName(
+    const resolvedModule = ts.resolveModuleName(
       specifier,
       fromFile,
       nodeNextOptions,
       ts.sys,
-    ).resolvedModule?.resolvedFileName
+    ).resolvedModule
+    if (!resolvedModule) return undefined
+    if (emitCapableExtensions.has(resolvedModule.extension)) {
+      return resolvedModule.resolvedFileName
+    }
+    if (!declarationExtensions.has(resolvedModule.extension)) return undefined
+    const runtimeTarget = resolve(dirname(fromFile), specifier)
+    const hasRuntimeExtension = [...runtimeFileExtensions].some((extension) => (
+      runtimeTarget.endsWith(extension)
+    ))
+    return hasRuntimeExtension && isRegularFile(runtimeTarget) ? runtimeTarget : undefined
   }
   if (specifier === corePackage) {
     return resolveSourceFile(resolve(repoRoot, 'packages/classification-core/src/index.ts'))

@@ -17,6 +17,11 @@ const nodeNextOptions = {
   module: ts.ModuleKind.NodeNext,
   moduleResolution: ts.ModuleResolutionKind.NodeNext,
 } satisfies ts.CompilerOptions
+const runtimeFamilies = [
+  { importExtension: '.js', sourceExtension: '.ts', declarationExtension: '.d.ts' },
+  { importExtension: '.mjs', sourceExtension: '.mts', declarationExtension: '.d.mts' },
+  { importExtension: '.cjs', sourceExtension: '.cts', declarationExtension: '.d.cts' },
+] as const
 
 describe('runtime import boundary', () => {
   test('keeps the real public runtime dependency graph browser-neutral', () => {
@@ -96,11 +101,7 @@ describe('runtime import boundary', () => {
     }
   })
 
-  test.each([
-    { importExtension: '.js', sourceExtension: '.ts' },
-    { importExtension: '.mjs', sourceExtension: '.mts' },
-    { importExtension: '.cjs', sourceExtension: '.cts' },
-  ])('matches NodeNext $importExtension to $sourceExtension extension substitution', ({
+  test.each(runtimeFamilies)('matches NodeNext $importExtension to $sourceExtension extension substitution', ({
     importExtension,
     sourceExtension,
   }) => {
@@ -145,6 +146,118 @@ describe('runtime import boundary', () => {
       rmSync(repoRoot, { recursive: true, force: true })
     }
   })
+
+  test.each(runtimeFamilies)(
+    'rejects declaration-only $declarationExtension backing for $importExtension',
+    ({ importExtension, declarationExtension }) => {
+      const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-declaration-only-'))
+      try {
+        const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+        const entry = join(sourceRoot, 'index.ts')
+        const specifier = `./bridge${importExtension}`
+        const declaration = join(sourceRoot, `bridge${declarationExtension}`)
+        mkdirSync(sourceRoot, { recursive: true })
+        writeFileSync(entry, `export { value } from '${specifier}'\n`)
+        writeFileSync(declaration, 'export declare const value: boolean\n')
+
+        expect(ts.resolveModuleName(
+          specifier,
+          entry,
+          nodeNextOptions,
+          ts.sys,
+        ).resolvedModule?.resolvedFileName).toBe(declaration)
+
+        const result = checkRuntimeImports(
+          repoRoot,
+          'packages/classification-core/src/index.ts',
+        )
+        expect(result.forbidden).toEqual([{
+          from: 'packages/classification-core/src/index.ts',
+          specifier,
+          reason: 'unresolved-local-import',
+        }])
+        expect(result.visited).toEqual(['packages/classification-core/src/index.ts'])
+      } finally {
+        rmSync(repoRoot, { recursive: true, force: true })
+      }
+    },
+  )
+
+  test.each(runtimeFamilies)(
+    'uses exact $importExtension runtime backing when $declarationExtension shadows it',
+    ({ importExtension, declarationExtension }) => {
+      const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-declaration-shadow-'))
+      try {
+        const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+        const entry = join(sourceRoot, 'index.ts')
+        const specifier = `./bridge${importExtension}`
+        const declaration = join(sourceRoot, `bridge${declarationExtension}`)
+        const runtimeTarget = join(sourceRoot, `bridge${importExtension}`)
+        mkdirSync(sourceRoot, { recursive: true })
+        writeFileSync(entry, `export { value } from '${specifier}'\n`)
+        writeFileSync(declaration, 'export declare const value: boolean\n')
+        writeFileSync(
+          runtimeTarget,
+          importExtension === '.cjs'
+            ? "require('node:fs')\nexports.value = true\n"
+            : "import 'node:fs'\nexport const value = true\n",
+        )
+
+        expect(ts.resolveModuleName(
+          specifier,
+          entry,
+          nodeNextOptions,
+          ts.sys,
+        ).resolvedModule?.resolvedFileName).toBe(declaration)
+
+        const result = checkRuntimeImports(
+          repoRoot,
+          'packages/classification-core/src/index.ts',
+        )
+        expect(result.forbidden).toEqual([{
+          from: `packages/classification-core/src/bridge${importExtension}`,
+          specifier: 'node:fs',
+          reason: 'forbidden-module:node',
+        }])
+        expect(result.visited).toContain(`packages/classification-core/src/bridge${importExtension}`)
+        expect(result.visited).not.toContain(
+          `packages/classification-core/src/bridge${declarationExtension}`,
+        )
+      } finally {
+        rmSync(repoRoot, { recursive: true, force: true })
+      }
+    },
+  )
+
+  test.each(runtimeFamilies)(
+    'never treats an explicit $declarationExtension declaration as runtime backing',
+    ({ declarationExtension }) => {
+      const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-explicit-declaration-'))
+      try {
+        const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+        const specifier = `./bridge${declarationExtension}`
+        mkdirSync(sourceRoot, { recursive: true })
+        writeFileSync(join(sourceRoot, 'index.ts'), `export { value } from '${specifier}'\n`)
+        writeFileSync(
+          join(sourceRoot, `bridge${declarationExtension}`),
+          'export declare const value: boolean\n',
+        )
+
+        const result = checkRuntimeImports(
+          repoRoot,
+          'packages/classification-core/src/index.ts',
+        )
+        expect(result.forbidden).toEqual([{
+          from: 'packages/classification-core/src/index.ts',
+          specifier,
+          reason: 'unresolved-local-import',
+        }])
+        expect(result.visited).toEqual(['packages/classification-core/src/index.ts'])
+      } finally {
+        rmSync(repoRoot, { recursive: true, force: true })
+      }
+    },
+  )
 
   test('fails closed on a computed dynamic import', () => {
     const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-computed-import-'))
