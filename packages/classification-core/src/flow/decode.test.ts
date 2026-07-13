@@ -77,4 +77,34 @@ describe('decodeAnswerDraft', () => {
       path: '/form',
     }))
   })
+
+  test('preserves inherited-looking data keys without mutating the result prototype', () => {
+    const input = {}
+    Object.defineProperty(input, '__proto__', {
+      value: ['future'],
+      enumerable: true,
+    })
+    Object.defineProperty(input, 'constructor', {
+      value: ['shadow'],
+      enumerable: true,
+    })
+
+    const result = decodeAnswerDraft(input)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(Object.keys(result.draft)).toEqual(['__proto__', 'constructor'])
+    expect(Object.prototype.hasOwnProperty.call(result.draft, '__proto__')).toBe(true)
+    expect(Object.prototype.hasOwnProperty.call(result.draft, 'constructor')).toBe(true)
+    expect(Object.getPrototypeOf(input)).toBe(Object.prototype)
+    expect(Object.getPrototypeOf(result.draft)).toBe(Object.prototype)
+    expect(result.draft['__proto__']).toEqual(['future'])
+    expect(result.draft.constructor).toEqual(['shadow'])
+    expect(JSON.stringify(result.draft)).toBe(
+      '{"__proto__":["future"],"constructor":["shadow"]}',
+    )
+    expect(Object.isFrozen(result)).toBe(true)
+    expect(Object.isFrozen(result.draft)).toBe(true)
+    expect(Object.isFrozen(result.draft['__proto__'])).toBe(true)
+    expect(Object.isFrozen(result.draft.constructor)).toBe(true)
+  })
 })

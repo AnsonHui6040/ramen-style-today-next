@@ -164,6 +164,22 @@ describe('evaluateFlow', () => {
     expect(state.canonicalAnswers).toEqual({})
   })
 
+  test('reports an own __proto__ data key as an unknown question', () => {
+    const input = Object.defineProperty({}, '__proto__', {
+      value: ['future'],
+      enumerable: true,
+    })
+    const state = evaluateFlow(questionModel, input)
+    expect(state.status).toBe('invalid')
+    expect(state.diagnostics).toContainEqual(expect.objectContaining({
+      code: 'ANSWER_UNKNOWN_QUESTION',
+      path: '/__proto__',
+      entityId: '__proto__',
+    }))
+    expect(state.canonicalAnswers).toEqual({})
+    expect(Object.getPrototypeOf(input)).toBe(Object.prototype)
+  })
+
   test('uses the closed condition AST with arbitrary IDs and no question-specific switches', () => {
     const empty = evaluateFlow(genericConditionModel, {})
     expect(empty.reachableQuestionIds).toEqual(['gate', 'branch'])

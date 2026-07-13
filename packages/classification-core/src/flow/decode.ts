@@ -85,7 +85,12 @@ export function decodeAnswerDraft(input: unknown): DecodeAnswerDraftResult {
         optionIds.push(optionId)
       }
     }
-    draft[questionId] = optionIds
+    Object.defineProperty(draft, questionId, {
+      value: optionIds,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    })
   }
 
   if (diagnostics.length > 0) {
