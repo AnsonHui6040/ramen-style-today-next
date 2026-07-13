@@ -2,35 +2,21 @@ import { z } from 'zod'
 
 import { stableIdSchema, versionSchema } from '../contracts/ids.js'
 import { isRepositorySource } from '../contracts/source-path.js'
+import { questionDefinitionSourceSchema } from './questions/source-schema.js'
 
 const sourceFileSchema = z.string().min(1).refine(
   isRepositorySource,
   'definition sourceFile must be a repository-relative POSIX path',
 )
 
-export const optionSourceSchema = z.strictObject({
-  id: stableIdSchema,
-  messageId: stableIdSchema,
-})
-
-export const questionSourceSchema = z.strictObject({
-  sourceFile: sourceFileSchema,
-  id: stableIdSchema,
-  messageId: stableIdSchema,
-  order: z.number().int().nonnegative(),
-  selectionType: z.enum(['single', 'multiple']),
-  minSelections: z.number().int().nonnegative(),
-  maxSelections: z.number().int().positive(),
-  weight: z.number().finite().nonnegative(),
-  dependsOn: z.array(stableIdSchema),
-  options: z.array(optionSourceSchema).min(1),
-})
-
 export const styleSourceSchema = z.strictObject({
   sourceFile: sourceFileSchema,
   id: stableIdSchema,
   messageId: stableIdSchema,
-  familyOptionId: stableIdSchema,
+  familyOptionId: z.strictObject({
+    questionId: stableIdSchema,
+    optionId: stableIdSchema,
+  }),
   priority: z.number().int().nonnegative(),
   intensities: z.array(stableIdSchema).min(1),
   noodles: z.array(stableIdSchema).min(1),
@@ -48,9 +34,19 @@ export const policySourceSchema = z.strictObject({
 })
 
 export const definitionBundleSchema = z.strictObject({
-  mode: z.enum(['synthetic', 'production']),
   modelVersion: versionSchema,
-  questions: z.array(questionSourceSchema),
+  provenance: z.strictObject({
+    questions: z.strictObject({
+      origin: z.enum(['legacy-production', 'synthetic']),
+    }),
+    styles: z.strictObject({
+      origin: z.enum(['legacy-production', 'synthetic']),
+    }),
+    scoringPolicy: z.strictObject({
+      origin: z.enum(['legacy-production', 'synthetic']),
+    }),
+  }),
+  questions: z.array(questionDefinitionSourceSchema),
   styles: z.array(styleSourceSchema),
   policy: policySourceSchema,
 })

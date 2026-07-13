@@ -120,11 +120,12 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 ## Batch 2A — in-progress
 
 - Behavior: `no-production-runtime-change`
-- Transformation: Added closed serializable question source contracts, strict compiler-only decoding, compiled question model metadata, and browser-neutral recursive freezing without migrating production question data.
+- Transformation: Added closed serializable question contracts and transcribed the frozen eight-question legacy inventory into declarative production definitions with question-scoped options and mixed-domain provenance; runtime behavior remains unchanged.
 
 ### Legacy sources
 
-- None; this batch introduces new infrastructure.
+- `src/data/questions.json`
+- `src/domain/questionRules.ts`
 
 ### New owners
 
@@ -133,6 +134,9 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `packages/classification-core/src/contracts/deep-freeze.test.ts`
 - `packages/classification-core/src/contracts/deep-freeze.ts`
 - `packages/classification-core/src/contracts/question-model.ts`
+- `packages/classification-core/src/definitions/classification.ts`
+- `packages/classification-core/src/definitions/questions.test.ts`
+- `packages/classification-core/src/definitions/questions.ts`
 
 ### Verification
 

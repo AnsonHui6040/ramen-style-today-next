@@ -11,9 +11,12 @@ import {
 } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
 
-import { compileClassification, syntheticDefinition } from '@ramen-style/classification-core/compiler'
+import { compileClassification } from '@ramen-style/classification-core/compiler'
 import { buildDocumentation } from './build-index.js'
-import { documentationRelations } from './relations.js'
+import {
+  documentationDefinition,
+  documentationRelations,
+} from './relations.js'
 import { scanCoreConsumers } from './scan-imports.js'
 
 interface GeneratedOutputInstallOptions {
@@ -169,8 +172,8 @@ function run() {
   if (mode !== '--write' && mode !== '--check') throw new Error('Use --write or --check')
 
   const compiled = compileClassification(
-    syntheticDefinition,
-    'packages/classification-core/src/definitions/synthetic.ts',
+    documentationDefinition,
+    'tools/documentation/relations.ts',
   )
   if (!compiled.ok) {
     console.error(JSON.stringify(compiled.diagnostics, null, 2))

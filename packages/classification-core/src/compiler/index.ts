@@ -9,7 +9,7 @@ export {
 } from './source-schema.js'
 export { stableJson } from './stable-json.js'
 export { compareCodePoints } from '../contracts/source-path.js'
-export { syntheticDefinition } from '../definitions/synthetic.js'
+export { classificationDefinition } from '../definitions/classification.js'
 export type {
   AllowedOptionDecisionRow,
   AllowedOptionSelection,

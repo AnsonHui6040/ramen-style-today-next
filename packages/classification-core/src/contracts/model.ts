@@ -13,14 +13,15 @@ export interface ConceptRecord {
   readonly key: ConceptKey
   readonly kind: ConceptKind
   readonly id: string
+  readonly ownerQuestionId?: string
   readonly sourceFile: string
   readonly messageIds: readonly string[]
 }
 
 export interface ClassificationModel {
-  readonly mode: DefinitionBundleSource['mode']
   readonly modelVersion: string
   readonly dataVersion: string
+  readonly provenance: DeepReadonly<DefinitionBundleSource['provenance']>
   readonly questions: DeepReadonly<DefinitionBundleSource['questions']>
   readonly styles: DeepReadonly<DefinitionBundleSource['styles']>
   readonly policy: DeepReadonly<DefinitionBundleSource['policy']>

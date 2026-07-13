@@ -180,7 +180,7 @@ export function buildDocumentation(
   return {
     manifest: stableJson({
       schemaVersion: 1,
-      synthetic: model.mode === 'synthetic',
+      synthetic: Object.values(model.provenance).every(({ origin }) => origin === 'synthetic'),
       modelVersion: model.modelVersion,
       dataVersion: model.dataVersion,
       concepts,

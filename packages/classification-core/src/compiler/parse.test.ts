@@ -5,8 +5,12 @@ import { parseDefinitionBundle } from './parse.js'
 describe('definition bundle parsing', () => {
   test('returns parsed data for a structurally valid bundle', () => {
     const result = parseDefinitionBundle({
-      mode: 'synthetic',
       modelVersion: 'batch1.0.0',
+      provenance: {
+        questions: { origin: 'synthetic' },
+        styles: { origin: 'synthetic' },
+        scoringPolicy: { origin: 'synthetic' },
+      },
       questions: [],
       styles: [],
       policy: {
@@ -27,8 +31,12 @@ describe('definition bundle parsing', () => {
 
   test('aggregates Zod issues as JSON Pointer diagnostics', () => {
     const result = parseDefinitionBundle({
-      mode: 'synthetic',
       modelVersion: 'Bad Version',
+      provenance: {
+        questions: { origin: 'synthetic' },
+        styles: { origin: 'synthetic' },
+        scoringPolicy: { origin: 'synthetic' },
+      },
       questions: [{ id: 'Bad ID' }],
       styles: [],
       policy: {},
@@ -42,8 +50,12 @@ describe('definition bundle parsing', () => {
 
   test('reports unstable definition and caller source paths without throwing', () => {
     const invalidDefinition = {
-      mode: 'synthetic',
       modelVersion: 'batch1.0.0',
+      provenance: {
+        questions: { origin: 'synthetic' },
+        styles: { origin: 'synthetic' },
+        scoringPolicy: { origin: 'synthetic' },
+      },
       questions: [],
       styles: [],
       policy: {

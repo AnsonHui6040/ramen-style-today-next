@@ -2,15 +2,18 @@ import { execFileSync } from 'node:child_process'
 
 import { describe, expect, test } from 'vitest'
 
-import { compileClassification, syntheticDefinition } from '@ramen-style/classification-core/compiler'
+import { compileClassification } from '@ramen-style/classification-core/compiler'
 import { buildDocumentation } from './build-index.js'
-import { documentationRelations } from './relations.js'
+import {
+  documentationDefinition,
+  documentationRelations,
+} from './relations.js'
 
 const compiled = compileClassification(
-  syntheticDefinition,
-  'packages/classification-core/src/definitions/synthetic.ts',
+  documentationDefinition,
+  'tools/documentation/relations.ts',
 )
-if (!compiled.ok) throw new Error('synthetic model did not compile')
+if (!compiled.ok) throw new Error('documentation model did not compile')
 
 function deterministicSnapshot(locale: string) {
   const script = String.raw`
@@ -23,32 +26,42 @@ function deterministicSnapshot(locale: string) {
 
     const sourceFile = 'packages/classification-core/src/definitions/synthetic.ts'
     const definition = {
-      mode: 'synthetic',
       modelVersion: 'locale-probe',
+      provenance: {
+        questions: { origin: 'synthetic' },
+        styles: { origin: 'synthetic' },
+        scoringPolicy: { origin: 'synthetic' },
+      },
       questions: [
         {
-          sourceFile,
           id: 'y-demo',
-          messageId: 'question-y-demo',
           order: 0,
-          selectionType: 'single',
-          minSelections: 1,
-          maxSelections: 1,
+          messageIds: {
+            title: 'question-y-demo-title',
+            description: 'question-y-demo-description',
+          },
+          selection: { type: 'single', min: 1, max: 1 },
           weight: 50,
-          dependsOn: [],
-          options: [{ id: 'y-option', messageId: 'option-y-demo' }],
+          options: [{
+            id: 'y-option',
+            order: 0,
+            messageIds: { label: 'option-y-demo-label' },
+          }],
         },
         {
-          sourceFile,
           id: 'j-demo',
-          messageId: 'question-j-demo',
           order: 1,
-          selectionType: 'single',
-          minSelections: 1,
-          maxSelections: 1,
+          messageIds: {
+            title: 'question-j-demo-title',
+            description: 'question-j-demo-description',
+          },
+          selection: { type: 'single', min: 1, max: 1 },
           weight: 50,
-          dependsOn: [],
-          options: [{ id: 'j-option', messageId: 'option-j-demo' }],
+          options: [{
+            id: 'j-option',
+            order: 0,
+            messageIds: { label: 'option-j-demo-label' },
+          }],
         },
       ],
       styles: [
@@ -56,7 +69,7 @@ function deterministicSnapshot(locale: string) {
           sourceFile,
           id: 'y-style',
           messageId: 'style-y-demo',
-          familyOptionId: 'y-option',
+          familyOptionId: { questionId: 'y-demo', optionId: 'y-option' },
           priority: 0,
           intensities: ['y-intensity', 'j-intensity'],
           noodles: ['y-noodle', 'j-noodle'],
@@ -65,7 +78,7 @@ function deterministicSnapshot(locale: string) {
           sourceFile,
           id: 'j-style',
           messageId: 'style-j-demo',
-          familyOptionId: 'j-option',
+          familyOptionId: { questionId: 'j-demo', optionId: 'j-option' },
           priority: 1,
           intensities: ['y-intensity', 'j-intensity'],
           noodles: ['y-noodle', 'j-noodle'],
@@ -165,8 +178,9 @@ describe('classification documentation index', () => {
 
     expect(result.diagnostics).toEqual([])
     expect(result.markdown).toContain('Synthetic inventory')
-    const manifest = JSON.parse(result.manifest) as { concepts: unknown[] }
+    const manifest = JSON.parse(result.manifest) as { concepts: unknown[]; synthetic: boolean }
     expect(manifest.concepts).toHaveLength(compiled.model.inventory.length)
+    expect(manifest.synthetic).toBe(true)
 
     const reversed = buildDocumentation(
       { ...compiled.model, inventory: [...compiled.model.inventory].reverse() },

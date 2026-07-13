@@ -170,16 +170,22 @@
     {
       "batch": "2A",
       "status": "in-progress",
-      "legacySources": [],
+      "legacySources": [
+        "src/data/questions.json",
+        "src/domain/questionRules.ts"
+      ],
       "ownedScopes": [],
       "newOwners": [
         "packages/classification-core/src/compiler/questions/source-schema.test.ts",
         "packages/classification-core/src/compiler/questions/source-schema.ts",
         "packages/classification-core/src/contracts/deep-freeze.test.ts",
         "packages/classification-core/src/contracts/deep-freeze.ts",
-        "packages/classification-core/src/contracts/question-model.ts"
+        "packages/classification-core/src/contracts/question-model.ts",
+        "packages/classification-core/src/definitions/classification.ts",
+        "packages/classification-core/src/definitions/questions.test.ts",
+        "packages/classification-core/src/definitions/questions.ts"
       ],
-      "transformation": "Added closed serializable question source contracts, strict compiler-only decoding, compiled question model metadata, and browser-neutral recursive freezing without migrating production question data.",
+      "transformation": "Added closed serializable question contracts and transcribed the frozen eight-question legacy inventory into declarative production definitions with question-scoped options and mixed-domain provenance; runtime behavior remains unchanged.",
       "behavior": "no-production-runtime-change",
       "verification": []
     }

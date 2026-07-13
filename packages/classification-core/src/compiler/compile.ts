@@ -33,45 +33,36 @@ function duplicateValues(values: readonly string[]) {
   return [...duplicates].sort(compareCodePoints)
 }
 
-function flowHasCycle(questions: readonly { id: string; dependsOn: readonly string[] }[]) {
-  const graph = new Map(questions.map((question) => [question.id, question.dependsOn]))
-  const visiting = new Set<string>()
-  const visited = new Set<string>()
-  const visit = (id: string): boolean => {
-    if (visiting.has(id)) return true
-    if (visited.has(id)) return false
-    visiting.add(id)
-    for (const dependency of graph.get(id) ?? []) {
-      if (graph.has(dependency) && visit(dependency)) return true
-    }
-    visiting.delete(id)
-    visited.add(id)
-    return false
-  }
-  return [...graph.keys()].some(visit)
-}
-
 function inventoryKey(kind: ConceptRecord['kind'], id: string): ConceptKey {
   return `${kind}/${id}`
 }
 
-function buildInventory(definition: NonNullable<ReturnType<typeof parseDefinitionBundle>['definition']>) {
+function optionIdentity(questionId: string, optionId: string) {
+  return `${questionId}:${optionId}`
+}
+
+function buildInventory(
+  definition: NonNullable<ReturnType<typeof parseDefinitionBundle>['definition']>,
+  sourceFile: string,
+) {
   const records: ConceptRecord[] = []
   for (const question of definition.questions) {
     records.push({
       key: inventoryKey('question', question.id),
       kind: 'question',
       id: question.id,
-      sourceFile: question.sourceFile,
-      messageIds: [question.messageId],
+      sourceFile,
+      messageIds: [question.messageIds.title, question.messageIds.description],
     })
     for (const option of question.options) {
       records.push({
-        key: inventoryKey('option', option.id),
+        key: inventoryKey('option', optionIdentity(question.id, option.id)),
         kind: 'option',
         id: option.id,
-        sourceFile: question.sourceFile,
-        messageIds: [option.messageId],
+        ownerQuestionId: question.id,
+        sourceFile,
+        messageIds: [option.messageIds.label, option.messageIds.description]
+          .filter((messageId): messageId is string => messageId !== undefined),
       })
     }
   }
@@ -117,43 +108,40 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
   for (const id of duplicateValues(definition.questions.map((item) => item.id))) {
     collector.error({ code: 'QUESTION_DUPLICATE_ID', sourceFile, path: '/questions', entityId: id, message: `Duplicate question ${id}` })
   }
-  const optionIds = definition.questions.flatMap((question) => question.options.map((item) => item.id))
-  for (const id of duplicateValues(optionIds)) {
-    collector.error({ code: 'OPTION_DUPLICATE_ID', sourceFile, path: '/questions', entityId: id, message: `Duplicate option ${id}` })
+  const optionIdentities = definition.questions.flatMap((question) => question.options.map(
+    (item) => optionIdentity(question.id, item.id),
+  ))
+  for (const [questionIndex, question] of definition.questions.entries()) {
+    for (const id of duplicateValues(question.options.map((item) => item.id))) {
+      const identity = optionIdentity(question.id, id)
+      collector.error({
+        code: 'OPTION_DUPLICATE_ID',
+        sourceFile,
+        path: `/questions/${questionIndex}/options`,
+        entityId: identity,
+        message: `Duplicate option ${identity}`,
+      })
+    }
   }
   for (const id of duplicateValues(definition.styles.map((item) => item.id))) {
     collector.error({ code: 'STYLE_DUPLICATE_ID', sourceFile, path: '/styles', entityId: id, message: `Duplicate style ${id}` })
   }
 
-  const questionIds = new Set(definition.questions.map((item) => item.id))
-  const optionIdSet = new Set(optionIds)
-  for (const [index, question] of definition.questions.entries()) {
-    for (const [dependencyIndex, dependency] of question.dependsOn.entries()) {
-      if (!questionIds.has(dependency)) collector.error({
-        code: 'REFERENCE_UNKNOWN',
-        sourceFile: question.sourceFile,
-        path: `/questions/${index}/dependsOn/${dependencyIndex}`,
-        entityId: question.id,
-        message: `Unknown question dependency ${dependency}`,
-      })
-    }
-  }
+  const optionIdentitySet = new Set(optionIdentities)
   for (const [index, style] of definition.styles.entries()) {
-    if (!optionIdSet.has(style.familyOptionId)) collector.error({
+    const identity = optionIdentity(
+      style.familyOptionId.questionId,
+      style.familyOptionId.optionId,
+    )
+    if (!optionIdentitySet.has(identity)) collector.error({
       code: 'REFERENCE_UNKNOWN',
       sourceFile: style.sourceFile,
       path: `/styles/${index}/familyOptionId`,
       entityId: style.id,
-      message: `Unknown family option ${style.familyOptionId}`,
+      message: `Unknown family option ${identity}`,
     })
   }
-  if (flowHasCycle(definition.questions)) collector.error({
-    code: 'FLOW_CYCLE',
-    sourceFile,
-    path: '/questions',
-    message: 'Question dependency graph contains a cycle',
-  })
-  const totalWeight = definition.questions.reduce((sum, question) => sum + question.weight, 0)
+  const totalWeight = definition.questions.reduce((sum, question) => sum + (question.weight ?? 0), 0)
   if (totalWeight !== 100) collector.error({
     code: 'POLICY_WEIGHT_TOTAL',
     sourceFile: definition.policy.sourceFile,
@@ -163,7 +151,7 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
     received: totalWeight,
   })
 
-  const inventory = buildInventory(definition)
+  const inventory = buildInventory(definition, sourceFile)
   for (const key of duplicateValues(inventory.map((item) => item.key))) {
     collector.error({
       code: 'CONCEPT_DUPLICATE_KEY',
@@ -178,9 +166,9 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
   if (collector.hasErrors()) return { ok: false, diagnostics }
   const dataVersion = createHash('sha256').update(stableJson(definition)).digest('hex')
   const model = deepFreeze({
-    mode: definition.mode,
     modelVersion: definition.modelVersion,
     dataVersion,
+    provenance: definition.provenance,
     questions: definition.questions,
     styles: definition.styles,
     policy: definition.policy,

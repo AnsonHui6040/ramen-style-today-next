@@ -45,19 +45,17 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
-      "consumers": [
-        "tools/validation/validate-classification.ts"
-      ],
+      "canonicalSource": "tools/documentation/relations.ts",
+      "consumers": [],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
       "id": "demo-aburasoba",
-      "key": "option/demo-aburasoba",
+      "key": "option/demo-archetype:demo-aburasoba",
       "kind": "option",
       "messageIds": [
-        "option-demo-aburasoba"
+        "option-demo-aburasoba-label"
       ],
       "migrations": [],
       "tests": [
@@ -69,19 +67,17 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
-      "consumers": [
-        "tools/validation/validate-classification.ts"
-      ],
+      "canonicalSource": "tools/documentation/relations.ts",
+      "consumers": [],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
       "id": "demo-chintan",
-      "key": "option/demo-chintan",
+      "key": "option/demo-archetype:demo-chintan",
       "kind": "option",
       "messageIds": [
-        "option-demo-chintan"
+        "option-demo-chintan-label"
       ],
       "migrations": [],
       "tests": [
@@ -93,19 +89,17 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
-      "consumers": [
-        "tools/validation/validate-classification.ts"
-      ],
+      "canonicalSource": "tools/documentation/relations.ts",
+      "consumers": [],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
       "id": "demo-dry",
-      "key": "option/demo-dry",
+      "key": "option/demo-form:demo-dry",
       "kind": "option",
       "messageIds": [
-        "option-demo-dry"
+        "option-demo-dry-label"
       ],
       "migrations": [],
       "tests": [
@@ -117,19 +111,17 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
-      "consumers": [
-        "tools/validation/validate-classification.ts"
-      ],
+      "canonicalSource": "tools/documentation/relations.ts",
+      "consumers": [],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
       "id": "demo-soup",
-      "key": "option/demo-soup",
+      "key": "option/demo-form:demo-soup",
       "kind": "option",
       "messageIds": [
-        "option-demo-soup"
+        "option-demo-soup-label"
       ],
       "migrations": [],
       "tests": [
@@ -163,10 +155,8 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
-      "consumers": [
-        "tools/validation/validate-classification.ts"
-      ],
+      "canonicalSource": "tools/documentation/relations.ts",
+      "consumers": [],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -175,7 +165,8 @@
       "key": "question/demo-archetype",
       "kind": "question",
       "messageIds": [
-        "question-demo-archetype"
+        "question-demo-archetype-description",
+        "question-demo-archetype-title"
       ],
       "migrations": [],
       "tests": [
@@ -187,10 +178,8 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
-      "consumers": [
-        "tools/validation/validate-classification.ts"
-      ],
+      "canonicalSource": "tools/documentation/relations.ts",
+      "consumers": [],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -199,7 +188,8 @@
       "key": "question/demo-form",
       "kind": "question",
       "messageIds": [
-        "question-demo-form"
+        "question-demo-form-description",
+        "question-demo-form-title"
       ],
       "migrations": [],
       "tests": [
@@ -235,8 +225,8 @@
       ]
     }
   ],
-  "dataVersion": "684e1a257e576a1f786b99573504cabc07c3064dcf8100881bbe4ab103182096",
-  "modelVersion": "batch1.0.0",
+  "dataVersion": "09f76aa37cce4488a2a52a63201fef8105f09d056907c16eea818b7d6ec8e275",
+  "modelVersion": "batch1.1.0",
   "schemaVersion": 1,
   "synthetic": true
 }
