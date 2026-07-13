@@ -4,6 +4,7 @@ import type { QuestionDefinitionSource } from '../../contracts/question-model.js
 import { questionDefinitions } from '../../definitions/questions.js'
 import { canonicalizeQuestionSource } from './canonicalize.js'
 import {
+  conditionReferences,
   deriveQuestionGraph,
   extractConditionReferences,
 } from './dependencies.js'
@@ -113,6 +114,51 @@ describe('question semantic dependencies', () => {
       'allowed-options',
       'selection-override',
       'auto-answer',
+    ])
+  })
+
+  test('walks nested raw-source conditions without compiled defaults', () => {
+    const condition = {
+      type: 'any',
+      conditions: [
+        {
+          type: 'not',
+          condition: { type: 'answered', questionId: 'b' },
+        },
+        {
+          type: 'all',
+          conditions: [
+            { type: 'answered', questionId: 'a' },
+            { type: 'answer-includes', questionId: 'b', optionId: 'value' },
+          ],
+        },
+      ],
+    } as const
+    const definitions = [
+      question('owner', 2, condition),
+      question('a', 0),
+      question('b', 1),
+    ]
+
+    expect(conditionReferences(condition)).toEqual(['a', 'b'])
+    expect(extractConditionReferences(definitions).filter(({ ownerQuestionId }) => (
+      ownerQuestionId === 'owner'
+    ))).toEqual([
+      {
+        ownerQuestionId: 'owner',
+        referencedQuestionId: 'b',
+        path: '/questions/0/availableWhen/conditions/0/condition/questionId',
+      },
+      {
+        ownerQuestionId: 'owner',
+        referencedQuestionId: 'a',
+        path: '/questions/0/availableWhen/conditions/1/conditions/0/questionId',
+      },
+      {
+        ownerQuestionId: 'owner',
+        referencedQuestionId: 'b',
+        path: '/questions/0/availableWhen/conditions/1/conditions/1/questionId',
+      },
     ])
   })
 

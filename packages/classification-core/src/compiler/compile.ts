@@ -135,11 +135,8 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
     collector.error({ code: 'STYLE_DUPLICATE_ID', sourceFile, path: '/styles', entityId: id, message: `Duplicate style ${id}` })
   }
 
-  const canonicalQuestions = canonicalizeQuestionSource(
-    definition.questions as unknown as readonly QuestionDefinitionSource[],
-  )
-  const questionIds = new Set(canonicalQuestions.map((item) => item.id))
-  for (const reference of extractConditionReferences(canonicalQuestions)) {
+  const questionIds = new Set(definition.questions.map((item) => item.id))
+  for (const reference of extractConditionReferences(definition.questions)) {
     if (!questionIds.has(reference.referencedQuestionId)) collector.error({
       code: 'REFERENCE_UNKNOWN',
       sourceFile,
@@ -148,6 +145,9 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
       message: `Unknown question dependency ${reference.referencedQuestionId}`,
     })
   }
+  const canonicalQuestions = canonicalizeQuestionSource(
+    definition.questions as unknown as readonly QuestionDefinitionSource[],
+  )
   const questionGraph = deriveQuestionGraph(canonicalQuestions)
   if (questionGraph.diagnostics.some(({ code }) => code === 'FLOW_CYCLE')) collector.error({
     code: 'FLOW_CYCLE',

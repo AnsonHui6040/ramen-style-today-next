@@ -118,6 +118,39 @@ describe('classification compiler shell', () => {
     )
   })
 
+  test('preserves submitted source indices in unknown-reference diagnostics', () => {
+    const invalid = mutableDefinition()
+    const archetype = invalid.questions.find(({ id }) => id === 'archetype')!
+    archetype.availableWhen = {
+      type: 'any',
+      conditions: [
+        { type: 'answered', questionId: 'missing-question' },
+        { type: 'answered', questionId: 'form' },
+      ],
+    }
+    archetype.options[0]!.availableWhen = {
+      type: 'answered',
+      questionId: 'missing-option-condition',
+    }
+    archetype.options.reverse()
+    invalid.questions.reverse()
+
+    const result = compileClassification(invalid, sourceFile)
+
+    expect(result.diagnostics.filter(({ code }) => code === 'REFERENCE_UNKNOWN')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityId: 'archetype',
+          path: '/questions/6/availableWhen/conditions/0/questionId',
+        }),
+        expect.objectContaining({
+          entityId: 'archetype',
+          path: '/questions/6/options/9/availableWhen/questionId',
+        }),
+      ]),
+    )
+  })
+
   test('rejects cycles discovered through nested condition variants', () => {
     const invalid = mutableDefinition()
     invalid.questions[0]!.availableWhen = {

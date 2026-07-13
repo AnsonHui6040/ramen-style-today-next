@@ -19,101 +19,108 @@ export interface QuestionGraph {
   readonly diagnostics: readonly Diagnostic[]
 }
 
-export function conditionReferences(condition: SerializableCondition): readonly string[] {
+interface ConditionBearingQuestion {
+  readonly id: string
+  readonly availableWhen?: SerializableCondition | undefined
+  readonly options: readonly {
+    readonly availableWhen?: SerializableCondition | undefined
+  }[]
+  readonly allowedOptions?: readonly {
+    readonly when: SerializableCondition
+  }[] | undefined
+  readonly selection: {
+    readonly overrides?: readonly {
+      readonly when: SerializableCondition
+    }[] | undefined
+  }
+  readonly autoAnswer?: {
+    readonly when?: SerializableCondition | undefined
+  } | undefined
+}
+
+interface PathConditionReference {
+  readonly referencedQuestionId: string
+  readonly path: string
+}
+
+function walkConditionReferences(
+  condition: SerializableCondition,
+  path: string,
+): readonly PathConditionReference[] {
   switch (condition.type) {
     case 'answered':
     case 'answer-includes':
-      return [condition.questionId]
+      return [{
+        referencedQuestionId: condition.questionId,
+        path: `${path}/questionId`,
+      }]
     case 'not':
-      return conditionReferences(condition.condition)
+      return walkConditionReferences(condition.condition, `${path}/condition`)
     case 'all':
     case 'any':
-      return [...new Set(condition.conditions.flatMap(conditionReferences))].sort(compareCodePoints)
+      return condition.conditions.flatMap((child, index) => (
+        walkConditionReferences(child, `${path}/conditions/${index}`)
+      ))
   }
 }
 
-function collectConditionReferences(
-  condition: SerializableCondition,
-  ownerQuestionId: string,
-  path: string,
-  references: ConditionReference[],
-) {
-  switch (condition.type) {
-    case 'answered':
-    case 'answer-includes':
-      references.push({
-        ownerQuestionId,
-        referencedQuestionId: condition.questionId,
-        path: `${path}/questionId`,
-      })
-      return
-    case 'not':
-      collectConditionReferences(
-        condition.condition,
-        ownerQuestionId,
-        `${path}/condition`,
-        references,
-      )
-      return
-    case 'all':
-    case 'any':
-      condition.conditions.forEach((child, index) => {
-        collectConditionReferences(
-          child,
-          ownerQuestionId,
-          `${path}/conditions/${index}`,
-          references,
-        )
-      })
-  }
+export function conditionReferences(condition: SerializableCondition): readonly string[] {
+  return [...new Set(
+    walkConditionReferences(condition, '').map(({ referencedQuestionId }) => referencedQuestionId),
+  )].sort(compareCodePoints)
 }
 
 export function extractConditionReferences(
-  questions: readonly CanonicalQuestion[],
+  questions: readonly ConditionBearingQuestion[],
 ): readonly ConditionReference[] {
   const references: ConditionReference[] = []
+  const appendReferences = (
+    condition: SerializableCondition,
+    ownerQuestionId: string,
+    path: string,
+  ) => {
+    references.push(...walkConditionReferences(condition, path).map((reference) => ({
+      ownerQuestionId,
+      ...reference,
+    })))
+  }
   questions.forEach((question, questionIndex) => {
     const questionPath = `/questions/${questionIndex}`
     if (question.availableWhen) {
-      collectConditionReferences(
+      appendReferences(
         question.availableWhen,
         question.id,
         `${questionPath}/availableWhen`,
-        references,
       )
     }
     question.options.forEach((option, optionIndex) => {
       if (option.availableWhen) {
-        collectConditionReferences(
+        appendReferences(
           option.availableWhen,
           question.id,
           `${questionPath}/options/${optionIndex}/availableWhen`,
-          references,
         )
       }
     })
-    question.allowedOptions.forEach((row, rowIndex) => {
-      collectConditionReferences(
+    question.allowedOptions?.forEach((row, rowIndex) => {
+      appendReferences(
         row.when,
         question.id,
         `${questionPath}/allowedOptions/${rowIndex}/when`,
-        references,
       )
     })
-    question.selection.overrides.forEach((override, overrideIndex) => {
-      collectConditionReferences(
+    question.selection.overrides?.forEach((override, overrideIndex) => {
+      appendReferences(
         override.when,
         question.id,
         `${questionPath}/selection/overrides/${overrideIndex}/when`,
-        references,
       )
     })
     if (question.autoAnswer?.when) {
-      collectConditionReferences(
+      appendReferences(
         question.autoAnswer.when,
         question.id,
         `${questionPath}/autoAnswer/when`,
-        references,
       )
     }
   })
