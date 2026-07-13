@@ -86,6 +86,16 @@ function effectiveBounds(question: CompiledQuestion, state: FlowState) {
     : { min: question.selection.min, max: question.selection.max }
 }
 
+function copyDiagnosticValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(copyDiagnosticValue)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, child]) => (
+      [key, copyDiagnosticValue(child)]
+    )))
+  }
+  return value
+}
+
 function makeSubmissionDiagnostic(
   code: Diagnostic['code'],
   path: string,
@@ -107,8 +117,12 @@ function makeSubmissionDiagnostic(
     path,
     ...(entityId ? { entityId } : {}),
     message,
-    ...(details.expected === undefined ? {} : { expected: details.expected }),
-    ...(details.received === undefined ? {} : { received: details.received }),
+    ...(details.expected === undefined
+      ? {}
+      : { expected: copyDiagnosticValue(details.expected) }),
+    ...(details.received === undefined
+      ? {}
+      : { received: copyDiagnosticValue(details.received) }),
   })
 }
 
@@ -117,11 +131,14 @@ function reject(
   state: FlowState,
   diagnostics: readonly Diagnostic[],
 ): ApplyAnswerResult {
-  return deepFreeze({
+  const frozenDiagnostics = Object.isFrozen(diagnostics)
+    ? diagnostics
+    : deepFreeze([...diagnostics])
+  return Object.freeze({
     accepted: false,
     draft,
     state,
-    diagnostics,
+    diagnostics: frozenDiagnostics,
   })
 }
 
@@ -313,17 +330,22 @@ export function applyAnswer(
     previousOptionIds !== undefined
     && sameSelection(previousOptionIds, canonicalOptionIds)
   ) {
-    return deepFreeze({
+    const invalidatedQuestionIds = Object.freeze([]) as readonly QuestionId[]
+    const changes = Object.freeze([]) as readonly ForcedAnswerChange[]
+    return Object.freeze({
       accepted: true,
       changed: false,
       draft,
       state: previousState,
-      invalidatedQuestionIds: [],
-      forcedChanges: [],
+      invalidatedQuestionIds,
+      forcedChanges: changes,
     })
   }
 
-  const nextDraft: Partial<Record<QuestionId, readonly OptionId[]>> = { ...draft }
+  const nextDraft: Partial<Record<QuestionId, readonly OptionId[]>> = {}
+  for (const [questionId, optionIds] of Object.entries(draft)) {
+    nextDraft[questionId as QuestionId] = [...optionIds]
+  }
   nextDraft[question.id as QuestionId] = canonicalOptionIds
   const questionOrder = new Map(questions.map(({ id }, index) => [id, index]))
   const invalidatedQuestionIds = [

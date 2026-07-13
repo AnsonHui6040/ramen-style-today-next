@@ -116,7 +116,121 @@ const effectiveBoundsModel = replaceQuestion(questionModel, 'source', (question)
   },
 }))
 
+function captureObjectState(value: object) {
+  return {
+    frozen: Object.isFrozen(value),
+    descriptors: Object.getOwnPropertyDescriptors(value),
+  }
+}
+
+function captureCallerObjects(values: readonly object[]) {
+  return values.map((value) => ({ value, state: captureObjectState(value) }))
+}
+
+function expectCallerObjectsUnchanged(
+  captures: ReturnType<typeof captureCallerObjects>,
+) {
+  for (const { value, state } of captures) {
+    expect(Object.isFrozen(value)).toBe(state.frozen)
+    expect(Object.getOwnPropertyDescriptors(value)).toEqual(state.descriptors)
+  }
+}
+
 describe('applyAnswer', () => {
+  test('invalid-state rejection preserves caller draft descriptors and frozen state', () => {
+    const form = ['soup']
+    const archetype = ['chintan']
+    const source = ['future']
+    const draft = { form, archetype, source } as unknown as AnswerDraft
+    const callerObjects = captureCallerObjects([draft, form, archetype, source])
+
+    const result = applyAnswer(questionModel, draft, {
+      questionId: 'form',
+      optionIds: ['dry'],
+    })
+
+    expect(result.accepted).toBe(false)
+    expect(result.draft).toBe(draft)
+    expectCallerObjectsUnchanged(callerObjects)
+  })
+
+  test('selection rejection preserves caller draft and submission ownership', () => {
+    const form = ['soup']
+    const archetype = ['chintan']
+    const draft = { form, archetype } as AnswerDraft
+    const optionIds = ['unsure', 'pork'] as const
+    const submission: AnswerSubmission = { questionId: 'source', optionIds }
+    const callerObjects = captureCallerObjects([
+      draft,
+      form,
+      archetype,
+      submission,
+      optionIds,
+    ])
+
+    const result = applyAnswer(questionModel, draft, submission)
+
+    expect(result.accepted).toBe(false)
+    expect(result.draft).toBe(draft)
+    if (result.accepted) return
+    expect(result.diagnostics.map(({ code }) => code)).toEqual([
+      'ANSWER_EXCLUSIVE_CONFLICT',
+    ])
+    expect(result.diagnostics[0]?.received).toEqual(optionIds)
+    expect(result.diagnostics[0]?.received).not.toBe(optionIds)
+    expect(Object.isFrozen(result.diagnostics[0]?.received)).toBe(true)
+    expectCallerObjectsUnchanged(callerObjects)
+  })
+
+  test('accepted no-op preserves caller draft and submission ownership', () => {
+    const draft = structuredClone({
+      ...completeSoupDraft,
+      source: ['pork', 'chicken'] as const,
+    })
+    const optionIds = ['chicken', 'pork'] as const
+    const submission: AnswerSubmission = { questionId: 'source', optionIds }
+    const callerObjects = captureCallerObjects([
+      draft,
+      ...Object.values(draft),
+      submission,
+      optionIds,
+    ])
+
+    const result = applyAnswer(questionModel, draft, submission)
+
+    expect(result.accepted).toBe(true)
+    if (!result.accepted) return
+    expect(result.changed).toBe(false)
+    expect(result.draft).toBe(draft)
+    expect(Object.isFrozen(result)).toBe(true)
+    expect(Object.isFrozen(result.invalidatedQuestionIds)).toBe(true)
+    expect(Object.isFrozen(result.forcedChanges)).toBe(true)
+    expectCallerObjectsUnchanged(callerObjects)
+  })
+
+  test('changed transition owns retained arrays without changing caller descriptors', () => {
+    const draft = structuredClone(completeSoupDraft)
+    const optionIds = ['dry'] as const
+    const submission: AnswerSubmission = { questionId: 'form', optionIds }
+    const callerObjects = captureCallerObjects([
+      draft,
+      ...Object.values(draft),
+      submission,
+      optionIds,
+    ])
+
+    const result = applyAnswer(questionModel, draft, submission)
+
+    expect(result.accepted).toBe(true)
+    if (!result.accepted) return
+    expect(result.changed).toBe(true)
+    expect(result.draft.exclusions).toEqual(draft.exclusions)
+    expect(result.draft.exclusions).not.toBe(draft.exclusions)
+    expect(Object.isFrozen(result.draft)).toBe(true)
+    expect(Object.isFrozen(result.draft.exclusions)).toBe(true)
+    expectCallerObjectsUnchanged(callerObjects)
+  })
+
   test.each(rejectionCases)('rejects %s atomically', (_name, draft, submission, code) => {
     const snapshot = structuredClone(draft)
     const result = applyAnswer(questionModel, draft, submission)
@@ -206,7 +320,8 @@ describe('applyAnswer', () => {
     ])
     expect(result.draft).not.toBe(original)
     expect(result.draft.form).toEqual(['dry'])
-    expect(result.draft.exclusions).toBe(exclusions)
+    expect(result.draft.exclusions).toEqual(exclusions)
+    expect(result.draft.exclusions).not.toBe(exclusions)
     for (const questionId of result.invalidatedQuestionIds) {
       expect(Object.prototype.hasOwnProperty.call(result.draft, questionId)).toBe(false)
     }
@@ -229,7 +344,8 @@ describe('applyAnswer', () => {
 
     expect(result.accepted).toBe(true)
     if (!result.accepted) return
-    expect(result.draft.source).toBe(source)
+    expect(result.draft.source).toEqual(source)
+    expect(result.draft.source).not.toBe(source)
     expect(result.state.repairs).toContainEqual({
       code: 'remove-disallowed-option',
       questionId: 'source',
