@@ -2,15 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the synthetic question inventory with eight production question definitions, a deterministic proof-producing compiler, a browser-neutral pure flow runtime, and frozen semantic parity evidence from the verified legacy oracle.
+**Goal:** Replace the synthetic question inventory with eight production question definitions, a deterministic proof-producing compiler, a browser-neutral pure flow runtime, and frozen observable-transition parity evidence from the verified legacy oracle.
 
-**Architecture:** Production definitions are the only hand-authored question source. A Node-only compiler canonicalizes and proves them before emitting a tracked immutable artifact; runtime functions consume only that artifact. A separately controlled extractor authors frozen fixtures from the exact legacy tree, while ordinary verification replays those fixtures without accessing the legacy repository.
+**Architecture:** Production definitions are the only hand-authored question source. A Node-only compiler canonicalizes and proves them before emitting a tracked immutable artifact; runtime functions consume only that artifact. A separately isolated extractor authors observable-only traces from the exact legacy tree, while ordinary verification executes the same actions through a runtime adapter and compares only the stable observable projection without accessing the legacy repository.
 
 **Tech Stack:** Node.js 24, npm 11, npm workspaces, TypeScript 6.0.3, Zod 4.4.3 for compiler/tool decoding only, Vitest 4.1.10, ESLint 10.6.0, tsx 4.23.0, Git and GitHub Actions.
 
 **Approved specification:** `docs/superpowers/specs/2026-07-13-batch-2a-questions-flow-design.md`
 
 **Status:** Ready for execution.
+
+**Approved execution correction (2026-07-13):** Tasks 1–8 are implemented and reviewed. The first Task 9 implementation in `3b65eac` failed high-risk review and must be replaced from the reviewed Task 8 baseline `7a198bf`; it is not an implementation or fixture baseline. The replacement Task 9 must pass a fresh high-risk review before Task 10 starts.
 
 ## Global Constraints
 
@@ -22,7 +24,8 @@
 - Canonicalize before dependency derivation, semantic exploration, diagnostics sorting, and hashing.
 - Derive dependencies from every condition that affects reachability, allowed options, bounds, forced eligibility, or answer validity. Do not hand-author `dependsOn` or use `stepIndex` ranges.
 - `evaluateFlow` is deterministic and read-only. `applyAnswer` is the only submitted-draft transition. `updatePendingSelection` is draft-independent.
-- Frozen `legacy-v1` fixture bytes and extraction manifest never store current implementation verification and never change for an intentional divergence.
+- Frozen `legacy-v1` trace bytes and extraction manifest contain only directly observable legacy transitions, never store current implementation verification, and never change for an intentional divergence.
+- Repairs, diagnostics, invalidated IDs, global reachability, accepted/rejected API objects, canonical navigation metadata, dependency closures, fixed-point metadata, and invalid external API behavior belong to compiler/runtime tests, never frozen legacy traces.
 - Root runtime exports must remain browser-neutral and must not pull Zod, compiler code, extractors, React, or `node:*` into the root import graph.
 - `npm run verify` is offline and read-only. `npm run verify:acceptance` adds authenticated exact-SHA GitHub evidence.
 - Use TypeScript ES modules, 2-space indentation, single quotes, no semicolons, deterministic code-point ordering, and stable structured diagnostics.
@@ -73,19 +76,19 @@ tools/questions/
   generate-question-model.test.ts         no-drift and deterministic output tests
 
 tools/parity/questions/
-  contracts.ts                            fixture, coverage, divergence, and verification schemas
-  canonical-snapshot.ts                   runtime-to-parity projection
-  compare.ts                              bounded structured semantic diff
-  parity.ts                               offline replay and coverage gate
-  extract.ts                              controlled fixture-authoring CLI
-  extractor.ts                            legacy identity, worktree, environment, and atomic output logic
-  legacy-instrumentation.patch            tracked deterministic temporary legacy patch
-  seeds.json                              ordered legacy-representable scenario definitions
-  *.test.ts                               safety, integrity, coverage, and replay tests
+  contracts.ts                            observable trace, coverage, divergence, and manifest schemas
+  observable-trace.ts                     runtime action adapter and observable projection
+  compare.ts                              bounded structured trace diff
+  parity.ts                               offline projection replay and observable coverage gate
+  extract.ts                              controlled trace-authoring CLI
+  extractor.ts                            isolation, identity, execution, seed binding, and atomic publish
+  legacy-instrumentation.patch            tracked observational temporary legacy patch
+  seeds.json                              ordered public-action scenario definitions without expected output
+  *.test.ts                               isolation, integrity, observable coverage, and replay tests
 
 tools/parity/fixtures/questions/
   legacy-v1/manifest.json                 frozen extraction identity and fixture content hash
-  legacy-v1/cases.json                    frozen discriminated parity cases
+  legacy-v1/cases.json                    frozen `LegacyObservableTraceCase` corpus
   expected-divergences.json               initially empty reviewed JSON-Patch-style deltas
 
 tools/validation/validate-classification.ts production question validation entry
@@ -100,6 +103,8 @@ docs/classification/index.md                 generated production question index
 docs/classification/manifest.json            generated provenance, readiness, verification, and concepts
 docs/migration/ledger.json                    Batch 2A canonical ownership and evidence
 docs/migration/ledger.md                      generated migration summary
+docs/migration/incidents/
+  2026-07-13-legacy-cache-isolation.md        rejected Task 9 cache-isolation incident and remediation
 AGENTS.md / README.md                         concise phase summaries and canonical pointers
 package.json / package-lock.json              question, parity, verify, and acceptance commands
 .github/workflows/ci.yml                       offline PR verify and acceptance-capable push workflow
@@ -113,25 +118,28 @@ package.json / package-lock.json              question, parity, verify, and acce
 | 5–8 canonical compiler, dependencies, exploration, proofs | Tasks 3–5 |
 | 9–14 submitted/pending/forced/canonical state and navigation | Tasks 6–8 |
 | 15 deterministic artifact and hashes | Task 5 |
-| 16–18 extractor, frozen fixtures, coverage, parity | Tasks 9–10 |
+| 16–18 isolated extractor, frozen observable traces, coverage, projection parity | Tasks 9–10 |
 | 19 provenance and readiness | Tasks 12, 14 |
 | 20 offline/online verification and exact-SHA evidence | Tasks 13–14 |
 | 21 acceptance rejection conditions | Focused tests in Tasks 1–13 plus Task 14 aggregate acceptance |
 | 22 required deliverables | Tasks 1–14 |
 
+New-only semantic coverage remains owned by the already implemented Tasks 3–8: Task 3 tests dependency graphs and closures; Task 4 tests equivalence classes, global reachability proof, and compiler fixed-point obligations; Task 6 tests repairs, diagnostics, invalid draft input, canonical/global flow state, and runtime fixed-point defense; Task 7 tests accepted/rejected application results and invalidated IDs; Task 8 tests canonical stable-ID navigation and pending-operation diagnostics. Task 10 reruns these suites but must not copy their fields or coverage tags into legacy traces.
+
 ---
 
 ## Execution prerequisite
 
-Execution must start from the clean approved commit containing this plan. Use `superpowers:using-git-worktrees` to create an isolated worktree and branch `codex/batch-2a-questions-flow`; do not execute Tasks 1–14 directly on `main`.
+Tasks 1–8 were executed in the isolated worktree and branch `codex/batch-2a-questions-flow`. Resume Tasks 9–14 only in that isolation after the branch coordinator reconstructs the branch from the reviewed Task 8 commit and applies the parity-contract revision commit. Do not create a nested worktree, rerun Tasks 1–8, execute on `main`, or retain rejected commit `3b65eac` in the reconstructed history.
 
 ```bash
 git status --porcelain
-git rev-parse --verify d6a23ec0dc556bda86840d5090b38ca6e3d29c5f^{commit}
-git merge-base --is-ancestor d6a23ec0dc556bda86840d5090b38ca6e3d29c5f HEAD
+test "$(git branch --show-current)" = "codex/batch-2a-questions-flow"
+git merge-base --is-ancestor 7a198bf7a9195a82e84ff4230e9fe61af40b7018 HEAD
+! git merge-base --is-ancestor 3b65eac3befb6ee7b3aa460bc1ff940027830a3e HEAD
 ```
 
-Expected: status is empty and both Git assertions exit 0. If the plan commit is newer than this specification-review commit, use the plan commit as the worktree base while retaining the ancestor assertion above.
+Expected: status is empty, the branch is the isolated Batch 2A branch, the reviewed Task 8 commit is an ancestor, and the rejected Task 9 commit is not an ancestor. Task 9 Step 0 additionally proves that only the corrected spec/plan differ from the Task 8 baseline before reimplementation begins.
 
 ---
 
@@ -693,7 +701,7 @@ npx vitest run packages/classification-core/src/compiler/questions/explore.test.
 npm run typecheck
 ```
 
-Expected: both runs PASS with identical snapshots and the production coverage count.
+Expected: both runs PASS with identical proof outputs and the production coverage count.
 
 - [ ] **Step 5: Commit**
 
@@ -1295,28 +1303,85 @@ git commit -m "Add question interaction navigation"
 
 ---
 
-### Task 9: Define fixture contracts and harden the legacy extractor
+### Task 9: Replace the rejected extractor with observable trace contracts and strict isolation
 
 **Files:**
-- Create: `tools/parity/questions/contracts.ts`
-- Create: `tools/parity/questions/contracts.test.ts`
-- Create: `tools/parity/questions/extractor.ts`
-- Create: `tools/parity/questions/extractor.test.ts`
-- Create: `tools/parity/questions/extract.ts`
-- Create: `tools/parity/questions/legacy-instrumentation.patch`
-- Create: `tools/parity/questions/seeds.json`
+- Create replacement contract: `tools/parity/questions/contracts.ts`
+- Create replacement tests: `tools/parity/questions/contracts.test.ts`
+- Create replacement extractor: `tools/parity/questions/extractor.ts`
+- Create replacement tests: `tools/parity/questions/extractor.test.ts`
+- Create replacement CLI: `tools/parity/questions/extract.ts`
+- Create replacement patch: `tools/parity/questions/legacy-instrumentation.patch`
+- Create replacement seeds: `tools/parity/questions/seeds.json`
+- Create: `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`
+- Do not modify: `docs/migration/ledger.json`, `docs/migration/ledger.md`, fixtures, runtime/compiler code, or the original legacy checkout
 
 **Interfaces:**
-- Consumes: exact legacy identity, Git, Node 24/npm 11 environment, and no production runtime package.
-- Produces: versioned fixture schemas plus explicit, safe `extract.ts --legacy <path> [--replace]` fixture authoring.
+- Consumes: reviewed Task 8 baseline `7a198bf7a9195a82e84ff4230e9fe61af40b7018`, the corrected Sections 16–18 contract, exact legacy identity, trusted absolute Git/Node/npm paths, and public legacy UI actions.
+- Produces: `LegacyObservableTraceCase`, strict manifest/divergence schemas, exact seed/raw binding, an isolated `extract.ts --legacy <path> [--replace|--verify-only]` authoring flow, the incident record, and a fresh high-risk review gate.
 
-- [ ] **Step 1: Write failing contract and trust-boundary tests**
+- [ ] **Step 0: Remove the rejected Task 9 implementation from the execution baseline**
+
+The branch coordinator must reconstruct the task branch from the reviewed Task 8 commit and then apply this two-document contract-revision commit. Do not revert `3b65eac` on top and leave its ledger or extractor changes in history.
+
+```bash
+TASK8_BASE=7a198bf7a9195a82e84ff4230e9fe61af40b7018
+REJECTED_TASK9=3b65eac3befb6ee7b3aa460bc1ff940027830a3e
+git merge-base --is-ancestor "$TASK8_BASE" HEAD
+! git merge-base --is-ancestor "$REJECTED_TASK9" HEAD
+git diff --name-only "$TASK8_BASE"..HEAD
+```
+
+Expected: both ancestry assertions exit 0 and the diff lists only the corrected spec and plan. No rejected parity tool, fixture, or ledger change is present.
+
+- [ ] **Step 1: Write failing observable-contract and forbidden-field tests**
 
 ```ts
-test('accepts equivalent GitHub transports after normalization', () => {
-  expect(normalizeGitHubRepository('https://github.com/AnsonHui6040/ramen-style-today.git')).toEqual(expectedRepository)
-  expect(normalizeGitHubRepository('git@github.com:AnsonHui6040/ramen-style-today.git')).toEqual(expectedRepository)
-  expect(normalizeGitHubRepository('ssh://git@github.com/AnsonHui6040/ramen-style-today.git')).toEqual(expectedRepository)
+const validFrame = {
+  sequence: 0,
+  transition: 'initial',
+  displayedQuestionId: 'form',
+  visibleOptionIds: ['soup', 'dry'],
+  pendingOptionIds: [],
+  legacyAnswers: {},
+} as const
+
+const validTraceCase = {
+  id: 'soup-chintan-complete',
+  actions: [
+    { type: 'select', questionId: 'form', optionId: 'soup' },
+    { type: 'next', fromQuestionId: 'form' },
+  ],
+  coverageTags: [
+    'action:next',
+    'action:select',
+    'option:form:dry',
+    'option:form:soup',
+    'question:form',
+    'transition:initial',
+  ],
+  frames: [validFrame],
+} as const
+
+test('accepts observable frames with unobservable fields omitted', () => {
+  expect(legacyObservableTraceCaseSchema.safeParse(validTraceCase).success).toBe(true)
+  expect(legacyObservableTraceFrameSchema.safeParse({
+    sequence: 1,
+    transition: 'previous',
+    navigation: { direction: 'previous', reachedQuestionId: 'form' },
+  }).success).toBe(true)
+})
+
+test.each([
+  'canonicalAnswers', 'reachableQuestionIds', 'interactiveQuestionIds',
+  'allowedOptionIdsByQuestion', 'repairs', 'diagnostics',
+  'invalidatedQuestionIds', 'accepted', 'dependencyClosures',
+  'fixedPointIterations',
+])('rejects new-only frozen field %s', (field) => {
+  expect(legacyObservableTraceFrameSchema.safeParse({
+    ...validFrame,
+    [field]: [],
+  }).success).toBe(false)
 })
 
 test('frozen manifest rejects current verification fields', () => {
@@ -1325,113 +1390,266 @@ test('frozen manifest rejects current verification fields', () => {
     verifiedSemanticHash: 'a'.repeat(64),
   }).success).toBe(false)
 })
-
-test.each(['dirty', 'wrong-commit', 'wrong-tree', 'wrong-lock', 'patch-drift'])(
-  'rejects %s legacy input',
-  async (failure) => expect(runExtractor(fakeEnvironment(failure))).rejects.toThrow(),
-)
-
-test('does not replace existing output without --replace', async () => {
-  await expect(runExtractor(fakeEnvironment('existing-output'))).rejects.toThrow(
-    'fixture output exists; pass --replace',
-  )
-})
 ```
 
-- [ ] **Step 2: Run extractor tests and confirm red**
+Keep transport-normalization, wrong identity/commit/tree/lock/source hash, dirty checkout, patch-drift, illegal path/case ID, and existing-output-without-`--replace` tests from the approved trust boundary, rewritten against the replacement implementation rather than copied from `3b65eac`.
+
+- [ ] **Step 2: Run the contract tests and confirm red**
 
 ```bash
 npx vitest run tools/parity/questions/contracts.test.ts tools/parity/questions/extractor.test.ts
 ```
 
-Expected: FAIL because fixture contracts and extractor do not exist.
+Expected: FAIL because the observable trace schema and corrected extractor contracts are absent.
 
-- [ ] **Step 3: Implement strict versioned fixture schemas**
+- [ ] **Step 3: Implement strict observable trace and manifest schemas**
 
-Use `z.strictObject` for four discriminated case categories and these immutable manifest fields:
-
-```ts
-const fixtureManifestSchema = z.strictObject({
-  schemaVersion: z.literal(1),
-  caseSchemaVersion: z.literal(1),
-  repository: z.strictObject({
-    host: z.literal('github.com'),
-    owner: z.literal('AnsonHui6040'),
-    repository: z.literal('ramen-style-today'),
-  }),
-  commit: z.literal('eebf00b7ddfbbe6f01ff598e57f1e17197068a37'),
-  treeHash: z.literal('3e527de876cfeccfd3154ddc492830d71c4cfd9a'),
-  sourceHashes: z.record(z.string(), sha256Schema),
-  lockfileHash: sha256Schema,
-  extractorVersion: z.string(),
-  instrumentationVersion: z.string(),
-  instrumentationHash: sha256Schema,
-  runtime: runtimeEnvironmentSchema,
-  orderedCaseIds: z.array(parityCaseIdSchema),
-  caseCount: z.number().int().nonnegative(),
-  fixtureContentHash: sha256Schema,
-})
-```
-
-Do not permit `semanticHash`, `paritySuiteVersion`, `implementationSha`, or assurance fields. Define `expectedDivergencesSchema` with ordered JSON-Patch-style `add`/`replace`/`remove` entries and conditional `approvedValue` validation.
-
-- [ ] **Step 4: Implement identity, temporary-worktree, patch, and environment checks**
-
-Normalize only `github.com/owner/repository`. Require clean input, exact full commit and root tree, exact hashes for `package-lock.json`, `src/data/questions.json`, `src/config/questions.ts`, `src/domain/questionRules.ts`, `src/domain/types.ts`, `src/App.tsx`, and `src/App.test.tsx`, tracked patch SHA-256, and exact post-patch `git diff --binary` hash. Create a detached temporary worktree outside the original checkout; run frozen install and extraction with:
+Define the observable types exactly as approved in design Section 17, including:
 
 ```ts
-const environment = {
-  TZ: 'UTC',
-  LANG: 'C.UTF-8',
-  LC_ALL: 'C.UTF-8',
-  RAMEN_PARITY_SEED: 'batch2a-legacy-v1',
-  CI: '1',
+export type LegacyNavigationDirection = 'next' | 'previous'
+export type LegacyObservableTransition =
+  | 'initial' | 'toggle' | 'submit' | 'forced-skip'
+  | 'next' | 'previous' | 'complete'
+
+export type LegacyObservableAction =
+  | { readonly type: 'select'; readonly questionId: string; readonly optionId: string }
+  | { readonly type: 'deselect'; readonly questionId: string; readonly optionId: string }
+  | { readonly type: 'submit'; readonly questionId: string }
+  | { readonly type: 'next'; readonly fromQuestionId: string }
+  | { readonly type: 'previous'; readonly fromQuestionId: string }
+
+export interface LegacyObservableTraceCase {
+  readonly id: string
+  readonly actions: readonly LegacyObservableAction[]
+  readonly coverageTags: readonly string[]
+  readonly frames: readonly LegacyObservableTraceFrame[]
 }
 ```
 
-Use bundled Node major 24 and npm `11.12.1`, `npm ci --ignore-scripts`, and no prompts. Network access is allowed only for the frozen install when the local npm cache cannot satisfy the lockfile; the extraction test itself performs no network calls.
+Implement `LegacyObservableTraceFrame`, `LegacyObservedAnswers`, and `LegacyObservedChanges` exactly as Section 17. Every field other than `sequence` and `transition` is optional because the legacy may not directly observe it. Strict schemas reject unknown keys. Sequence numbers begin at zero and increase by one. `initial` forbids `actionIndex`; every other action-driven frame requires an in-range `actionIndex`. `forced-skip` requires `forcedAutoAnswer`, while other transitions forbid it. `next` and `previous` require `navigation` with the matching direction; a target question or results screen remains optional when that target is not directly observable. `complete` requires `completionMarker: 'results'`, while other transitions forbid it. Do not add a catch-all metadata object.
 
-The tracked patch makes these reviewable instrumentation-only changes in the temporary worktree:
+Coverage tags have only these forms:
 
-- export `createInitialAnswers`, `getSelectedValues`, `getForcedQuestionValue`, `applyForcedAnswersFromStep`, and `getPreviousInteractiveStep` from legacy `src/App.tsx`
-- extract the existing nested multi-select toggle calculation into exported pure `legacyUpdatePendingSelection`, then call that same helper from the component
-- add `src/parity-question-extractor.test.tsx`, which reads the copied ordered seeds, drives public UI actions where behavior is interactive, calls exported pure helpers for semantic snapshots, and writes only to the required temporary output environment path
-- run the complete frozen legacy test suite after patching and before accepting extracted output
+```ts
+type TraceCoverageTag =
+  | `question:${string}`
+  | `option:${string}:${string}`
+  | `action:${LegacyObservableAction['type']}`
+  | `transition:${LegacyObservableTransition}`
+  | `navigation-target:${string | 'results'}`
+  | `behavior:${
+      | 'forced-skip'
+      | 'completion'
+      | 'exclusive-replacement'
+      | 'max-no-op'
+      | 'empty-restoration'
+      | 'branch-visible-change'
+      | 'branch-answer-change'
+    }`
+```
 
-`seeds.json` contains only stable IDs, action sequences, and coverage tags; it contains no expected outputs. Expected values always come from the instrumented verified legacy code.
+`deriveObservableCoverage(case)` derives tags only from actions and frames; declared tags must equal the derived, deduplicated code-point-sorted list. Reject `semantic-class:*`, repair, diagnostic, invalid-input, global reachability, dependency, fixed-point, and application-result coverage.
 
-- [ ] **Step 5: Implement transactional output replacement and cleanup**
+Keep the immutable manifest fields from the approved design: schema versions; normalized repository, commit, and tree; exact source and lock hashes; extractor/instrumentation identities; isolated runtime contract; ordered case IDs/count; and fixture content hash. Strictly reject current semantic hash, parity-suite version, implementation SHA, assurance, and all excluded runtime metadata. Keep reviewed JSON-Patch-style divergence validation, but require every pointer to start `/frames/` and reject pointers naming a forbidden field.
 
-Reject symlinked roots, unsafe parents, traversal, duplicate/illegal case IDs, and non-regular files. Build and fully validate `manifest.json` and `cases.json` in a sibling temporary directory. For `--replace`, rename the old directory to a sibling backup, rename the validated temporary directory into place, and restore the backup on any failure; remove the backup only after success. There are no concurrent fixture readers during explicit extraction, and every individual rename is same-filesystem atomic.
+- [ ] **Step 4: Replace the instrumentation patch with observation-only component driving**
 
-- [ ] **Step 6: Run safety tests and confirm the legacy checkout is unchanged**
+The patch may make only these behavioral-neutral changes:
+
+- add a test-only observer registration whose callback receives a deep-cloned read-only observation from values the component has already computed or stored
+- emit observations where the existing component actually handles select/deselect, continue/submit, forced auto-answer/skip, back/previous, next-screen, and results completion transitions
+- extract the existing nested multi-select toggle calculation into `legacyUpdatePendingSelection` only if `App` itself calls that exact helper after extraction
+- add `src/parity-question-extractor.test.tsx`, which renders `App`, drives the copied seed through public controls under `act`/`waitFor`, waits for each action to settle, and writes raw cases to the single required temporary output file
+
+The observer and test must not export or call `createInitialAnswers`, `getSelectedValues`, `getForcedQuestionValue`, `applyForcedAnswersFromStep`, `getPreviousInteractiveStep`, or another helper to calculate expected behavior. They must not implement or infer branch, repair, validation, answer-application, navigation, forced-resolution, or completion rules. A single public event remains one seed action even when existing component code emits multiple transition observations.
+
+`src/parity-question-extractor.test.tsx` is skipped during the full-suite command unless the isolated extraction-only environment supplies its exact raw-output capability. `seeds.json` contains only schema version, stable case ID, ordered `LegacyObservableAction[]`, and code-point-sorted observable coverage tags. It contains no expected frame, answer, screen, option, navigation result, or internal runtime value. Add patch tests that inspect added lines and reject calls to rule helpers, hand-authored expected outputs, or a second flow implementation.
+
+- [ ] **Step 5: Write failing isolation, execution-order, binding, and publish-safety tests**
+
+```ts
+test('never reuses original dependencies or caches', async () => {
+  const fixture = await createExtractorFixture()
+  await fixture.addOriginalNodeModulesWithTsBuildInfo()
+  await runExtractor(fixture.environment)
+  expect(fixture.spawnRecords.some(({ args }) =>
+    args.some((value) => value.startsWith(fixture.originalNodeModules)),
+  )).toBe(false)
+  expect(await fixture.originalFingerprintAfter()).toEqual(fixture.originalFingerprintBefore)
+})
+
+test('fails when an ignored original cache changes', async () => {
+  const fixture = await createExtractorFixture()
+  fixture.afterLegacySuite = () => fixture.rewriteOriginalTsBuildInfo()
+  await expect(runExtractor(fixture.environment)).rejects.toThrow(
+    'original ignored path changed',
+  )
+})
+
+test('runs the full suite before network-denied extraction', async () => {
+  const fixture = await createExtractorFixture()
+  await runExtractor(fixture.environment)
+  const executionOrder = fixture.spawnRecords
+    .map(({ role }) => role)
+    .filter((role) => [
+      'npm-ci',
+      'legacy-full-suite',
+      'legacy-network-denied-extraction',
+    ].includes(role))
+  expect(executionOrder).toEqual([
+    'npm-ci',
+    'legacy-full-suite',
+    'legacy-network-denied-extraction',
+  ])
+  const extraction = fixture.spawnRecords.find(
+    ({ role }) => role === 'legacy-network-denied-extraction',
+  )
+  if (!extraction) throw new Error('missing extraction record')
+  expect(extraction.executable).toBe('/usr/bin/sandbox-exec')
+  expect(extraction.args.slice(0, 2)).toEqual([
+    '-p',
+    '(version 1)(allow default)(deny network*)',
+  ])
+})
+
+test('passes only the allowlisted child environment', async () => {
+  const fixture = await createExtractorFixture({
+    inheritedEnvironment: {
+      GIT_CONFIG_GLOBAL: '/tmp/hostile-gitconfig',
+      NODE_OPTIONS: '--require=/tmp/hostile.cjs',
+      NPM_CONFIG_USERCONFIG: '/tmp/hostile-npmrc',
+      PATH: '/tmp/hostile-bin',
+    },
+  })
+  await runExtractor(fixture.environment)
+  const allowedKeys = [
+    'CI', 'GIT_CONFIG_NOSYSTEM', 'HOME', 'LANG', 'LC_ALL', 'NPM_CONFIG_CACHE',
+    'NPM_CONFIG_GLOBALCONFIG', 'NPM_CONFIG_USERCONFIG', 'PATH',
+    'RAMEN_PARITY_SEED', 'TMPDIR', 'TZ',
+  ]
+  expect(fixture.spawnRecords.every(({ environment }) =>
+    Object.keys(environment).sort().join('\0') === allowedKeys.join('\0'),
+  )).toBe(true)
+  expect(fixture.spawnRecords.every(({ environment }) =>
+    environment.NPM_CONFIG_USERCONFIG === '/dev/null'
+      && environment.NPM_CONFIG_GLOBALCONFIG === '/dev/null'
+      && environment.GIT_CONFIG_NOSYSTEM === '1',
+  )).toBe(true)
+  expect(fixture.spawnRecords.every(({ environment }) =>
+    !environment.PATH?.includes('/tmp/hostile-bin'),
+  )).toBe(true)
+})
+
+test.each(['count', 'order', 'id', 'actions', 'coverage'])(
+  'rejects raw seed binding mismatch: %s',
+  async (field) => {
+    const fixture = await createExtractorFixture({ rawMismatch: field })
+    await expect(runExtractor(fixture.environment)).rejects.toThrow('raw seed binding mismatch')
+  },
+)
+```
+
+Also test atomic lock contention; unique same-parent staging/backup names; no-follow rejection for the legacy root, patch, seeds, raw output, destination, and every parent; path replacement immediately before read/publish/rollback; rollback after old-output rename; partial worktree-add cleanup plus prune; cleanup failure preserving the primary error; and external-error sanitization to one control-free line no longer than 300 characters.
+
+- [ ] **Step 6: Implement isolated execution, exact binding, and transactional publication**
+
+Use these trusted tool identities for the first lineage and verify their type/version before use:
+
+```ts
+const trustedTools = {
+  git: '/usr/bin/git',
+  node: '/Users/ansonhui/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node',
+  npmCli: '/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js',
+  sandboxExec: '/usr/bin/sandbox-exec',
+} as const
+```
+
+Invoke npm as `[trustedTools.node, trustedTools.npmCli, 'ci', '--ignore-scripts']`. The temporary worktree gets unique physical `node_modules`, `.npm-cache`, `.home`, and `.tmp` paths beneath its validated extraction root; its build cache is the physical temporary `node_modules/.tmp`. No path may be a symlink or resolve into the original checkout. Construct child environments from this exact allowlist: `TZ`, `LANG`, `LC_ALL`, `RAMEN_PARITY_SEED`, `CI`, `GIT_CONFIG_NOSYSTEM=1`, generated `HOME`, `TMPDIR`, `NPM_CONFIG_CACHE`, `NPM_CONFIG_USERCONFIG=/dev/null`, `NPM_CONFIG_GLOBALCONFIG=/dev/null`, and a generated trusted `PATH`. Never spread `process.env`.
+
+After `npm ci --ignore-scripts`, invoke the complete patched suite with the trusted Node executable and the temporary worktree's physical `node_modules/vitest/vitest.mjs`. Only after it passes, invoke the extraction test separately through:
+
+```text
+/usr/bin/sandbox-exec -p (version 1)(allow default)(deny network*) <trusted-node> <temporary-vitest.mjs> run src/parity-question-extractor.test.tsx
+```
+
+Fingerprint the two declared original ignored paths by no-follow `lstat`, size, `mtimeMs`, and streamed SHA-256 for regular files before the first child and after all cleanup. Bind raw count/order/IDs/actions/coverage exactly to seeds before trace-schema normalization. Sanitize every Git/npm/test/filesystem error with `sanitizeExternalError(error, 300)` before reporting it.
+
+Acquire a same-parent lock with exclusive create. Use cryptographically unique same-parent `.staging-<token>` and `.backup-<token>` names. Revalidate no-follow identity immediately before every sensitive read, rename, rollback, and publish call. On failure, restore an old output if it was renamed, remove only validated run-owned paths, attempt absolute Git `worktree remove --force`, then absolute Git `worktree prune --expire now`; cleanup errors are attached as bounded secondary details and never replace the primary error. Document the non-privileged, non-hostile-same-user macOS threat boundary in code comments and the incident record.
+
+- [ ] **Step 7: Record the cache-isolation incident without changing the ledger**
+
+Create `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md` with these exact facts and sections:
+
+- rejected implementation: `3b65eac3befb6ee7b3aa460bc1ff940027830a3e`
+- original tracked HEAD remained `eebf00b7ddfbbe6f01ff598e57f1e17197068a37` and tracked tree remained `3e527de876cfeccfd3154ddc492830d71c4cfd9a`
+- a temporary `node_modules` symlink reused the original checkout dependency tree
+- ignored `node_modules/.tmp/tsconfig.app.tsbuildinfo` and `node_modules/.tmp/tsconfig.node.tsbuildinfo` may have been refreshed
+- impact is limited to ignored build-cache metadata; no tracked legacy source change was observed
+- rejected fixtures, if any, are unusable and Task 10 must regenerate only after fresh review
+- remediation is physical dependency/cache isolation, before/after ignored-path fingerprinting, trusted tools/environment, suite-before-network-denied-extraction, and no-follow transactional publication
+- supported threat boundary and the commands used to verify tracked HEAD/tree/status
+
+Do not edit `docs/migration/ledger.json` or `docs/migration/ledger.md`; Task 14 records the incident after exact-SHA acceptance.
+
+- [ ] **Step 8: Run focused and live verify-only checks**
 
 ```bash
 npx vitest run tools/parity/questions/contracts.test.ts tools/parity/questions/extractor.test.ts
+PATH="/Users/ansonhui/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:/usr/bin:/bin" \
+  /Users/ansonhui/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node \
+  node_modules/tsx/dist/cli.mjs tools/parity/questions/extract.ts \
+  --legacy /Users/ansonhui/Documents/GitHub/ramen-style-today \
+  --verify-only
 test -z "$(git -C /Users/ansonhui/Documents/GitHub/ramen-style-today status --porcelain)"
 test "$(git -C /Users/ansonhui/Documents/GitHub/ramen-style-today rev-parse HEAD)" = "eebf00b7ddfbbe6f01ff598e57f1e17197068a37"
+test "$(git -C /Users/ansonhui/Documents/GitHub/ramen-style-today rev-parse 'HEAD^{tree}')" = "3e527de876cfeccfd3154ddc492830d71c4cfd9a"
 npm run typecheck
+npm run lint
+git diff --check
 ```
 
-Expected: PASS and the original legacy checkout remains clean at the exact baseline.
+Expected: all commands PASS; the live run executes the full patched legacy suite before the separate network-denied extraction test, discards validated raw output, publishes no fixture, and reports matching original ignored-path fingerprints.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit only replacement Task 9 files**
 
 ```bash
-git add tools/parity/questions
-git commit -m "Harden legacy question extractor"
+git add tools/parity/questions docs/migration/incidents/2026-07-13-legacy-cache-isolation.md
+git diff --cached --name-only
+git commit -m "Harden observable legacy extractor"
 ```
+
+Expected: the staged list contains exactly the seven `tools/parity/questions` files and the incident file; no fixture, ledger, generated document, or implementation outside Task 9 is committed.
+
+- [ ] **Step 10: Pass a fresh high-risk review before Task 10**
+
+```bash
+TASK8_BASE=7a198bf7a9195a82e84ff4230e9fe61af40b7018
+TASK9_SHA="$(git rev-parse HEAD)"
+/Users/ansonhui/.codex/plugins/cache/openai-curated-remote/superpowers/6.1.1/skills/subagent-driven-development/scripts/review-package \
+  "$TASK8_BASE" "$TASK9_SHA"
+```
+
+The new reviewer must inspect the full range against corrected design Sections 16–18, run the focused tests and live `--verify-only` command, and write `.superpowers/sdd/task-9-high-risk-review.md` containing exact lines `Task-9-commit: <40-character TASK9_SHA>` and `Verdict: PASS`. Any fix creates a new commit, a new review package, and a new review. Task 10 may start only when:
+
+```bash
+TASK9_SHA="$(git rev-parse HEAD)"
+rg -x "Task-9-commit: $TASK9_SHA" .superpowers/sdd/task-9-high-risk-review.md
+rg -x "Verdict: PASS" .superpowers/sdd/task-9-high-risk-review.md
+```
+
+Expected: both exact-line checks succeed for the current reviewed Task 9 commit.
 
 ---
 
-### Task 10: Freeze legacy fixtures and implement offline semantic parity
+### Task 10: Freeze observable legacy traces and implement projection parity
 
 **Files:**
 - Create: `tools/parity/fixtures/questions/legacy-v1/manifest.json`
 - Create: `tools/parity/fixtures/questions/legacy-v1/cases.json`
 - Create: `tools/parity/fixtures/questions/expected-divergences.json`
-- Create: `tools/parity/questions/canonical-snapshot.ts`
-- Create: `tools/parity/questions/canonical-snapshot.test.ts`
+- Create: `tools/parity/questions/observable-trace.ts`
+- Create: `tools/parity/questions/observable-trace.test.ts`
 - Create: `tools/parity/questions/compare.ts`
 - Create: `tools/parity/questions/compare.test.ts`
 - Create: `tools/parity/questions/parity.ts`
@@ -1441,20 +1659,37 @@ git commit -m "Harden legacy question extractor"
 
 **Interfaces:**
 - Consumes: Task 9 extractor and fixture contracts; Tasks 6–8 runtime APIs.
-- Produces: immutable `legacy-v1` fixture corpus, empty divergence manifest, `parity:questions`, coverage validation, and bounded replay diagnostics.
+- Produces: immutable `legacy-v1` observable trace corpus, empty divergence manifest, same-action runtime projection, `parity:questions`, observable coverage validation, and bounded replay diagnostics.
 
-- [ ] **Step 1: Write failing projection, coverage, and diff tests**
+- [ ] **Step 0: Enforce the fresh Task 9 high-risk review gate**
 
-Create `test-fixtures.ts` with one valid flow-evaluation case based on `misoRichDraft`, one identical copy with an orphan semantic-class tag, a `requiredCoverage` object containing the known question/option/class/behavior sets for that case, and one received snapshot whose first deliberate change is `/allowedOptionIdsByQuestion/tare/0`. Export them as `expectedCase`, `casesWithOrphanTag`, `requiredCoverage`, and `receivedSnapshot` so each test has one controlled failure.
+```bash
+TASK9_SHA="$(git rev-parse HEAD)"
+rg -x "Task-9-commit: $TASK9_SHA" .superpowers/sdd/task-9-high-risk-review.md
+rg -x "Verdict: PASS" .superpowers/sdd/task-9-high-risk-review.md
+test ! -e tools/parity/fixtures/questions/legacy-v1
+```
+
+Expected: the current Task 9 commit is the exact reviewed commit, its verdict is `PASS`, and no frozen corpus exists. Stop Task 10 on any failure.
+
+- [ ] **Step 1: Write failing observable projection, coverage, and diff tests**
+
+Create `test-fixtures.ts` with one valid `LegacyObservableTraceCase`, one identical copy with an orphan `semantic-class:*` tag, required observable coverage derived from the valid case, and one received trace whose first deliberate change is `/frames/1/visibleOptionIds/0`. Export them as `expectedCase`, `casesWithOrphanTag`, `requiredCoverage`, and `receivedTrace` so each test has one controlled failure.
 
 ```ts
-test('projects the whole canonical flow snapshot', () => {
-  const snapshot = toCanonicalParitySnapshot(evaluateFlow(questionModel, misoRichDraft))
-  expect(snapshot).toMatchObject({
-    status: 'incomplete',
-    forcedAnswers: [{ questionId: 'tare', optionIds: ['miso'] }],
+test('executes seed actions and projects observable trace fields only', () => {
+  const trace = executeObservableTrace(questionModel, expectedCase.actions)
+  expect(trace.frames[0]).toMatchObject({
+    transition: 'initial',
+    displayedQuestionId: 'form',
   })
-  expect(Object.keys(snapshot.allowedOptionIdsByQuestion)).toContain('source')
+  const serialized = JSON.stringify(trace)
+  for (const forbidden of [
+    'canonicalAnswers', 'reachableQuestionIds', 'interactiveQuestionIds',
+    'allowedOptionIdsByQuestion', 'repairs', 'diagnostics',
+    'invalidatedQuestionIds', 'accepted', 'dependencyClosures',
+    'fixedPointIterations',
+  ]) expect(serialized).not.toContain(`"${forbidden}"`)
 })
 
 test('rejects fabricated and orphan coverage tags', () => {
@@ -1463,9 +1698,19 @@ test('rejects fabricated and orphan coverage tags', () => {
 })
 
 test('reports the first JSON Pointer and a replay command', () => {
-  const mismatch = compareParityCase(expectedCase, receivedSnapshot)
-  expect(mismatch.pointer).toBe('/allowedOptionIdsByQuestion/tare/0')
+  const mismatch = compareParityCase(expectedCase, receivedTrace)
+  expect(mismatch.pointer).toBe('/frames/1/visibleOptionIds/0')
   expect(mismatch.replayCommand).toContain('--case')
+})
+
+test('rejects a divergence outside observable frames', () => {
+  expect(expectedDivergencesSchema.safeParse({
+    schemaVersion: 1,
+    entries: [{
+      ...validDivergence,
+      jsonPointer: '/canonicalAnswers/form',
+    }],
+  }).success).toBe(false)
 })
 ```
 
@@ -1474,22 +1719,23 @@ Register `PARITY_FIXTURE_INVALID`, `PARITY_COVERAGE_INVALID`, `PARITY_MISMATCH`,
 - [ ] **Step 2: Run parity tests and confirm red**
 
 ```bash
-npx vitest run tools/parity/questions/canonical-snapshot.test.ts tools/parity/questions/compare.test.ts tools/parity/questions/parity.test.ts
+npx vitest run tools/parity/questions/observable-trace.test.ts tools/parity/questions/compare.test.ts tools/parity/questions/parity.test.ts
 ```
 
-Expected: FAIL because parity projection and harness do not exist.
+Expected: FAIL because the observable runtime adapter, trace comparator, and parity harness do not exist.
 
-- [ ] **Step 3: Generate and review the frozen corpus explicitly**
+- [ ] **Step 3: Generate and review the frozen observable corpus explicitly**
 
 Run the extractor only after Task 9 safety tests pass:
 
 ```bash
-PATH="/Users/ansonhui/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH" \
-  npx tsx tools/parity/questions/extract.ts \
+PATH="/Users/ansonhui/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:/usr/bin:/bin" \
+  /Users/ansonhui/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node \
+  node_modules/tsx/dist/cli.mjs tools/parity/questions/extract.ts \
   --legacy /Users/ansonhui/Documents/GitHub/ramen-style-today
 ```
 
-Expected: creates the absent `legacy-v1` directory and no other tracked path. Review the manifest identity, ordered case IDs, content hash, and diff. Create the divergence file exactly as:
+Expected: runs the full patched legacy suite, then a separate network-denied extraction-only test; verifies unchanged tracked and declared ignored original paths; creates the absent `legacy-v1` directory and no other tracked path. Review manifest identity, ordered case IDs, content hash, raw seed binding evidence, and the complete trace diff. Create the divergence file exactly as:
 
 ```json
 {
@@ -1498,13 +1744,17 @@ Expected: creates the absent `legacy-v1` directory and no other tracked path. Re
 }
 ```
 
-The corpus must include legacy-representable cases for every question and option, all form/archetype branch rows, explicit allow-all rows, singleton forced chains, min/max selections, exclusive replacement, max no-op, exclusions empty restoration, navigation from forced positions, incomplete prefixes, and complete paths.
+The corpus must directly observe every displayed legacy question and visible option, every seeded public action type the component exposes, all form/archetype branch rows as visible-option or answer changes, explicit allow-all rows as visible options, actual singleton forced-skip chains, observable minimum/maximum interactions, exclusive replacement, maximum-selection no-op, exclusions empty restoration, actual previous/next targets around forced positions, incomplete prefixes, and the results completion marker. Do not add a case or tag for repairs, diagnostics, invalid external inputs, invalidated IDs, global reachability, application result objects, canonical navigation behavior, dependency closures, compiler equivalence classes, or fixed-point metadata.
 
-- [ ] **Step 4: Implement canonical projection, divergence application, and replay**
+- [ ] **Step 4: Implement same-action runtime projection, divergence application, and replay**
 
-Projection includes canonical answers, reachable/interactive IDs, allowed options for every reachable question, forced answers, repairs, structured diagnostics, completion, and category-specific transition/pending/navigation output. Compare stable codes and IDs, never messages.
+`executeObservableTrace(model, actions)` owns only adapter state: current displayed question ID and current pending option IDs. It starts through `getFirstActionableQuestion`, applies `select`/`deselect` through `updatePendingSelection`, confirms a submitted selection through `applyAnswer` when the seed's actual public action submits, and moves through `getNextInteractiveQuestion`/`getPreviousInteractiveQuestion`. It lets `evaluateFlow` settle after each action. For each transition it emits only the Section 17 fields: displayed question, visible options for that displayed question, pending IDs, legacy-shaped answer values, actual forced-skip observation, actual reached question/results screen, completion marker, and mechanical observed changes.
 
-Before applying a divergence, hash the frozen value at `jsonPointer` or the stable missing sentinel and compare `legacyValueHash`; require the current semantic hash to equal the divergence semantic hash. Apply entries in case ID/pointer order. A mismatch prints case ID, category, normalized input, first section, pointer, bounded values, semantic hash, fixture manifest hash, and:
+The adapter may read runtime state to execute the action, but it must never serialize the whole state or application result. The version-1 field-emission table is fixed in `observable-trace.ts`, not inferred from the expected fixture: initial/toggle frames emit displayed question, current visible options, pending IDs, and legacy-shaped answers; submit frames emit the submitted question and legacy-shaped answers; forced-skip frames emit the forced question/value and reached displayed question when observable; next/previous frames emit direction and reached question/results screen; complete emits the results marker and the actual legacy-shaped answer state saved at completion. Single-select legacy answers project as strings and multi-select answers as arrays according to the fixed eight-question legacy representation map. While a selection is pending, its legacy-shaped observable answer value is projected from pending adapter state without changing the submitted `AnswerDraft`. `observedChanges` is a mechanical diff of consecutive projected fields.
+
+Validate every received trace through the same strict schema, derive coverage from its actions/frames, and compare code-point-stable frame serialization in order. A missing optional legacy field remains absent in both projections by the fixed emission table; the comparator must not delete received fields merely because expected omitted them.
+
+Before applying a divergence, require `jsonPointer` to resolve under `/frames/`, hash the frozen observable value or stable missing sentinel, and compare `legacyValueHash`; require the current semantic hash to equal the divergence semantic hash. Apply entries in case-ID/pointer order. A mismatch prints case ID, ordered actions, first frame/pointer, bounded values, semantic hash, fixture manifest hash, and:
 
 ```text
 npm run parity:questions -- --case <case-id>
@@ -1525,17 +1775,18 @@ Run:
 ```bash
 npm run parity:questions
 npx vitest run tools/parity/questions
+npx vitest run packages/classification-core/src/compiler/questions packages/classification-core/src/flow
 npm run questions:check
 test -z "$(git -C /Users/ansonhui/Documents/GitHub/ramen-style-today status --porcelain)"
 ```
 
-Expected: PASS, no fixture writes, and no legacy checkout changes.
+Expected: PASS, no fixture writes, and no legacy checkout changes. Compiler/runtime tests remain green as the exclusive owners of the new-only fields omitted from traces.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add package.json tools/parity
-git commit -m "Freeze legacy question parity"
+git commit -m "Freeze observable legacy parity"
 ```
 
 ---
@@ -1653,8 +1904,8 @@ git commit -m "Enforce question runtime boundary"
 - Modify: `AGENTS.md`
 
 **Interfaces:**
-- Consumes: compiled inventory, frozen fixture manifest hash, current question semantic hash, and existing domain provenance.
-- Produces: canonical concept ownership, per-domain origin/assurance, derived readiness, and concise repository guidance.
+- Consumes: compiled inventory, frozen observable-trace manifest hash, current question semantic hash, and existing domain provenance.
+- Produces: canonical concept ownership, explicitly scoped observable-transition parity provenance, per-domain assurance, derived readiness, and concise repository guidance.
 
 - [ ] **Step 1: Write failing manifest and readiness tests**
 
@@ -1664,6 +1915,7 @@ test('renders per-domain provenance without upgrading unrelated domains', () => 
   expect(manifest.provenance.questions).toMatchObject({
     origin: 'legacy-production',
     assurance: 'compiler-validated',
+    parityScope: 'legacy-observable-transition-projection',
   })
   expect(manifest.provenance.styles.assurance).toBe('structurally-validated')
   expect(manifest.provenance.scoringPolicy.assurance).toBe('structurally-validated')
@@ -1715,7 +1967,7 @@ Retain independent synthetic style/policy relations and do not claim their seman
 
 - [ ] **Step 4: Render per-domain provenance and derived readiness**
 
-The generated manifest includes normalized legacy identity, immutable fixture manifest hash, question source/semantic hashes, current verification only when its semantic hash matches, and:
+The generated manifest includes normalized legacy identity, `parityScope: 'legacy-observable-transition-projection'`, immutable observable-trace manifest hash, question source/semantic hashes, current verification only when its semantic hash matches, and:
 
 ```json
 {
@@ -1731,11 +1983,11 @@ The generated manifest includes normalized legacy identity, immutable fixture ma
 }
 ```
 
-Before exact-SHA acceptance is recorded, questions are `compiler-validated`; Task 14 promotes them to `parity-verified` in metadata only after authenticated evidence. The frozen fixture manifest remains unchanged.
+Before exact-SHA acceptance is recorded, questions are `compiler-validated`; Task 14 promotes them to `parity-verified` in metadata only after authenticated evidence. That assurance means the runtime's directly observable transition projection matches the frozen legacy traces. It does not claim legacy evidence for repairs, diagnostics, invalid APIs, invalidated IDs, global reachability, dependency metadata, canonical navigation, application result objects, or fixed-point behavior. The frozen trace manifest remains unchanged.
 
 - [ ] **Step 5: Update change guidance and regenerate tracked docs**
 
-Add question-change instructions pointing to the approved spec, `questions.ts`, compiler proof, `questions:generate`, parity replay, divergence approval, and Batch 2B persistence boundary. Update README/AGENTS with one concise Batch 2A summary and links to canonical manifest/index; do not duplicate hashes or case counts.
+Add question-change instructions pointing to the approved spec, `questions.ts`, compiler proof, `questions:generate`, observable-trace projection replay, divergence approval, and Batch 2B persistence boundary. Update README/AGENTS with one concise Batch 2A summary and links to canonical manifest/index; do not duplicate hashes or case counts or describe new-only runtime semantics as legacy-proved.
 
 Run:
 
@@ -1775,7 +2027,7 @@ git commit -m "Index production question ownership"
 
 **Interfaces:**
 - Consumes: Task 12 manifest/provenance and all offline gates.
-- Produces: Batch `2A` ledger schema, machine-readable semantic paths, offline `verify`, online `verify:acceptance`, and exact implementation-SHA ancestry/path checks.
+- Produces: Batch `2A` ledger schema with incident references, machine-readable semantic paths, offline `verify`, online `verify:acceptance`, and exact implementation-SHA ancestry/path checks.
 
 - [ ] **Step 1: Write failing offline/online separation and semantic-path tests**
 
@@ -1804,6 +2056,15 @@ test('accepts metadata commits only when semantic paths are unchanged', async ()
 test('online acceptance authenticates the fixed owner workflow and SHA', async () => {
   await expect(verifyAcceptance(validEvidence, successfulGithubFetch)).resolves.toBeUndefined()
 })
+
+test('complete Batch 2A evidence requires the cache-isolation incident', () => {
+  expect(migrationLedgerSchema.safeParse({
+    ...completeLedger,
+    entries: completeLedger.entries.map((entry) =>
+      entry.batch === '2A' ? { ...entry, incidents: [] } : entry,
+    ),
+  }).success).toBe(false)
+})
 ```
 
 - [ ] **Step 2: Run migration/acceptance tests and confirm red**
@@ -1816,7 +2077,7 @@ Expected: FAIL because checks are not split and Batch 2A fields are absent.
 
 - [ ] **Step 3: Extend the ledger with exact Batch 2A ownership**
 
-Add `implementationSha`, `semanticPaths`, and exact Batch 2A completion gates. The entry starts `in-review` and owns definitions, compiler, generated model, flow, parity tools/fixtures, docs, and verification updates. Its semantic paths are exactly:
+Add `implementationSha`, `semanticPaths`, `incidents`, and exact Batch 2A completion gates. The entry starts `in-review` with `incidents: []` and owns definitions, compiler, generated model, flow, parity tools/fixtures, docs, and verification updates. Its semantic paths are exactly:
 
 ```ts
 [
@@ -1836,11 +2097,11 @@ Required completion gates are `batch2a-local-verify` and `batch2a-remote-ci`. Wh
   "gate": "batch2a-local-verify",
   "command": "npm run verify",
   "outcome": "passed",
-  "evidence": "all Batch 2A offline compiler, artifact, runtime, parity, documentation, and ledger gates passed"
+  "evidence": "all Batch 2A offline compiler, artifact, runtime, observable trace projection parity, documentation, and ledger gates passed"
 }
 ```
 
-The authenticated recorder sets `implementationSha` to the verified run SHA, appends `batch2a-remote-ci`, and changes status to `complete` in one schema-validated write. Offline ledger checks validate path syntax, owner existence, generated Markdown, semantic hash consistency, fixture manifest hash, and Git ancestry without network access.
+The authenticated recorder sets `implementationSha` to the verified run SHA, appends `batch2a-remote-ci`, records exactly `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md` in `incidents`, and changes status to `complete` in one schema-validated write. Completion rejects a missing, additional, nonexistent, or non-regular incident path. Offline ledger checks validate incident existence, path syntax, owner existence, generated Markdown, semantic hash consistency, observable-trace manifest hash, and Git ancestry without network access.
 
 - [ ] **Step 4: Move authenticated GitHub checks behind acceptance**
 
@@ -1902,12 +2163,13 @@ This commit is the initial implementation SHA candidate. Do not edit owned seman
 - Modify: `docs/migration/ledger.json` through authenticated recorder
 - Regenerate: `docs/migration/ledger.md`
 - Regenerate: `docs/classification/manifest.json`
+- Verify referenced and unchanged: `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`
 - Verify unchanged: `docs/classification/index.md` (current exact-SHA verification is manifest-only)
 - Modify: no owned semantic path
 
 **Interfaces:**
 - Consumes: Tasks 1–13 completed implementation candidate.
-- Produces: clean repository-wide verification, exact-SHA GitHub evidence, `parity-verified` current provenance, complete Batch 2A ledger entry, and review-ready branch.
+- Produces: clean repository-wide verification, exact-SHA GitHub evidence, explicitly observable-scope `parity-verified` provenance, a complete Batch 2A ledger entry that records the cache-isolation incident, and a review-ready branch.
 
 - [ ] **Step 1: Prove the candidate is clean and fully verified offline**
 
@@ -1952,9 +2214,10 @@ npm run migration:ledger:record-ci -- 2A "$PROOF_FILE"
 npm run migration:ledger
 npm run classification:index
 rm "$PROOF_FILE"
+node -e "const l=require('./docs/migration/ledger.json');const e=l.entries.find(x=>x.batch==='2A');if(JSON.stringify(e.incidents)!=='[\"docs/migration/incidents/2026-07-13-legacy-cache-isolation.md\"]')process.exit(1)"
 ```
 
-Expected: only ledger files and `docs/classification/manifest.json` change; `docs/classification/index.md` remains byte-identical because it does not duplicate volatile exact-SHA verification. `git diff --name-only "$IMPLEMENTATION_SHA"` contains no path matched by the ledger's `semanticPaths`.
+Expected: only ledger files and `docs/classification/manifest.json` change; the Batch 2A entry records exactly the incident path; the incident document and `docs/classification/index.md` remain byte-identical. `git diff --name-only "$IMPLEMENTATION_SHA"` contains no path matched by the ledger's `semanticPaths`.
 
 - [ ] **Step 5: Verify the metadata candidate online and offline**
 
@@ -1965,7 +2228,7 @@ git diff --check
 git diff --name-only "$IMPLEMENTATION_SHA"
 ```
 
-Expected: both verification tiers PASS. The classification manifest records the frozen fixture manifest hash, current semantic hash, parity suite version, and implementation SHA; questions are `parity-verified`; styles/scoring are not upgraded; readiness remains `migration-only`.
+Expected: both verification tiers PASS. The classification manifest records `parityScope: 'legacy-observable-transition-projection'`, the frozen observable-trace manifest hash, current semantic hash, parity suite version, and implementation SHA; questions are `parity-verified` only for that observable scope; compiler/runtime gates independently cover excluded new-only semantics; styles/scoring are not upgraded; readiness remains `migration-only`. The ledger records the cache-isolation incident.
 
 - [ ] **Step 6: Commit and push acceptance metadata**
 
@@ -1988,4 +2251,4 @@ npm run verify:acceptance
 git status --porcelain
 ```
 
-Expected: exact final-SHA workflow success, both gates PASS, and status is empty. Report the implementation SHA, metadata SHA, workflow URLs, semantic hash, fixture manifest hash, tests actually run, and the continuing `migration-only` readiness. Do not merge or modify the legacy repository without separate user authorization.
+Expected: exact final-SHA workflow success, both gates PASS, and status is empty. Report the implementation SHA, metadata SHA, workflow URLs, semantic hash, observable-trace manifest hash, observable parity scope, recorded incident path, tests actually run, and the continuing `migration-only` readiness. Do not merge or modify the legacy repository without separate user authorization.

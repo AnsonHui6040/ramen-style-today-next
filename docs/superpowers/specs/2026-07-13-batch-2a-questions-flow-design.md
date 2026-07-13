@@ -3,6 +3,7 @@
 - **Status:** Final — Approved for implementation
 - **Direction approval:** Approved by the user on 2026-07-13
 - **Written specification approval:** Approved by the user on 2026-07-13 after the required review corrections
+- **Parity-contract correction:** Approved by the user on 2026-07-13 after the rejected Task 9 review
 - **Repository:** `AnsonHui6040/ramen-style-today-next`
 - **Legacy oracle:** `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`
 - **Legacy tree:** `3e527de876cfeccfd3154ddc492830d71c4cfd9a`
@@ -11,9 +12,9 @@
 
 ## 1. Decision
 
-Batch 2A will replace the synthetic question inventory with contract-first production question definitions, compile them into a deterministic tracked artifact, evaluate them through a pure questionnaire runtime, and prove semantic parity against frozen fixtures extracted from the verified legacy commit.
+Batch 2A will replace the synthetic question inventory with contract-first production question definitions, compile them into a deterministic tracked artifact, evaluate them through a pure questionnaire runtime, and prove parity for directly observable legacy question-flow transitions against frozen traces extracted from the verified legacy commit.
 
-This batch preserves the complete legacy questionnaire behavior. It may expose legacy defects through diagnostics or fixtures, but it must not silently correct product behavior. Any intentional behavior change requires a separate approval path.
+This batch preserves the complete legacy questionnaire behavior. It may expose legacy defects through diagnostics or observable traces, but it must not silently correct product behavior. Any intentional behavior change requires a separate approval path.
 
 The selected architecture is:
 
@@ -23,8 +24,8 @@ production question definitions
 canonical compiled question artifact
         ↓ pure flow runtime
 canonical FlowState and transitions
-        ↓ frozen semantic parity fixtures
-legacy behavior verification
+        ↓ observable-only trace projection
+frozen legacy transition traces
 ```
 
 Direct runtime interpretation of JSON and a copied `stepIndex` state machine were rejected. Both would preserve hidden ordering assumptions and make future changes harder to validate.
@@ -39,7 +40,7 @@ Batch 2A owns:
 - compiler validation, canonicalization, semantic dependency derivation, finite semantic exploration, and proof obligations
 - a deterministic tracked compiled question artifact
 - pure answer submission, evaluation, pending-selection, and navigation APIs
-- frozen legacy question-flow fixtures, their extractor, integrity checks, semantic parity replay, and coverage gates
+- frozen legacy observable question-flow traces, their extractor, integrity checks, projection replay, and observable coverage gates
 - question-specific provenance, migration-ledger evidence, classification-index ownership, and repository verification commands
 
 Batch 2A does not own:
@@ -66,8 +67,8 @@ packages/classification-core/src/generated/question-model.ts
         ↓
 packages/classification-core/src/flow/**
 
-tools/parity/questions/** ──→ verified temporary legacy worktree
-tests/parity or core parity tests ──→ runtime + frozen fixtures
+tools/parity/questions/** ──→ isolated verified temporary legacy worktree
+tests/parity or core parity tests ──→ runtime observable projection + frozen traces
 ```
 
 The runtime root may export only:
@@ -241,7 +242,7 @@ For each question and applicable semantic environment, exploration includes repr
 - an explicit decision-table branch allowing all options
 - any specific multi-option combination referenced by the condition AST
 
-Compiler proof coverage and legacy fixture coverage are separate gates. The compiler must prove every formal reachable question and option appears in at least one reachable explored state. It must not depend on legacy fixtures or require every formal concept to appear in a parity path.
+Compiler proof coverage and legacy observable-trace coverage are separate gates. The compiler must prove every formal reachable question and option appears in at least one reachable explored state. It must not depend on legacy traces or require every formal concept to appear in a parity path.
 
 ## 8. Compiler proof obligations
 
@@ -495,6 +496,15 @@ CI runs only the check command. A drift failure prints the regeneration instruct
 
 The extractor is a fixture-authoring tool, not a test dependency. It runs only by explicit local command against the verified legacy source and never in ordinary CI.
 
+The first Task 9 implementation in commit `3b65eac` is rejected and is not an implementation baseline. It reused the original checkout's dependencies through a temporary `node_modules` symlink and may have refreshed these ignored cache files even though the tracked legacy HEAD and tree remained unchanged:
+
+```text
+node_modules/.tmp/tsconfig.app.tsbuildinfo
+node_modules/.tmp/tsconfig.node.tsbuildinfo
+```
+
+Task 9 records that event and its remediation in `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`. Task 14 must reference the incident from the Batch 2A ledger evidence. No frozen trace may be generated until a replacement Task 9 implementation passes a fresh high-risk contract and security review.
+
 The expected legacy identity is:
 
 ```ts
@@ -513,13 +523,41 @@ Extraction must:
 
 1. validate repository identity, full commit, root tree, lockfile, and every legacy source file on which the extractor depends
 2. reject a dirty or mismatched checkout
-3. create a detached temporary worktree at the verified commit
-4. apply only a tracked deterministic instrumentation patch or transform
-5. verify the resulting instrumentation diff exactly
-6. record `instrumentationVersion` and `instrumentationHash`
-7. install with the frozen legacy lockfile under the declared environment
-8. run without interactive input and with fixed timezone, locale, and random seed
-9. remove the temporary worktree without touching the original checkout
+3. acquire an atomic same-parent extraction lock before creating staging or backup paths
+4. fingerprint every declared ignored extractor-sensitive path in the original checkout before any child process runs
+5. create a detached temporary worktree at the verified commit with its own physical `node_modules`, npm cache, build cache, home, and temporary directory
+6. apply only a tracked deterministic instrumentation patch or transform and verify the exact resulting diff
+7. record `instrumentationVersion` and `instrumentationHash`
+8. install with the frozen legacy lockfile under the declared environment without reusing or symlinking any original dependency or cache path
+9. run the complete patched legacy suite successfully
+10. run extraction separately with operating-system network access denied
+11. bind raw output exactly to the ordered seeds before validating or publishing traces
+12. publish only after complete schema, integrity, and coverage validation
+13. remove or prune partial worktrees and staging artifacts on every exit path without touching the original checkout
+14. re-fingerprint the declared original paths and fail if existence, file type, size, modification time, or SHA-256 changed
+
+The ignored-path fingerprint contract is no-follow and versioned:
+
+```ts
+interface IgnoredPathFingerprint {
+  readonly path:
+    | 'node_modules/.tmp/tsconfig.app.tsbuildinfo'
+    | 'node_modules/.tmp/tsconfig.node.tsbuildinfo'
+  readonly exists: boolean
+  readonly type: 'missing' | 'regular-file' | 'directory' | 'symbolic-link' | 'other'
+  readonly size: number | null
+  readonly mtimeMs: number | null
+  readonly sha256: string | null
+}
+```
+
+`sha256` is required for a regular file and `null` otherwise. A type change, appearance, disappearance, byte change, size change, or modification-time change is a checkout mutation and rejects extraction even if `git status` is clean. The before/after check runs after best-effort cleanup on both success and failure.
+
+The extractor invokes Git, Node, and npm only through configured trusted absolute executable paths. npm is invoked as the trusted absolute Node executable plus npm's trusted absolute `npm-cli.js`, not through an inherited shell lookup. Child environments are constructed from an allowlist instead of spreading `process.env`: fixed `TZ`, locale, seed, and `CI`; a generated minimal `PATH`; isolated `HOME`, `TMPDIR`, npm cache, and build-cache paths; explicit `GIT_CONFIG_NOSYSTEM=1`; and explicit npm user/global config suppression. Any inherited `GIT_*`, `NODE_OPTIONS`, `NPM_CONFIG_*`, `npm_config_*`, or unrelated environment entry is absent. The full legacy suite completes before a distinct extraction-only command is launched under the supported macOS network-denial boundary.
+
+Instrumentation is observational only. The temporary patched `App` may expose a test-only, read-only observer hook that receives already-computed component/render state after React actions settle. It may extract an existing pure calculation into a helper only when the component itself is changed to call that exact helper. The patch and extractor must not implement, duplicate, infer, or call test-only substitutes for branch rules, repairs, validation, answer application, navigation, forced resolution, or completion. It must not call exported legacy helpers to manufacture expected trace values. Every frozen frame comes from the actual rendered component and its actual state after an actual public action has settled; a single public action may produce multiple observed frames when the existing component performs a forced skip or completion transition.
+
+For every raw case, the extractor compares the raw seed index, case ID, complete ordered action list, and complete ordered coverage-tag list byte-for-byte with the copied input seed. Raw case count and order must exactly equal seed count and order. Missing, duplicated, injected, reordered, or rewritten seed metadata rejects the run before trace normalization.
 
 The first fixture lineage uses the repository's bundled Node 24 runtime and npm 11.12.1 unless the tracked extractor contract is deliberately versioned. The manifest records exact runtime and package-manager versions, `TZ=UTC`, locale, seed, lifecycle-script policy, and network policy.
 
@@ -528,11 +566,18 @@ Output replacement is explicit:
 - an absent output directory may be created
 - an existing output directory is rejected by default
 - only `--replace` authorizes replacement
-- replacement is built and validated in a sibling temporary directory
+- an atomic same-parent lock excludes concurrent authors
+- replacement is built and validated in a uniquely named sibling staging directory
+- backup and staging names are unique per run and never reused
 - rename performs the final atomic swap
-- failure preserves the previous fixtures unchanged
+- failure performs best-effort rollback and preserves the previous fixtures unchanged
+- cleanup attempts partial `git worktree remove --force` followed by `git worktree prune --expire now` without masking the primary failure
 - output roots, parent paths, and fixture paths may not escape through symlinks
 - path traversal, illegal case IDs, duplicate case IDs, and unsafe filename mappings are rejected
+- every external error is reduced to one control-character-free line of at most 300 characters before it reaches logs or diagnostics
+- all security-sensitive reads are no-follow, and source, parent, lock, staging, backup, and destination identity is revalidated immediately before every read, rename, rollback, or publish seam
+
+The supported threat boundary is a non-privileged local authoring run on the declared macOS host. The extractor rejects symlinks, path replacement it detects during immediate revalidation, inherited process configuration, concurrent cooperative extractor runs, and network access in extraction. It does not claim protection from a privileged process or a hostile same-user process that can win a race between the final no-follow/revalidation check and the operating-system filesystem call; fixture authoring must run without such an adversary.
 
 ## 17. Frozen fixture schema
 
@@ -560,41 +605,79 @@ The manifest records:
 
 The fixture content hash is calculated from the canonical `cases.json` payload; it does not recursively include the manifest that stores it. The frozen manifest never records the latest implementation's semantic hash, parity result, implementation SHA, or current parity-suite version. Those values are mutable verification evidence and belong to classification provenance and the migration ledger.
 
-`cases.json` is a versioned discriminated union rather than one object with many inapplicable fields:
+`cases.json` contains only a versioned observable trace contract. It does not contain whole-flow internal serialization or any attempted legacy equivalent of the new runtime API:
 
 ```ts
-type ParityCase =
-  | FlowEvaluationCase
-  | AnswerApplicationCase
-  | PendingSelectionCase
-  | NavigationCase
-```
+type LegacyNavigationDirection = 'next' | 'previous'
 
-Every case contains a stable ID, category, normalized input, category-specific canonical expected result, and machine-readable coverage tags.
+type LegacyObservableAction =
+  | { readonly type: 'select'; readonly questionId: string; readonly optionId: string }
+  | { readonly type: 'deselect'; readonly questionId: string; readonly optionId: string }
+  | { readonly type: 'submit'; readonly questionId: string }
+  | { readonly type: 'next'; readonly fromQuestionId: string }
+  | { readonly type: 'previous'; readonly fromQuestionId: string }
 
-A flow snapshot includes:
+type LegacyObservableTransition =
+  | 'initial'
+  | 'toggle'
+  | 'submit'
+  | 'forced-skip'
+  | 'next'
+  | 'previous'
+  | 'complete'
 
-- canonical answers
-- reachable and interactive question IDs
-- allowed option IDs for every reachable question
-- forced answers and their stable reasons
-- repair codes and stable structured fields
-- diagnostic codes, IDs, JSON Pointer path, and stable metadata
-- status and completed answers when complete
+type LegacyObservedAnswerValue = string | readonly string[]
+type LegacyObservedAnswers = Readonly<
+  Partial<Record<string, LegacyObservedAnswerValue>>
+>
 
-Human-readable diagnostic or repair messages are never compared. Ordering is canonical and part of the contract.
+interface LegacyObservedChanges {
+  readonly visibleOptionIds?: {
+    readonly questionId: string
+    readonly before: readonly string[]
+    readonly after: readonly string[]
+  }
+  readonly answers?: readonly {
+    readonly questionId: string
+    readonly before?: LegacyObservedAnswerValue
+    readonly after?: LegacyObservedAnswerValue
+  }[]
+}
 
-Navigation cases store both the query and expected result:
+interface LegacyObservableTraceFrame {
+  readonly sequence: number
+  readonly transition: LegacyObservableTransition
+  readonly actionIndex?: number
+  readonly displayedQuestionId?: string
+  readonly visibleOptionIds?: readonly string[]
+  readonly pendingOptionIds?: readonly string[]
+  readonly legacyAnswers?: LegacyObservedAnswers
+  readonly forcedAutoAnswer?: {
+    readonly questionId: string
+    readonly value: LegacyObservedAnswerValue
+  }
+  readonly navigation?: {
+    readonly direction: LegacyNavigationDirection
+    readonly reachedQuestionId?: string
+    readonly reachedScreen?: 'results'
+  }
+  readonly completionMarker?: 'results'
+  readonly observedChanges?: LegacyObservedChanges
+}
 
-```ts
-interface NavigationQuery {
-  direction: 'next' | 'previous'
-  fromQuestionId: QuestionId
-  expectedQuestionId?: QuestionId
+interface LegacyObservableTraceCase {
+  readonly id: string
+  readonly actions: readonly LegacyObservableAction[]
+  readonly coverageTags: readonly string[]
+  readonly frames: readonly LegacyObservableTraceFrame[]
 }
 ```
 
-They cover first and last positions, forced questions, unreachable questions, known non-interactive questions, complete flow, and invalid flow. Unknown external IDs are tested through decoder or boundary tests rather than branded internal navigation fixtures.
+An action exists only when a distinct public legacy event occurred. A single click that both submits and advances remains one action and may yield multiple frames. `actionIndex` binds a frame to that action when the legacy can do so directly. Optional frame fields are omitted when they are not applicable or the legacy cannot observe them directly; absence must never be filled by inference. `observedChanges` is limited to a mechanical before/after diff of values captured from consecutive observed component frames.
+
+Frames record the current displayed question and its visible option IDs, the component's actual pending selection, the actual legacy answer state used or saved by the component, actual forced auto-answer/skip transitions, the question or results screen actually reached, the results completion marker, and actual visible-option or answer changes after branch-driving actions. Arrays and object keys are normalized only for stable serialization when that normalization does not change legacy values.
+
+Frozen legacy traces explicitly forbid canonical answers, whole-flow reachable or interactive ID lists, allowed-option maps for non-displayed questions, repairs, diagnostics, invalidated question IDs, dependency or closure metadata, accepted/rejected application result objects, canonical navigation query/results, fixed-point keys or iteration metadata, compiler equivalence classes, current semantic hashes, implementation SHAs, and current assurance. Those are new-runtime or current-verification concepts, not legacy observations.
 
 ## 18. Parity coverage and comparison
 
@@ -603,20 +686,22 @@ Coverage responsibilities are separated:
 | Coverage | Owner |
 | --- | --- |
 | Every compiler semantic equivalence class | Compiler proof tests |
-| Every legacy-representable parity-relevant behavioral class | Frozen parity fixtures |
-| Malformed and invalid external data | New runtime unit tests |
+| Every legacy-representable displayed question, visible option, public action, observed forced skip, navigation target, completion marker, and branch-visible/answer change | Frozen observable traces |
+| Repairs, diagnostics, invalidated IDs, dependency closures, fixed-point behavior, global reachability, canonical navigation metadata, accepted/rejected application objects, and malformed or invalid external data | Compiler/runtime unit tests in Tasks 3–8 |
 | Invalid source definitions and proof failures | Compiler negative tests |
-| Formal question and option reachability | Compiler exploration plus parity coverage manifest where legacy-representable |
+| Formal question and option reachability | Compiler exploration; trace coverage only where directly legacy-observable |
 
-Fixture coverage tags include question IDs, option IDs, semantic-class IDs, and behaviors such as unanswered, minimum bound, maximum bound, exclusive, exclusive conflict, forced, stale, allow-all, complete, and invalid where the legacy public behavior can represent them.
+Trace coverage tags are limited to facts derivable from seed actions and observable frames: displayed question IDs, visible option IDs scoped to their question, action types, transition types, forced-skip, navigation targets, completion, pending-selection effects, and observed branch changes. Semantic-class, repair, diagnostic, invalid-input, dependency, reachability, and new-API tags are forbidden.
 
-The parity gate verifies that declared tags match case contents, required questions and options are covered, case IDs are ordered and unique, and no orphan or fabricated coverage tag exists.
+The parity gate derives tags from actions and frames, verifies exact equality with declared ordered tags, requires every legacy-representable question and option plus each declared observable behavior class, and rejects orphan, fabricated, duplicate, or reordered tags. Compiler/runtime tests remain the only coverage gate for excluded new-only fields.
 
-Parity compares semantics rather than legacy and new internal serialization. On mismatch it reports:
+New-runtime parity is a projection, not an internal-model comparison. A dedicated runtime adapter starts from a fresh state, performs the same ordered legacy-representable public actions, lets each transition settle, and emits only `LegacyObservableTraceFrame` fields that the legacy trace schema permits. It may use runtime APIs to execute the action, but it must not serialize `FlowState`, `ApplyAnswerResult`, compiler metadata, or any excluded field into received parity data. Stable projected frames are then compared to the frozen trace in order.
 
-- case ID and category
-- normalized case input
-- first differing snapshot section and JSON Pointer
+On mismatch the gate reports:
+
+- case ID
+- ordered action sequence
+- first differing observable frame and JSON Pointer
 - bounded expected and received values
 - current semantic hash
 - fixture manifest identity
@@ -626,7 +711,7 @@ Large complete diffs are written to an untracked temporary artifact rather than 
 
 Frozen `legacy-v1` fixtures always remain the historical legacy truth. An approved intentional behavior change must not rewrite them or turn off mismatch checking. It requires an ADR, user approval, implementation evidence, a reviewed semantic diff, and an explicit per-case entry in `tools/parity/fixtures/questions/expected-divergences.json`.
 
-Each divergence stores only the reviewed delta rather than duplicating a complete snapshot:
+Each divergence stores only the reviewed delta rather than duplicating a complete trace. Its pointer must resolve within an observable trace case, normally under `/frames/<index>/...`; pointers to forbidden internal fields are invalid:
 
 ```ts
 interface ExpectedDivergence {
@@ -642,7 +727,7 @@ interface ExpectedDivergence {
 }
 ```
 
-The parity gate verifies `legacyValueHash` against the frozen value, or against a stable missing-value sentinel for `add`, before applying the versioned JSON-Patch-style operation. `approvedValue` is required for `add` and `replace` and forbidden for `remove`. Multiple changed locations use multiple deterministically ordered entries. Broad ignore rules and unscoped whole-snapshot replacement are forbidden.
+The parity gate verifies `legacyValueHash` against the frozen value, or against a stable missing-value sentinel for `add`, before applying the versioned JSON-Patch-style operation. `approvedValue` is required for `add` and `replace` and forbidden for `remove`. Multiple changed locations use multiple deterministically ordered entries. Broad ignore rules and unscoped whole-trace replacement are forbidden.
 
 ## 19. Provenance and readiness
 
@@ -672,6 +757,7 @@ The semantic artifact and frozen fixture manifest do not directly claim current 
 ```ts
 interface QuestionParityProvenance {
   origin: 'legacy-production'
+  parityScope: 'legacy-observable-transition-projection'
   sourceRepository: {
     host: string
     owner: string
@@ -686,6 +772,7 @@ interface QuestionParityProvenance {
 
 interface QuestionParityVerification {
   assurance: 'parity-verified'
+  parityScope: 'legacy-observable-transition-projection'
   fixtureManifestHash: string
   paritySuiteVersion: string
   verifiedSemanticHash: string
@@ -693,7 +780,7 @@ interface QuestionParityVerification {
 }
 ```
 
-`parity-verified` is valid only when `verifiedSemanticHash` equals the current compiled semantic hash and every fixture, coverage, and behavior gate succeeds.
+`parity-verified` is valid only when `verifiedSemanticHash` equals the current compiled semantic hash, every frozen observable-trace integrity and coverage gate succeeds, and the runtime projection matches every non-diverged observable frame. The term means that directly observable legacy behavior matches the frozen trace corpus; it does not claim that legacy proved repairs, diagnostics, invalid APIs, dependency metadata, global reachability, fixed-point behavior, or other new-runtime contracts. Those contracts must pass their compiler/runtime tests independently.
 
 Overall classification readiness is derived from domain provenance and migration gates rather than manually asserted:
 
@@ -720,7 +807,7 @@ Verification has two tiers.
 - source structural validation and compiler proof tests
 - generated question artifact drift checking
 - runtime browser-neutral and forbidden-import checks
-- frozen fixture integrity, coverage, semantic replay, and approved-divergence checks
+- frozen observable-trace integrity, observable coverage, runtime projection replay, and approved-divergence checks
 - classification manifest and generated-index drift checks
 - provenance and migration-ledger consistency checks
 
@@ -759,14 +846,18 @@ Batch 2A is rejected if any of the following is true:
 - a compiler proof obligation is incomplete or fails
 - parity behavior, fixture integrity, or required coverage fails
 - case counts, ordered case IDs, coverage tags, or manifest identities disagree
+- a frozen case contains repairs, diagnostics, invalidated IDs, global reachability, application result objects, canonical navigation metadata, dependency closures, fixed-point metadata, or another non-observable new-runtime field
+- raw extractor output does not bind exactly to seed count, order, IDs, actions, and coverage tags
 - current semantic hash differs from verified provenance
 - migration ledger baseline or implementation evidence is stale or inconsistent
 - runtime root imports or exposes Node, compiler, extractor, React, legacy, persistence, scoring, or style implementation
 - runtime APIs mutate the model or input draft
-- extractor can change the original legacy checkout or write outside its safe output root
+- extractor changes any tracked or declared ignored extractor-sensitive original-checkout path, reuses original dependencies/caches, inherits unapproved process configuration, performs extraction with network access, or writes outside its safe output root
+- the rejected Task 9 implementation from `3b65eac` is used to generate fixtures or Task 10 starts before the replacement passes fresh high-risk review
+- the cache-isolation incident is absent from `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md` or is not referenced by Task 14 ledger evidence
 - fixture regeneration or replacement occurs implicitly
 - an intentional divergence is hidden by rewriting legacy fixtures or ignoring mismatches
-- production UI, persistence, scoring, styles, catalog, Finder, or legacy files are modified by this batch
+- production UI, persistence, scoring, styles, catalog, Finder, or tracked legacy source files are modified by this batch
 - documentation or readiness claims exceed `migration-only`
 
 ## 22. Required deliverables
@@ -778,8 +869,8 @@ An implementation plan for this design must produce reviewable tasks for:
 3. deterministic tracked artifact and no-drift command
 4. browser-neutral answer decoder and flow-state contracts
 5. `evaluateFlow`, `applyAnswer`, pending-selection, and navigation behavior using test-first development
-6. controlled legacy extractor, versioned fixtures, coverage tags, and semantic parity harness
+6. isolated observable-only legacy extractor, versioned traces, observable coverage tags, and runtime trace-projection harness
 7. package export/import boundaries and split runtime/tool builds
 8. question provenance, readiness derivation, classification indexes, migration ledger, and two-tier verification
 
-The batch is complete only after all offline gates pass, exact-SHA acceptance evidence is recorded, generated documentation has no drift, and the repository is clean. The legacy production repository remains unchanged.
+The batch is complete only after all offline gates pass, exact-SHA acceptance evidence is recorded, generated documentation has no drift, and the repository is clean. No implementation task changes tracked legacy source, and every replacement-extractor run must leave the declared ignored-path fingerprints unchanged from its recorded pre-run state; the earlier ignored-cache incident remains documented rather than erased.
