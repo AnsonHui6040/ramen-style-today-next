@@ -557,7 +557,7 @@ The extractor invokes Git, Node, and npm only through configured trusted absolut
 
 Instrumentation is observational only. The temporary patched `App` may expose a test-only, read-only observer hook that receives already-computed component/render state after React actions settle. It may extract an existing pure calculation into a helper only when the component itself is changed to call that exact helper. The patch and extractor must not implement, duplicate, infer, or call test-only substitutes for branch rules, repairs, validation, answer application, navigation, forced resolution, or completion. It must not call exported legacy helpers to manufacture expected trace values. Every frozen frame comes from the actual rendered component and its actual state after an actual public action has settled; a single public action may produce multiple observed frames when the existing component performs a forced skip or completion transition.
 
-For every raw case, the extractor compares the raw seed index, case ID, complete ordered action list, and complete ordered coverage-tag list byte-for-byte with the copied input seed. Raw case count and order must exactly equal seed count and order. Missing, duplicated, injected, reordered, or rewritten seed metadata rejects the run before trace normalization.
+For every raw case, the extractor compares the raw seed index, case ID, and complete ordered action list byte-for-byte with the copied input seed. Raw case count and order must exactly equal seed count and order. Seeds contain no coverage tags or output-derived expectation. Missing, duplicated, injected, reordered, or rewritten seed metadata rejects the run before trace normalization. Only after actions and frames pass the strict observable schema does the extractor mechanically derive and freeze `coverageTags` from that validated case.
 
 The first fixture lineage uses the repository's bundled Node 24 runtime and npm 11.12.1 unless the tracked extractor contract is deliberately versioned. The manifest records exact runtime and package-manager versions, `TZ=UTC`, locale, seed, lifecycle-script policy, and network policy.
 
@@ -613,8 +613,7 @@ type LegacyNavigationDirection = 'next' | 'previous'
 type LegacyObservableAction =
   | { readonly type: 'select'; readonly questionId: string; readonly optionId: string }
   | { readonly type: 'deselect'; readonly questionId: string; readonly optionId: string }
-  | { readonly type: 'submit'; readonly questionId: string }
-  | { readonly type: 'next'; readonly fromQuestionId: string }
+  | { readonly type: 'continue'; readonly fromQuestionId: string }
   | { readonly type: 'previous'; readonly fromQuestionId: string }
 
 type LegacyObservableTransition =
@@ -673,7 +672,14 @@ interface LegacyObservableTraceCase {
 }
 ```
 
-An action exists only when a distinct public legacy event occurred. A single click that both submits and advances remains one action and may yield multiple frames. `actionIndex` binds a frame to that action when the legacy can do so directly. Optional frame fields are omitted when they are not applicable or the legacy cannot observe them directly; absence must never be filled by inference. `observedChanges` is limited to a mechanical before/after diff of values captured from consecutive observed component frames.
+An action exists only when a distinct public legacy event occurred. V1 has no submit-only or next-only public action. The single primary-button click is `continue`; it may confirm the current answer, traverse zero or more existing forced skips, and then reach the next question or results screen without being split into multiple seed actions. All frames caused by that click carry the same `actionIndex`: one `submit`, zero or more `forced-skip`, then exactly one `next` or `complete`. `actionIndex` otherwise binds a frame to the action that caused it. Optional frame fields are omitted when they are not applicable or the legacy cannot observe them directly; absence must never be filled by inference. `observedChanges` is limited to a mechanical before/after diff of values captured from consecutive observed component frames.
+
+The v1 public action semantics are fixed:
+
+- `select` and `deselect` each represent one actual option click and emit one settled `toggle` frame. The legacy frame records the component's immediately changed answer state.
+- `continue` represents one actual primary Continue/Results click from `fromQuestionId` and emits the `submit`/`forced-skip`/terminal `next|complete` sequence above.
+- `previous` represents one actual Back click from `fromQuestionId` and emits one settled `previous` frame with the reached question or screen when directly observable.
+- `initial` is the single pre-action frame and has no `actionIndex`.
 
 Frames record the current displayed question and its visible option IDs, the component's actual pending selection, the actual legacy answer state used or saved by the component, actual forced auto-answer/skip transitions, the question or results screen actually reached, the results completion marker, and actual visible-option or answer changes after branch-driving actions. Arrays and object keys are normalized only for stable serialization when that normalization does not change legacy values.
 
@@ -691,11 +697,11 @@ Coverage responsibilities are separated:
 | Invalid source definitions and proof failures | Compiler negative tests |
 | Formal question and option reachability | Compiler exploration; trace coverage only where directly legacy-observable |
 
-Trace coverage tags are limited to facts derivable from seed actions and observable frames: displayed question IDs, visible option IDs scoped to their question, action types, transition types, forced-skip, navigation targets, completion, pending-selection effects, and observed branch changes. Semantic-class, repair, diagnostic, invalid-input, dependency, reachability, and new-API tags are forbidden.
+Trace coverage tags are limited to facts mechanically derivable from validated actions and observable frames: displayed question IDs, visible option IDs scoped to their question, action types, transition types, forced-skip, navigation targets, completion, pending-selection effects, and observed branch changes. Seeds never contain coverage tags; visible options, navigation targets, forced transitions, completion, and named behavior outcomes therefore cannot become hand-authored seed expectations. Semantic-class, repair, diagnostic, invalid-input, dependency, reachability, and new-API tags are forbidden.
 
 The parity gate derives tags from actions and frames, verifies exact equality with declared ordered tags, requires every legacy-representable question and option plus each declared observable behavior class, and rejects orphan, fabricated, duplicate, or reordered tags. Compiler/runtime tests remain the only coverage gate for excluded new-only fields.
 
-New-runtime parity is a projection, not an internal-model comparison. A dedicated runtime adapter starts from a fresh state, performs the same ordered legacy-representable public actions, lets each transition settle, and emits only `LegacyObservableTraceFrame` fields that the legacy trace schema permits. It may use runtime APIs to execute the action, but it must not serialize `FlowState`, `ApplyAnswerResult`, compiler metadata, or any excluded field into received parity data. Stable projected frames are then compared to the frozen trace in order.
+New-runtime parity is a projection, not an internal-model comparison. A dedicated runtime adapter starts from a fresh state, performs the same ordered legacy-representable public actions, lets each transition settle, and emits only `LegacyObservableTraceFrame` fields that the legacy trace schema permits. `select`/`deselect` update only adapter pending selection; their legacy-shaped observable answer field projects that pending value so it matches the legacy component's immediate answer change, while `AnswerDraft` remains unchanged. `continue` calls `applyAnswer` with the current pending selection, evaluates the accepted draft to settled flow state, emits one `submit`, emits zero or more actual compiled forced transitions as `forced-skip`, and then emits exactly one `next` or `complete`, all under the same action index. A rejected `applyAnswer` means the seed is not legacy-representable and rejects fixture authoring/replay; rejected API metadata is never frozen. `previous` performs only previous navigation, does not call `applyAnswer`, and preserves adapter pending projections so the observable legacy-shaped answer view still reflects prior option clicks while the formal draft remains unchanged. The adapter may use runtime APIs to execute actions, but it must not serialize `FlowState`, `ApplyAnswerResult`, compiler metadata, or any excluded field into received parity data. Stable projected frames are then compared to the frozen trace in order.
 
 On mismatch the gate reports:
 
@@ -847,7 +853,7 @@ Batch 2A is rejected if any of the following is true:
 - parity behavior, fixture integrity, or required coverage fails
 - case counts, ordered case IDs, coverage tags, or manifest identities disagree
 - a frozen case contains repairs, diagnostics, invalidated IDs, global reachability, application result objects, canonical navigation metadata, dependency closures, fixed-point metadata, or another non-observable new-runtime field
-- raw extractor output does not bind exactly to seed count, order, IDs, actions, and coverage tags
+- raw extractor output does not bind exactly to seed count, order, IDs, and actions, or frozen coverage tags are not exactly the mechanical derivation from validated actions and frames
 - current semantic hash differs from verified provenance
 - migration ledger baseline or implementation evidence is stale or inconsistent
 - runtime root imports or exposes Node, compiler, extractor, React, legacy, persistence, scoring, or style implementation
