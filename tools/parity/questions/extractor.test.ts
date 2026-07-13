@@ -567,6 +567,31 @@ describe('isolated execution and exact seed binding', () => {
     )
   })
 
+  test.each([
+    { mode: 'verify-only', verifyOnly: true },
+    { mode: 'publication', verifyOnly: false },
+  ])('rejects a post-extraction tracked mutation before $mode completion', async ({ verifyOnly }) => {
+    const fixture = await createExtractorFixture()
+    let publicationStarted = false
+    fixture.environment.hooks.afterExtraction = () => {
+      writeFileSync(join(fixture.legacyRoot, 'src/App.tsx'), 'mutated after extraction\n')
+    }
+    fixture.environment.hooks.beforePublishStaging = () => {
+      publicationStarted = true
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, { verifyOnly })).rejects.toThrow(
+      'tracked source hash src/App.tsx mismatch',
+    )
+    expect(publicationStarted).toBe(false)
+    expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
+    for (const role of ['legacy-head', 'legacy-tree', 'legacy-status'] as const) {
+      expect(fixture.spawnRecords.filter((record) => record.role === role)).toHaveLength(2)
+    }
+    const statuses = fixture.spawnRecords.filter(({ role }) => role === 'legacy-status')
+    expect(statuses.every(({ args }) => args.includes('--untracked-files=all'))).toBe(true)
+  })
+
   test('runs the full suite before network-denied extraction', async () => {
     const fixture = await createExtractorFixture()
     await runLegacyExtractor(fixture.environment, { verifyOnly: true })
@@ -950,6 +975,11 @@ describe('tracked observation patch and seed surface', () => {
     ]) expect(extractionTestAdditions).not.toContain(forbidden)
     expect(extractionTestAdditions).not.toContain('lastVisibleOptions')
     expect(extractionTestAdditions).toContain(
+      "document.querySelectorAll<HTMLButtonElement>('.choice-card')",
+    )
+    expect(extractionTestAdditions).toContain('disabledOptionIds')
+    expect(extractionTestAdditions).toContain('if (option.disabled)')
+    expect(extractionTestAdditions).toContain(
       'previous?.displayedQuestionId === observation.displayedQuestionId',
     )
     expect(extractionTestAdditions).toContain('previous?.legacyAnswers !== undefined')
@@ -967,6 +997,25 @@ describe('tracked observation patch and seed surface', () => {
       expect(seedCase).not.toHaveProperty('coverageTags')
       expect(seedCase).not.toHaveProperty('frames')
     }
+  })
+
+  test('reaches the source maximum through real selects then frees capacity without a disabled click', () => {
+    const input = JSON.parse(readFileSync(seedsPath, 'utf8')) as {
+      cases: Array<{
+        id: string
+        actions: Array<Record<string, string>>
+      }>
+    }
+    const actions = input.cases.find(({ id }) => id === 'soup-paitan-complete')?.actions
+    expect(actions).toBeDefined()
+    const sourceActions = actions?.filter(({ questionId }) => questionId === 'source')
+    expect(sourceActions).toEqual([
+      { type: 'select', questionId: 'source', optionId: 'unsure' },
+      { type: 'select', questionId: 'source', optionId: 'pork' },
+      { type: 'select', questionId: 'source', optionId: 'chicken' },
+      { type: 'deselect', questionId: 'source', optionId: 'chicken' },
+      { type: 'select', questionId: 'source', optionId: 'fish-seafood' },
+    ])
   })
 
   test('skips the extraction-only test unless the exact raw-output capability is present', () => {

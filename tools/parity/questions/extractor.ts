@@ -143,6 +143,7 @@ export interface ExtractorHooks {
     readonly userConfig: string
     readonly globalConfig: string
   }) => void
+  afterExtraction?: () => void
   beforePublishStaging?: (path: string) => void
   afterPublishStaging?: (path: string) => void
   beforeRollback?: (path: string) => void
@@ -782,6 +783,75 @@ function assertExpectedValue(actual: string, expected: string, label: string) {
   if (actual !== expected) throw new Error(`${label} mismatch`)
 }
 
+async function verifyOriginalCheckoutIdentity(
+  environment: ExtractorEnvironment,
+  childEnvironment: Readonly<Record<string, string>>,
+  expectedRootIdentity: FileIdentity,
+) {
+  revalidateRegularDirectory(
+    environment.legacyRoot,
+    expectedRootIdentity,
+    'legacy root',
+  )
+  const failures: unknown[] = []
+  const capture = async (verification: () => Promise<void> | void) => {
+    try {
+      await verification()
+    } catch (error) {
+      failures.push(error)
+    }
+  }
+
+  await capture(async () => {
+    assertExpectedValue(exactLine(await execute(environment, {
+      role: 'legacy-head',
+      executable: environment.tools.git,
+      args: ['-C', environment.legacyRoot, 'rev-parse', 'HEAD'],
+      cwd: environment.legacyRoot,
+      environment: childEnvironment,
+    })), environment.expected.commit, 'legacy commit')
+  })
+  await capture(async () => {
+    assertExpectedValue(exactLine(await execute(environment, {
+      role: 'legacy-tree',
+      executable: environment.tools.git,
+      args: ['-C', environment.legacyRoot, 'rev-parse', 'HEAD^{tree}'],
+      cwd: environment.legacyRoot,
+      environment: childEnvironment,
+    })), environment.expected.treeHash, 'legacy tree')
+  })
+  await capture(async () => {
+    const status = await execute(environment, {
+      role: 'legacy-status',
+      executable: environment.tools.git,
+      args: ['-C', environment.legacyRoot, 'status', '--porcelain=v1', '--untracked-files=all'],
+      cwd: environment.legacyRoot,
+      environment: childEnvironment,
+    })
+    if (status.trim()) throw new Error('legacy checkout is dirty')
+  })
+  for (const [path, expectedHash] of Object.entries(environment.expected.trackedSourceHashes)) {
+    await capture(() => {
+      const absolute = resolve(environment.legacyRoot, path)
+      assertDescendant(absolute, environment.legacyRoot, 'tracked source')
+      const bytes = readNoFollowFile(absolute, `tracked source ${path}`)
+      assertExpectedValue(sha256Bytes(bytes), expectedHash, `tracked source hash ${path}`)
+    })
+  }
+  await capture(() => {
+    const lockfile = resolve(environment.legacyRoot, environment.expected.lockfilePath)
+    assertDescendant(lockfile, environment.legacyRoot, 'legacy lockfile')
+    const lockfileBytes = readNoFollowFile(lockfile, 'legacy lockfile')
+    assertExpectedValue(sha256Bytes(lockfileBytes), environment.expected.lockfileHash, 'lockfile hash')
+  })
+  if (failures.length > 0) {
+    throw new Error(sanitizeExternalError(
+      failures.map((error) => sanitizeExternalError(error, 120)).join('; '),
+      maximumExternalMessageLength,
+    ))
+  }
+}
+
 function fingerprintsEqual(
   before: readonly IgnoredPathFingerprint[],
   after: readonly IgnoredPathFingerprint[],
@@ -908,6 +978,8 @@ export async function runLegacyExtractor(
   let lockDescriptor: number | undefined
   let lockIdentity: FileIdentity | undefined
   let extractionRootIdentity: FileIdentity | undefined
+  let legacyRootIdentity: FileIdentity | undefined
+  let trustedChildEnvironment: ReturnType<typeof makeChildEnvironment> | undefined
   let stagingIdentity: FileIdentity | undefined
   let worktreeAttempted = false
   let backupIdentity: FileIdentity | undefined
@@ -921,7 +993,7 @@ export async function runLegacyExtractor(
   let manifest: unknown
 
   try {
-    assertNoFollowPath(environment.legacyRoot, { kind: 'directory', allowMissingLeaf: false })
+    legacyRootIdentity = snapshotRegularDirectory(environment.legacyRoot, 'legacy root')
     assertNoFollowPath(environment.toolRoot, { kind: 'directory', allowMissingLeaf: false })
     assertNoFollowPath(environment.patchPath, { kind: 'file', allowMissingLeaf: false })
     assertNoFollowPath(environment.seedsPath, { kind: 'file', allowMissingLeaf: false })
@@ -1000,6 +1072,7 @@ export async function runLegacyExtractor(
       environment.tools,
       npmConfigs,
     )
+    trustedChildEnvironment = childEnvironment
 
     const gitVersion = exactLine(await execute(environment, {
       role: 'git-version',
@@ -1036,39 +1109,11 @@ export async function runLegacyExtractor(
     if (JSON.stringify(remote) !== JSON.stringify(environment.expected.identity)) {
       throw new Error('legacy repository identity mismatch')
     }
-    assertExpectedValue(exactLine(await execute(environment, {
-      role: 'legacy-head',
-      executable: environment.tools.git,
-      args: ['-C', environment.legacyRoot, 'rev-parse', 'HEAD'],
-      cwd: environment.legacyRoot,
-      environment: childEnvironment,
-    })), environment.expected.commit, 'legacy commit')
-    assertExpectedValue(exactLine(await execute(environment, {
-      role: 'legacy-tree',
-      executable: environment.tools.git,
-      args: ['-C', environment.legacyRoot, 'rev-parse', 'HEAD^{tree}'],
-      cwd: environment.legacyRoot,
-      environment: childEnvironment,
-    })), environment.expected.treeHash, 'legacy tree')
-    const status = await execute(environment, {
-      role: 'legacy-status',
-      executable: environment.tools.git,
-      args: ['-C', environment.legacyRoot, 'status', '--porcelain=v1', '--untracked-files=all'],
-      cwd: environment.legacyRoot,
-      environment: childEnvironment,
-    })
-    if (status.trim()) throw new Error('legacy checkout is dirty')
-
-    for (const [path, expectedHash] of Object.entries(environment.expected.trackedSourceHashes)) {
-      const absolute = resolve(environment.legacyRoot, path)
-      assertDescendant(absolute, environment.legacyRoot, 'tracked source')
-      const bytes = readNoFollowFile(absolute, `tracked source ${path}`)
-      assertExpectedValue(sha256Bytes(bytes), expectedHash, `tracked source hash ${path}`)
-    }
-    const lockfile = resolve(environment.legacyRoot, environment.expected.lockfilePath)
-    assertDescendant(lockfile, environment.legacyRoot, 'legacy lockfile')
-    const lockfileBytes = readNoFollowFile(lockfile, 'legacy lockfile')
-    assertExpectedValue(sha256Bytes(lockfileBytes), environment.expected.lockfileHash, 'lockfile hash')
+    await verifyOriginalCheckoutIdentity(
+      environment,
+      childEnvironment,
+      legacyRootIdentity,
+    )
 
     worktreeAttempted = true
     await execute(environment, {
@@ -1212,6 +1257,7 @@ export async function runLegacyExtractor(
       cwd: worktree,
       environment: extractionEnvironment,
     })
+    environment.hooks.afterExtraction?.()
     const rawIdentity = snapshotRegularFile(rawOutput, 'raw output')
     environment.hooks.beforeReadRaw?.(rawOutput)
     revalidateRegularFile(rawOutput, rawIdentity, 'raw output')
@@ -1318,10 +1364,17 @@ export async function runLegacyExtractor(
     }
   }
 
-  try {
-    if (extractionRootIdentity) removeOwnedPath(paths.extractionRoot, extractionRootIdentity)
-  } catch (error) {
-    cleanupErrors.push(error)
+  if (legacyRootIdentity && trustedChildEnvironment) {
+    try {
+      await verifyOriginalCheckoutIdentity(
+        environment,
+        trustedChildEnvironment,
+        legacyRootIdentity,
+      )
+    } catch (error) {
+      if (!primaryError) primaryError = error
+      else cleanupErrors.push(error)
+    }
   }
 
   try {
@@ -1334,6 +1387,12 @@ export async function runLegacyExtractor(
   } catch (error) {
     if (!primaryError) primaryError = error
     else cleanupErrors.push(error)
+  }
+
+  try {
+    if (extractionRootIdentity) removeOwnedPath(paths.extractionRoot, extractionRootIdentity)
+  } catch (error) {
+    cleanupErrors.push(error)
   }
 
   if (!primaryError && !options.verifyOnly) {

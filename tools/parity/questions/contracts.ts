@@ -69,6 +69,7 @@ export interface LegacyObservableTraceFrame {
   readonly actionIndex?: number
   readonly displayedQuestionId?: string
   readonly visibleOptionIds?: readonly string[]
+  readonly disabledOptionIds?: readonly string[]
   readonly pendingOptionIds?: readonly string[]
   readonly legacyAnswers?: LegacyObservedAnswers
   readonly forcedAutoAnswer?: {
@@ -101,7 +102,7 @@ export type TraceCoverageTag =
     | 'forced-skip'
     | 'completion'
     | 'exclusive-replacement'
-    | 'max-no-op'
+    | 'max-selection-blocked'
     | 'empty-restoration'
     | 'branch-visible-change'
     | 'branch-answer-change'
@@ -214,6 +215,7 @@ const frameShape = z.strictObject({
   actionIndex: z.number().int().nonnegative().optional(),
   displayedQuestionId: identifierSchema.optional(),
   visibleOptionIds: stringArraySchema.optional(),
+  disabledOptionIds: stringArraySchema.optional(),
   pendingOptionIds: stringArraySchema.optional(),
   legacyAnswers: legacyObservedAnswersSchema.optional(),
   forcedAutoAnswer: z.strictObject({
@@ -228,6 +230,36 @@ const frameShape = z.strictObject({
   completionMarker: z.literal('results').optional(),
   observedChanges: observedChangesSchema.optional(),
 }).superRefine((frame, context) => {
+  if (frame.disabledOptionIds !== undefined) {
+    const visibleOptionIds = frame.visibleOptionIds ?? []
+    const disabledOptionIds = frame.disabledOptionIds
+    if (new Set(disabledOptionIds).size !== disabledOptionIds.length) {
+      context.addIssue({
+        code: 'custom',
+        path: ['disabledOptionIds'],
+        message: 'disabledOptionIds must be unique',
+      })
+    }
+    const disabledSet = new Set(disabledOptionIds)
+    const orderedDisabledOptionIds = visibleOptionIds.filter((optionId) => (
+      disabledSet.has(optionId)
+    ))
+    if (!valuesEqual(disabledOptionIds, orderedDisabledOptionIds)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['disabledOptionIds'],
+        message: 'disabledOptionIds must be a visible subset in display order',
+      })
+    }
+    if (frame.pendingOptionIds?.some((optionId) => disabledSet.has(optionId))) {
+      context.addIssue({
+        code: 'custom',
+        path: ['disabledOptionIds'],
+        message: 'disabledOptionIds must be disjoint from pendingOptionIds',
+      })
+    }
+  }
+
   if (frame.transition === 'initial') {
     if (frame.actionIndex !== undefined) {
       context.addIssue({ code: 'custom', path: ['actionIndex'], message: 'initial forbids actionIndex' })
@@ -437,6 +469,13 @@ function validateActionFrames(input: ParsedActionFrameInput, context: z.Refineme
         message: 'action option must be present in directly observed pre-action options',
       })
     }
+    if (action.type === 'select' && preActionFrame?.disabledOptionIds?.includes(action.optionId)) {
+      addIssue({
+        code: 'custom',
+        path: ['actions', actionIndex, 'optionId'],
+        message: 'select option must be enabled in the directly observed pre-action frame',
+      })
+    }
     if (action.type === 'select' || action.type === 'deselect') {
       if (transitions.length !== 1 || transitions[0] !== 'toggle') {
         addIssue({
@@ -529,7 +568,8 @@ function validateActionFrames(input: ParsedActionFrameInput, context: z.Refineme
       if (frame.transition === 'complete') {
         settledDisplayedQuestionId = undefined
       } else if (frame.transition === 'next' || frame.transition === 'previous') {
-        settledDisplayedQuestionId = frame.displayedQuestionId
+        settledDisplayedQuestionId = frame.navigation?.reachedQuestionId
+          ?? frame.displayedQuestionId
       } else if (frame.displayedQuestionId !== undefined) {
         settledDisplayedQuestionId = frame.displayedQuestionId
       }
@@ -567,13 +607,46 @@ function validateToggleState(
 ) {
   const directlyObservedAnswer = current.legacyAnswers?.[action.questionId]
   const previousObservedAnswer = previous?.legacyAnswers?.[action.questionId]
+  const previousSelectionObserved = previous?.pendingOptionIds !== undefined
+    || previous?.legacyAnswers !== undefined
+  const currentSelectionObserved = current.pendingOptionIds !== undefined
+    || current.legacyAnswers !== undefined
+  if (previousSelectionObserved !== currentSelectionObserved) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameIndex],
+      message: 'toggle selection must be directly observed both before and after',
+    })
+  }
+  const targetWasPending = previous?.pendingOptionIds?.includes(action.optionId)
+  if (
+    targetWasPending !== undefined
+    && targetWasPending !== (action.type === 'deselect')
+  ) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameIndex - 1, 'pendingOptionIds'],
+      message: 'pre-action pendingOptionIds must match its bound action operation',
+    })
+  }
+  const targetWasAnswered = previous?.legacyAnswers === undefined
+    ? undefined
+    : previousObservedAnswer === undefined
+      ? false
+      : canonicalAnswerValue(previousObservedAnswer).includes(action.optionId)
+  if (
+    targetWasAnswered !== undefined
+    && targetWasAnswered !== (action.type === 'deselect')
+  ) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameIndex - 1, 'legacyAnswers', action.questionId],
+      message: 'pre-action legacy answer must match its bound action operation',
+    })
+  }
+
   const pendingConsistent = current.pendingOptionIds === undefined || (
-    action.type === 'select'
-      ? current.pendingOptionIds.includes(action.optionId) || (
-          previous?.pendingOptionIds !== undefined
-          && valuesEqual(current.pendingOptionIds, previous.pendingOptionIds)
-        )
-      : !current.pendingOptionIds.includes(action.optionId)
+    current.pendingOptionIds.includes(action.optionId) === (action.type === 'select')
   )
   if (!pendingConsistent) {
     addIssue({
@@ -583,19 +656,42 @@ function validateToggleState(
     })
   }
 
-  const answerConsistent = directlyObservedAnswer === undefined || (
-    action.type === 'select'
-      ? canonicalAnswerValue(directlyObservedAnswer).includes(action.optionId) || (
-          previousObservedAnswer !== undefined
-          && canonicalAnswerValuesEqual(directlyObservedAnswer, previousObservedAnswer)
-        )
-      : !canonicalAnswerValue(directlyObservedAnswer).includes(action.optionId)
+  const answerContainsTarget = current.legacyAnswers === undefined
+    ? undefined
+    : directlyObservedAnswer === undefined
+      ? false
+      : canonicalAnswerValue(directlyObservedAnswer).includes(action.optionId)
+  const answerConsistent = answerContainsTarget === undefined || (
+    answerContainsTarget === (action.type === 'select')
   )
   if (!answerConsistent) {
     addIssue({
       code: 'custom',
       path: ['frames', frameIndex, 'legacyAnswers', action.questionId],
       message: 'toggle legacy answer must match its bound action operation',
+    })
+  }
+
+  if (
+    previous?.pendingOptionIds !== undefined
+    && current.pendingOptionIds !== undefined
+    && valuesEqual(previous.pendingOptionIds, current.pendingOptionIds)
+  ) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameIndex, 'pendingOptionIds'],
+      message: 'toggle must change the directly observed pending selection',
+    })
+  }
+  if (
+    previous?.legacyAnswers !== undefined
+    && current.legacyAnswers !== undefined
+    && valuesEqual(previousObservedAnswer, directlyObservedAnswer)
+  ) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameIndex, 'legacyAnswers', action.questionId],
+      message: 'toggle must change the directly observed legacy answer',
     })
   }
 
@@ -715,10 +811,25 @@ function deriveValidatedCoverage(
     const before = previousFrame.pendingOptionIds
     const after = frame.pendingOptionIds
     if (action.type === 'select' && before && after) {
-      if (valuesEqual(before, after)) tags.add('behavior:max-no-op')
-      else if (before.length === 1 && after.length === 1) {
+      if (before.length === 1 && after.length === 1) {
         tags.add('behavior:exclusive-replacement')
       }
+      const beforeVisible = previousFrame.visibleOptionIds
+      const afterVisible = frame.visibleOptionIds
+      const beforeDisabled = previousFrame.disabledOptionIds
+      const afterDisabled = frame.disabledOptionIds
+      if (
+        beforeVisible
+        && afterVisible
+        && beforeDisabled
+        && afterDisabled
+        && afterVisible.some((optionId) => (
+          beforeVisible.includes(optionId)
+          && !beforeDisabled.includes(optionId)
+          && afterDisabled.includes(optionId)
+          && !after.includes(optionId)
+        ))
+      ) tags.add('behavior:max-selection-blocked')
     }
     if (
       action.type === 'deselect'
@@ -869,11 +980,24 @@ export const fixtureManifestSchema = z.strictObject({
 })
 
 interface ObservableDivergenceRoute {
+  readonly allowedOperations: readonly DivergenceOperation[]
   readonly acceptsValue: (value: unknown) => boolean
 }
 
-function routeFor(schema: z.ZodType): ObservableDivergenceRoute {
-  return { acceptsValue: (value) => schema.safeParse(value).success }
+type DivergenceOperation = 'add' | 'replace' | 'remove'
+
+const requiredLeafOperations = ['replace'] as const
+const optionalLeafOperations = ['add', 'replace', 'remove'] as const
+const arrayElementOperations = ['add', 'replace', 'remove'] as const
+
+function routeFor(
+  schema: z.ZodType,
+  allowedOperations: readonly DivergenceOperation[],
+): ObservableDivergenceRoute {
+  return {
+    allowedOperations,
+    acceptsValue: (value) => schema.safeParse(value).success,
+  }
 }
 
 function decodeJsonPointer(pointer: string) {
@@ -907,8 +1031,11 @@ function parseObservableFrameRoute(
   ) return undefined
   const route = segments.slice(2)
   if (route.length === 1) {
-    if (route[0] === 'sequence' || route[0] === 'actionIndex') {
-      return routeFor(z.number().int().nonnegative())
+    if (route[0] === 'sequence') {
+      return routeFor(z.number().int().nonnegative(), requiredLeafOperations)
+    }
+    if (route[0] === 'actionIndex') {
+      return routeFor(z.number().int().nonnegative(), requiredLeafOperations)
     }
     if (route[0] === 'transition') {
       return routeFor(z.enum([
@@ -919,71 +1046,93 @@ function parseObservableFrameRoute(
         'next',
         'previous',
         'complete',
-      ]))
+      ]), requiredLeafOperations)
     }
-    if (route[0] === 'displayedQuestionId') return routeFor(identifierSchema)
-    if (route[0] === 'completionMarker') return routeFor(z.literal('results'))
+    if (route[0] === 'displayedQuestionId') {
+      return routeFor(identifierSchema, optionalLeafOperations)
+    }
+    if (route[0] === 'completionMarker') {
+      return routeFor(z.literal('results'), requiredLeafOperations)
+    }
     return undefined
   }
 
   if (
-    (route[0] === 'visibleOptionIds' || route[0] === 'pendingOptionIds')
+    (
+      route[0] === 'visibleOptionIds'
+      || route[0] === 'disabledOptionIds'
+      || route[0] === 'pendingOptionIds'
+    )
     && route.length === 2
     && isCanonicalArrayIndex(route[1]!, 256, operation)
-  ) return routeFor(identifierSchema)
+  ) return routeFor(identifierSchema, arrayElementOperations)
 
   if (route[0] === 'legacyAnswers' && identifierSchema.safeParse(route[1]).success) {
-    if (route.length === 2) return routeFor(legacyObservedAnswerValueSchema)
+    if (route.length === 2) {
+      return routeFor(legacyObservedAnswerValueSchema, optionalLeafOperations)
+    }
     if (
       route.length === 3
       && isCanonicalArrayIndex(route[2]!, 256, operation)
-    ) return routeFor(identifierSchema)
+    ) return routeFor(identifierSchema, arrayElementOperations)
     return undefined
   }
 
   if (route[0] === 'forcedAutoAnswer') {
-    if (route.length === 2 && route[1] === 'questionId') return routeFor(identifierSchema)
+    if (route.length === 2 && route[1] === 'questionId') {
+      return routeFor(identifierSchema, requiredLeafOperations)
+    }
     if (route.length === 2 && route[1] === 'value') {
-      return routeFor(legacyObservedAnswerValueSchema)
+      return routeFor(legacyObservedAnswerValueSchema, requiredLeafOperations)
     }
     if (
       route.length === 3
       && route[1] === 'value'
       && isCanonicalArrayIndex(route[2]!, 256, operation)
-    ) return routeFor(identifierSchema)
+    ) return routeFor(identifierSchema, arrayElementOperations)
     return undefined
   }
 
   if (route[0] === 'navigation' && route.length === 2) {
-    if (route[1] === 'direction') return routeFor(z.enum(['next', 'previous']))
-    if (route[1] === 'reachedQuestionId') return routeFor(identifierSchema)
-    if (route[1] === 'reachedScreen') return routeFor(z.literal('results'))
+    if (route[1] === 'direction') {
+      return routeFor(z.enum(['next', 'previous']), requiredLeafOperations)
+    }
+    if (route[1] === 'reachedQuestionId') {
+      return routeFor(identifierSchema, optionalLeafOperations)
+    }
+    if (route[1] === 'reachedScreen') {
+      return routeFor(z.literal('results'), optionalLeafOperations)
+    }
     return undefined
   }
 
   if (route[0] !== 'observedChanges') return undefined
   if (route[1] === 'visibleOptionIds') {
-    if (route.length === 3 && route[2] === 'questionId') return routeFor(identifierSchema)
+    if (route.length === 3 && route[2] === 'questionId') {
+      return routeFor(identifierSchema, requiredLeafOperations)
+    }
     if (
       route.length === 4
       && (route[2] === 'before' || route[2] === 'after')
       && isCanonicalArrayIndex(route[3]!, 256, operation)
-    ) return routeFor(identifierSchema)
+    ) return routeFor(identifierSchema, arrayElementOperations)
     return undefined
   }
   if (
     route[1] !== 'answers'
     || !isCanonicalArrayIndex(route[2] ?? '', 256, 'replace')
   ) return undefined
-  if (route.length === 4 && route[3] === 'questionId') return routeFor(identifierSchema)
+  if (route.length === 4 && route[3] === 'questionId') {
+    return routeFor(identifierSchema, requiredLeafOperations)
+  }
   if (route.length === 4 && (route[3] === 'before' || route[3] === 'after')) {
-    return routeFor(legacyObservedAnswerValueSchema)
+    return routeFor(legacyObservedAnswerValueSchema, optionalLeafOperations)
   }
   if (
     route.length === 5
     && (route[3] === 'before' || route[3] === 'after')
     && isCanonicalArrayIndex(route[4]!, 256, operation)
-  ) return routeFor(identifierSchema)
+  ) return routeFor(identifierSchema, arrayElementOperations)
   return undefined
 }
 
@@ -1004,6 +1153,12 @@ const divergenceSchema = z.strictObject({
       code: 'custom',
       path: ['jsonPointer'],
       message: 'divergence pointer must name an observable frame leaf or array element',
+    })
+  } else if (!route.allowedOperations.includes(divergence.operation)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['operation'],
+      message: 'divergence operation is not allowed for the observable route',
     })
   }
   if (divergence.operation === 'remove' && divergence.approvedValue !== undefined) {

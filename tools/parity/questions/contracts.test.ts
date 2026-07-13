@@ -147,6 +147,34 @@ describe('observable legacy trace contracts', () => {
     }).success).toBe(true)
   })
 
+  test('accepts only unique visible disabled IDs in display order and disjoint from pending', () => {
+    const accepted = legacyObservableTraceFrameSchema.safeParse({
+      ...validFrame,
+      visibleOptionIds: ['pork', 'chicken', 'duck'],
+      disabledOptionIds: ['duck'],
+    })
+    expect(accepted.success).toBe(true)
+    if (accepted.success) expect(accepted.data.disabledOptionIds).toEqual(['duck'])
+
+    for (const disabledOptionIds of [
+      ['hidden-option'],
+      ['duck', 'duck'],
+      ['duck', 'chicken'],
+    ]) {
+      expect(legacyObservableTraceFrameSchema.safeParse({
+        ...validFrame,
+        visibleOptionIds: ['pork', 'chicken', 'duck'],
+        disabledOptionIds,
+      }).success).toBe(false)
+    }
+    expect(legacyObservableTraceFrameSchema.safeParse({
+      ...validFrame,
+      visibleOptionIds: ['pork', 'chicken', 'duck'],
+      disabledOptionIds: ['pork'],
+      pendingOptionIds: ['pork'],
+    }).success).toBe(false)
+  })
+
   test.each([
     'canonicalAnswers',
     'reachableQuestionIds',
@@ -397,6 +425,89 @@ describe('observable legacy trace contracts', () => {
     expect(() => deriveObservableCoverage(input)).toThrow()
   })
 
+  test('rejects select unless the target is absent and enabled before then present after', () => {
+    const selectedBefore = {
+      actions: [{ type: 'select', questionId: 'form', optionId: 'soup' }] as const,
+      frames: [
+        {
+          ...validFrame,
+          pendingOptionIds: ['soup'],
+          legacyAnswers: { form: 'soup' },
+        },
+        {
+          sequence: 1,
+          transition: 'toggle',
+          actionIndex: 0,
+          displayedQuestionId: 'form',
+          visibleOptionIds: ['soup', 'dry'],
+          pendingOptionIds: ['soup'],
+          legacyAnswers: { form: 'soup' },
+        },
+      ],
+    } as const
+    expect(() => deriveObservableCoverage(selectedBefore)).toThrow()
+
+    const disabledBefore = {
+      actions: [{ type: 'select', questionId: 'form', optionId: 'soup' }] as const,
+      frames: [
+        { ...validFrame, disabledOptionIds: ['soup'] },
+        {
+          ...validTraceCaseWithoutCoverage.frames[1],
+          disabledOptionIds: [],
+        },
+      ],
+    } as const
+    expect(() => deriveObservableCoverage(disabledBefore)).toThrow()
+    expect(() => deriveObservableCoverage({
+      actions: [validTraceCaseWithoutCoverage.actions[0]],
+      frames: validTraceCaseWithoutCoverage.frames.slice(0, 2),
+    })).not.toThrow()
+  })
+
+  test('rejects deselect unless the target is present before and absent after', () => {
+    const absentBefore = {
+      actions: [{ type: 'deselect', questionId: 'form', optionId: 'dry' }] as const,
+      frames: [
+        {
+          ...validFrame,
+          pendingOptionIds: ['soup'],
+          legacyAnswers: { form: 'soup' },
+        },
+        {
+          sequence: 1,
+          transition: 'toggle',
+          actionIndex: 0,
+          displayedQuestionId: 'form',
+          visibleOptionIds: ['soup', 'dry'],
+          pendingOptionIds: ['soup'],
+          legacyAnswers: { form: 'soup' },
+        },
+      ],
+    } as const
+    expect(() => deriveObservableCoverage(absentBefore)).toThrow()
+
+    const successful = {
+      actions: [{ type: 'deselect', questionId: 'form', optionId: 'dry' }] as const,
+      frames: [
+        {
+          ...validFrame,
+          pendingOptionIds: ['soup', 'dry'],
+          legacyAnswers: { form: ['soup', 'dry'] },
+        },
+        {
+          sequence: 1,
+          transition: 'toggle',
+          actionIndex: 0,
+          displayedQuestionId: 'form',
+          visibleOptionIds: ['soup', 'dry'],
+          pendingOptionIds: ['soup'],
+          legacyAnswers: { form: ['soup'] },
+        },
+      ],
+    } as const
+    expect(() => deriveObservableCoverage(successful)).not.toThrow()
+  })
+
   test('rejects next-to-results and complete-to-question terminal contradictions', () => {
     const invalidTerminals = [
       {
@@ -432,6 +543,49 @@ describe('observable legacy trace contracts', () => {
     }
   })
 
+  test('binds the next action to a reached question when terminal display state is omitted', () => {
+    const frames = [
+      {
+        ...validFrame,
+        pendingOptionIds: ['soup'],
+        legacyAnswers: { form: 'soup' },
+      },
+      {
+        sequence: 1,
+        transition: 'submit',
+        actionIndex: 0,
+        displayedQuestionId: 'form',
+        legacyAnswers: { form: 'soup' },
+      },
+      {
+        sequence: 2,
+        transition: 'next',
+        actionIndex: 0,
+        legacyAnswers: { form: 'soup' },
+        navigation: { direction: 'next', reachedQuestionId: 'archetype' },
+      },
+      {
+        sequence: 3,
+        transition: 'previous',
+        actionIndex: 1,
+        legacyAnswers: { form: 'soup' },
+        navigation: { direction: 'previous', reachedQuestionId: 'form' },
+      },
+    ] as const
+    const matchingActions = [
+      { type: 'continue', fromQuestionId: 'form' },
+      { type: 'previous', fromQuestionId: 'archetype' },
+    ] as const
+    expect(() => deriveObservableCoverage({ actions: matchingActions, frames })).not.toThrow()
+    expect(() => deriveObservableCoverage({
+      actions: [
+        matchingActions[0],
+        { type: 'previous', fromQuestionId: 'form' },
+      ],
+      frames,
+    })).toThrow('action source must match')
+  })
+
   test('rejects a forced auto-answer contradicted by the same observed answer frame', () => {
     const input = {
       id: 'forced-answer-mismatch',
@@ -464,7 +618,7 @@ describe('observable legacy trace contracts', () => {
     expect(() => deriveObservableCoverage(input)).toThrow()
   })
 
-  test('accepts optional observations and directly observed toggle no-op state', () => {
+  test('accepts optional observations but rejects an unchanged observed toggle', () => {
     const optionalInput = {
       id: 'optional-action-observations',
       actions: [{ type: 'select', questionId: 'form', optionId: 'soup' }] as const,
@@ -495,7 +649,51 @@ describe('observable legacy trace contracts', () => {
         },
       ] as const,
     }
-    expect(() => deriveObservableCoverage(noOpInput)).not.toThrow()
+    expect(() => deriveObservableCoverage(noOpInput)).toThrow()
+  })
+
+  test('rejects a toggle with only one directly observed selection boundary', () => {
+    const action = [{ type: 'select', questionId: 'form', optionId: 'soup' }] as const
+    const missingPost = {
+      actions: action,
+      frames: [
+        {
+          sequence: 0,
+          transition: 'initial',
+          displayedQuestionId: 'form',
+          visibleOptionIds: ['soup', 'dry'],
+          pendingOptionIds: [],
+        },
+        {
+          sequence: 1,
+          transition: 'toggle',
+          actionIndex: 0,
+          displayedQuestionId: 'form',
+          visibleOptionIds: ['soup', 'dry'],
+        },
+      ],
+    } as const
+    const missingPre = {
+      actions: action,
+      frames: [
+        {
+          sequence: 0,
+          transition: 'initial',
+          displayedQuestionId: 'form',
+          visibleOptionIds: ['soup', 'dry'],
+        },
+        {
+          sequence: 1,
+          transition: 'toggle',
+          actionIndex: 0,
+          displayedQuestionId: 'form',
+          visibleOptionIds: ['soup', 'dry'],
+          pendingOptionIds: ['soup'],
+        },
+      ],
+    } as const
+    expect(() => deriveObservableCoverage(missingPost)).toThrow()
+    expect(() => deriveObservableCoverage(missingPre)).toThrow()
   })
 
   test('requires transition-specific observable markers and forbids them elsewhere', () => {
@@ -611,10 +809,15 @@ describe('mechanically derived observable coverage', () => {
             transition: 'toggle',
             actionIndex: 0,
             displayedQuestionId: 'form',
-            visibleOptionIds: ['soup', 'dry'],
+            visibleOptionIds: ['dry'],
             pendingOptionIds: ['dry'],
             legacyAnswers: { form: 'dry' },
             observedChanges: {
+              visibleOptionIds: {
+                questionId: 'form',
+                before: ['soup', 'dry'],
+                after: ['dry'],
+              },
               answers: [{ questionId: 'form', before: 'soup', after: 'dry' }],
             },
           },
@@ -626,7 +829,8 @@ describe('mechanically derived observable coverage', () => {
           {
             ...validFrame,
             displayedQuestionId: 'source',
-            visibleOptionIds: ['pork', 'chicken'],
+            visibleOptionIds: ['pork', 'chicken', 'fish'],
+            disabledOptionIds: [],
             pendingOptionIds: ['pork'],
             legacyAnswers: { source: ['pork'] },
           },
@@ -636,14 +840,15 @@ describe('mechanically derived observable coverage', () => {
             actionIndex: 0,
             displayedQuestionId: 'source',
             visibleOptionIds: ['pork', 'chicken', 'fish'],
-            pendingOptionIds: ['pork'],
-            legacyAnswers: { source: ['pork'] },
+            disabledOptionIds: ['fish'],
+            pendingOptionIds: ['pork', 'chicken'],
+            legacyAnswers: { source: ['pork', 'chicken'] },
             observedChanges: {
-              visibleOptionIds: {
+              answers: [{
                 questionId: 'source',
-                before: ['pork', 'chicken'],
-                after: ['pork', 'chicken', 'fish'],
-              },
+                before: ['pork'],
+                after: ['pork', 'chicken'],
+              }],
             },
           },
         ],
@@ -677,9 +882,35 @@ describe('mechanically derived observable coverage', () => {
       'behavior:branch-visible-change',
       'behavior:branch-answer-change',
       'behavior:exclusive-replacement',
-      'behavior:max-no-op',
+      'behavior:max-selection-blocked',
       'behavior:empty-restoration',
     ]))
+  })
+
+  test('does not derive blocked coverage when the option was already disabled', () => {
+    const tags = deriveObservableCoverage({
+      actions: [{ type: 'select', questionId: 'source', optionId: 'chicken' }],
+      frames: [
+        {
+          sequence: 0,
+          transition: 'initial',
+          displayedQuestionId: 'source',
+          visibleOptionIds: ['pork', 'chicken', 'fish'],
+          disabledOptionIds: ['fish'],
+          pendingOptionIds: ['pork'],
+        },
+        {
+          sequence: 1,
+          transition: 'toggle',
+          actionIndex: 0,
+          displayedQuestionId: 'source',
+          visibleOptionIds: ['pork', 'chicken', 'fish'],
+          disabledOptionIds: ['fish'],
+          pendingOptionIds: ['pork', 'chicken'],
+        },
+      ],
+    })
+    expect(tags).not.toContain('behavior:max-selection-blocked')
   })
 
   test.each([
@@ -794,6 +1025,46 @@ describe('seed, manifest, and divergence contracts', () => {
       schemaVersion: 1,
       entries: [{
         ...validDivergence,
+        operation: 'remove',
+        approvedValue: undefined,
+      }],
+    }).success).toBe(true)
+  })
+
+  test.each([
+    '/frames/1/sequence',
+    '/frames/1/transition',
+    '/frames/1/actionIndex',
+    '/frames/1/completionMarker',
+    '/frames/1/forcedAutoAnswer/questionId',
+    '/frames/1/forcedAutoAnswer/value',
+    '/frames/1/navigation/direction',
+    '/frames/1/observedChanges/visibleOptionIds/questionId',
+    '/frames/1/observedChanges/answers/0/questionId',
+  ])('rejects removal of required observable leaf: %s', (jsonPointer) => {
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [{
+        ...validDivergence,
+        jsonPointer,
+        operation: 'remove',
+        approvedValue: undefined,
+      }],
+    }).success).toBe(false)
+  })
+
+  test.each([
+    '/frames/1/displayedQuestionId',
+    '/frames/1/legacyAnswers/form',
+    '/frames/1/navigation/reachedQuestionId',
+    '/frames/1/observedChanges/answers/0/before',
+    '/frames/1/disabledOptionIds/0',
+  ])('retains removal of optional leaves and array elements: %s', (jsonPointer) => {
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [{
+        ...validDivergence,
+        jsonPointer,
         operation: 'remove',
         approvedValue: undefined,
       }],

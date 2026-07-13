@@ -149,10 +149,10 @@ index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..3ba4a8cba5335ece847966a58e5ecffe
 +    legacyPendingTransition.current = null
 diff --git a/src/parity-question-extractor.test.tsx b/src/parity-question-extractor.test.tsx
 new file mode 100644
-index 0000000000000000000000000000000000000000..a466a363be9ec0f1c11ac5060fa77f441b38fe81
+index 0000000000000000000000000000000000000000..4b5dac29df4f05fd2d68cfe088e53a6a42b1af6a
 --- /dev/null
 +++ b/src/parity-question-extractor.test.tsx
-@@ -0,0 +1,256 @@
+@@ -0,0 +1,271 @@
 +import { lstatSync, readFileSync, writeFileSync } from 'node:fs'
 +import { dirname, isAbsolute } from 'node:path'
 +
@@ -179,6 +179,7 @@ index 0000000000000000000000000000000000000000..a466a363be9ec0f1c11ac5060fa77f44
 +interface ObservationFrame extends LegacyQuestionObservation {
 +  readonly sequence: number
 +  readonly actionIndex?: number
++  readonly disabledOptionIds?: readonly string[]
 +  readonly observedChanges?: {
 +    readonly visibleOptionIds?: {
 +      readonly questionId: string
@@ -285,6 +286,18 @@ index 0000000000000000000000000000000000000000..a466a363be9ec0f1c11ac5060fa77f44
 +  let activeActionIndex: number | undefined
 +  const unregister = registerLegacyQuestionObserver((observation) => {
 +    const previous = observations.at(-1)
++    const optionControls = [
++      ...document.querySelectorAll<HTMLButtonElement>('.choice-card'),
++    ]
++    if (
++      observation.visibleOptionIds !== undefined
++      && optionControls.length !== observation.visibleOptionIds.length
++    ) {
++      throw new Error('rendered options must match the observed visible option order')
++    }
++    const disabledOptionIds = observation.visibleOptionIds?.filter(
++      (_optionId, index) => optionControls[index]?.disabled,
++    )
 +    const changes = (
 +      previous?.legacyAnswers !== undefined
 +      && observation.legacyAnswers !== undefined
@@ -311,6 +324,7 @@ index 0000000000000000000000000000000000000000..a466a363be9ec0f1c11ac5060fa77f44
 +    }
 +    observations.push({
 +      ...observation,
++      ...(disabledOptionIds === undefined ? {} : { disabledOptionIds }),
 +      sequence: observations.length,
 +      ...(observation.transition === 'initial'
 +        ? {}
@@ -345,6 +359,7 @@ index 0000000000000000000000000000000000000000..a466a363be9ec0f1c11ac5060fa77f44
 +        if (optionIndex < 0) throw new Error(`missing public option ${action.questionId}:${action.optionId}`)
 +        const option = rendered.container.querySelectorAll<HTMLButtonElement>('.choice-card')[optionIndex]
 +        if (!option) throw new Error(`missing option control ${action.questionId}:${action.optionId}`)
++        if (option.disabled) throw new Error(`disabled option cannot be selected ${action.questionId}:${action.optionId}`)
 +        expect(option.getAttribute('aria-pressed')).toBe(
 +          action.type === 'select' ? 'false' : 'true',
 +        )
