@@ -14,6 +14,8 @@
 
 **Approved execution correction (2026-07-13):** Tasks 1–8 are implemented and reviewed. The first Task 9 implementation in `3b65eac` failed high-risk review and must be replaced from the reviewed Task 8 baseline `7a198bf`; it is not an implementation or fixture baseline. The replacement Task 9 must pass a fresh high-risk review before Task 10 starts.
 
+**Approved max-selection contract revision (2026-07-14):** Observable parity records a blocked visible option as `disabledOptionIds` and derives `behavior:max-selection-blocked`; it does not click the disabled option or represent the pure helper's defensive maximum no-op as a public legacy action. Task 9 must implement and pass fresh review against this revised contract before Task 10 starts.
+
 ## Global Constraints
 
 - Preserve legacy question behavior from `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`, tree `3e527de876cfeccfd3154ddc492830d71c4cfd9a`.
@@ -25,6 +27,7 @@
 - Derive dependencies from every condition that affects reachability, allowed options, bounds, forced eligibility, or answer validity. Do not hand-author `dependsOn` or use `stepIndex` ranges.
 - `evaluateFlow` is deterministic and read-only. `applyAnswer` is the only submitted-draft transition. `updatePendingSelection` is draft-independent.
 - Frozen `legacy-v1` trace bytes and extraction manifest contain only directly observable legacy transitions, never store current implementation verification, and never change for an intentional divergence.
+- Disabled-option parity records only the rendered legacy UI's visible disabled state in display order. It never infers disabled state, clicks a disabled control, synthesizes an unchanged toggle, or freezes `behavior:max-no-op` as a public action outcome.
 - Repairs, diagnostics, invalidated IDs, global reachability, accepted/rejected API objects, canonical navigation metadata, dependency closures, fixed-point metadata, and invalid external API behavior belong to compiler/runtime tests, never frozen legacy traces.
 - Root runtime exports must remain browser-neutral and must not pull Zod, compiler code, extractors, React, or `node:*` into the root import graph.
 - `npm run verify` is offline and read-only. `npm run verify:acceptance` adds authenticated exact-SHA GitHub evidence.
@@ -1342,6 +1345,7 @@ const validFrame = {
   transition: 'initial',
   displayedQuestionId: 'form',
   visibleOptionIds: ['soup', 'dry'],
+  disabledOptionIds: [],
   pendingOptionIds: [],
   legacyAnswers: {},
 } as const
@@ -1360,6 +1364,7 @@ const validTraceCaseWithoutCoverage = {
       actionIndex: 0,
       displayedQuestionId: 'form',
       visibleOptionIds: ['soup', 'dry'],
+      disabledOptionIds: [],
       pendingOptionIds: ['soup'],
       legacyAnswers: { form: 'soup' },
     },
@@ -1422,9 +1427,27 @@ test('seed cases reject output-derived coverage metadata', () => {
     coverageTags: validTraceCase.coverageTags,
   }).success).toBe(false)
 })
+
+test('accepts only visible disabled options in legacy display order', () => {
+  expect(legacyObservableTraceFrameSchema.safeParse({
+    ...validFrame,
+    visibleOptionIds: ['pork', 'chicken', 'duck'],
+    disabledOptionIds: ['duck'],
+  }).success).toBe(true)
+  expect(legacyObservableTraceFrameSchema.safeParse({
+    ...validFrame,
+    visibleOptionIds: ['pork', 'chicken', 'duck'],
+    disabledOptionIds: ['hidden-option'],
+  }).success).toBe(false)
+})
+
+test('rejects a toggle whose observed selection does not change', () => {
+  expect(() => validateObservableTraceCase(unchangedToggleCase))
+    .toThrow('toggle did not change the observed selection')
+})
 ```
 
-Keep transport-normalization, wrong identity/commit/tree/lock/source hash, dirty checkout, patch-drift, illegal path/case ID, and existing-output-without-`--replace` tests from the approved trust boundary, rewritten against the replacement implementation rather than copied from `3b65eac`.
+Keep transport-normalization, wrong identity/commit/tree/lock/source hash, dirty checkout, patch-drift, illegal path/case ID, and existing-output-without-`--replace` tests from the approved trust boundary, rewritten against the replacement implementation rather than copied from `3b65eac`. Add contract cases proving that `disabledOptionIds` is a duplicate-free ordered subset of `visibleOptionIds`, hidden IDs are rejected, selected ordinary options are not inferred disabled merely because the cap is reached, and exclusive-option disabled state is accepted only as an observation. Validate each `select` as absent-before/present-after and each `deselect` as present-before/absent-after; reject every unchanged toggle.
 
 - [ ] **Step 2: Run the contract tests and confirm red**
 
@@ -1458,7 +1481,9 @@ export interface LegacyObservableTraceCase {
 }
 ```
 
-Implement `LegacyObservableTraceFrame`, `LegacyObservedAnswers`, and `LegacyObservedChanges` exactly as Section 17. Every field other than `sequence` and `transition` is optional because the legacy may not directly observe it. Strict schemas reject unknown keys. Sequence numbers begin at zero and increase by one. `initial` is the only frame without `actionIndex`. A `select` or `deselect` action maps to exactly one `toggle` frame. A `continue` action maps to exactly one `submit`, then zero or more `forced-skip`, then exactly one `next` or `complete`, all with the same action index; no other transition may share that index. A `previous` action maps to exactly one `previous` frame. `forced-skip` requires `forcedAutoAnswer`, while other transitions forbid it. `next` requires `navigation.direction: 'next'`; `previous` requires `navigation.direction: 'previous'`; `complete` requires `completionMarker: 'results'`. Target question/screen fields remain optional only where the legacy cannot directly observe them. Do not add a catch-all metadata object.
+Implement `LegacyObservableTraceFrame`, `LegacyObservedAnswers`, and `LegacyObservedChanges` exactly as Section 17, including `readonly disabledOptionIds?: readonly OptionId[]` using the repository's stable string ID type. Every field other than `sequence` and `transition` is optional because the legacy may not directly observe it. Strict schemas reject unknown keys. Sequence numbers begin at zero and increase by one. `initial` is the only frame without `actionIndex`. A `select` action maps to exactly one `toggle` frame and requires the option to be absent before the click and present after settlement. A `deselect` action maps to exactly one `toggle` frame and requires the option to be present before the click and absent afterward. An unchanged toggle rejects the case. A `continue` action maps to exactly one `submit`, then zero or more `forced-skip`, then exactly one `next` or `complete`, all with the same action index; no other transition may share that index. A `previous` action maps to exactly one `previous` frame. `forced-skip` requires `forcedAutoAnswer`, while other transitions forbid it. `next` requires `navigation.direction: 'next'`; `previous` requires `navigation.direction: 'previous'`; `complete` requires `completionMarker: 'results'`. Target question/screen fields remain optional only where the legacy cannot directly observe them. Do not add a catch-all metadata object.
+
+For any frame that exposes options, `disabledOptionIds` is a duplicate-free ordered subset of that frame's `visibleOptionIds`. Preserve the legacy display order; canonicalization must not sort or otherwise change the observed order. Hidden options are forbidden. Do not infer disabled IDs from selection count or exclusive policy: selected ordinary options remain enabled at the cap unless the rendered legacy UI directly exposes them as disabled, and exclusive-option state is accepted only from direct observation.
 
 Coverage tags have only these forms:
 
@@ -1473,14 +1498,14 @@ type TraceCoverageTag =
       | 'forced-skip'
       | 'completion'
       | 'exclusive-replacement'
-      | 'max-no-op'
+      | 'max-selection-blocked'
       | 'empty-restoration'
       | 'branch-visible-change'
       | 'branch-answer-change'
     }`
 ```
 
-`deriveObservableCoverage({ actions, frames })` derives tags only after the trace passes strict action/frame validation. Frozen `coverageTags` must equal that deduplicated code-point-sorted result. Seed schemas strictly reject `coverageTags`; visible-option, navigation-target, forced-skip, completion, and named behavior tags are therefore results of observation, never seed expectations. Reject `semantic-class:*`, repair, diagnostic, invalid-input, global reachability, dependency, fixed-point, and application-result coverage.
+`deriveObservableCoverage({ actions, frames })` derives tags only after the trace passes strict action/frame validation. Frozen `coverageTags` must equal that deduplicated code-point-sorted result. `behavior:max-selection-blocked` is derived only when a validated settled frame directly observes a visible unselected ordinary option disabled after real selections reached `maxSelections`. `behavior:max-no-op` is forbidden. Seed schemas strictly reject `coverageTags`; visible-option, disabled-option, navigation-target, forced-skip, completion, and named behavior tags are therefore results of observation, never seed expectations. Reject `semantic-class:*`, repair, diagnostic, invalid-input, global reachability, dependency, fixed-point, and application-result coverage.
 
 Keep the immutable manifest fields from the approved design: schema versions; normalized repository, commit, and tree; exact source and lock hashes; extractor/instrumentation identities; isolated runtime contract; ordered case IDs/count; and fixture content hash. The environment policy stores only this stable contract:
 
@@ -1503,12 +1528,13 @@ The patch may make only these behavioral-neutral changes:
 
 - add a test-only observer registration whose callback receives a deep-cloned read-only observation from values the component has already computed or stored
 - emit observations where the existing component actually handles select/deselect, the single primary `handleContinue` event, its forced auto-answer/skip loop, its reached next/results screen, and back/previous
+- read each currently rendered option control's actual component/DOM `disabled` state after settlement and record only visible disabled IDs in the same order the controls are displayed
 - extract the existing nested multi-select toggle calculation into `legacyUpdatePendingSelection` only if `App` itself calls that exact helper after extraction
 - add `src/parity-question-extractor.test.tsx`, which renders `App`, drives the copied seed through public controls under `act`/`waitFor`, waits for each action to settle, and writes raw cases to the single required temporary output file
 
-The observer and test must not export or call `createInitialAnswers`, `getSelectedValues`, `getForcedQuestionValue`, `applyForcedAnswersFromStep`, `getPreviousInteractiveStep`, or another helper to calculate expected behavior. They must not implement or infer branch, repair, validation, answer-application, navigation, forced-resolution, or completion rules. One `handleContinue` click is one `continue` seed action; its `submit`, zero-or-more `forced-skip`, and terminal `next|complete` observations share one action index and must never be represented as separate seed actions.
+The observer and test must not export or call `createInitialAnswers`, `getSelectedValues`, `getForcedQuestionValue`, `applyForcedAnswersFromStep`, `getPreviousInteractiveStep`, or another helper to calculate expected behavior. They must not implement or infer branch, repair, validation, answer-application, navigation, forced-resolution, completion, or disabled-option rules. They must not call a disabled control's click handler or synthesize an action for it. One `handleContinue` click is one `continue` seed action; its `submit`, zero-or-more `forced-skip`, and terminal `next|complete` observations share one action index and must never be represented as separate seed actions.
 
-`src/parity-question-extractor.test.tsx` is skipped during the full-suite command unless the isolated extraction-only environment supplies its exact raw-output capability. `seeds.json` contains only schema version plus stable case IDs and ordered `LegacyObservableAction[]`; it contains no `coverageTags`, expected frame, answer, visible option, screen, navigation target, forced transition, behavior result, or internal runtime value. The extractor derives frozen coverage only after validating observed actions/frames. Add patch tests that inspect added lines and reject calls to rule helpers, hand-authored expected outputs, a second flow implementation, and any seed key other than `id` and `actions`.
+`src/parity-question-extractor.test.tsx` is skipped during the full-suite command unless the isolated extraction-only environment supplies its exact raw-output capability. `seeds.json` contains only schema version plus stable case IDs and ordered `LegacyObservableAction[]`; it contains no `coverageTags`, expected frame, answer, visible option, disabled option, screen, navigation target, forced transition, behavior result, or internal runtime value. The maximum-selection authoring case reaches the `source` cap using real enabled `select` actions such as `pork` then `chicken`, waits for settlement, and records the third ordinary option such as `duck` in `disabledOptionIds`; it contains no extra `select` action for `duck`. The extractor derives frozen coverage only after validating observed actions/frames. Add patch tests that inspect added lines and reject calls to rule helpers, hand-authored expected outputs, a second flow implementation, disabled-control invocation or synthesized option action, and any seed key other than `id` and `actions`.
 
 - [ ] **Step 5: Write failing isolation, execution-order, binding, and publish-safety tests**
 
@@ -1770,7 +1796,7 @@ Expected: the current Task 9 commit is the exact reviewed commit, its verdict is
 
 - [ ] **Step 1: Write failing observable projection, coverage, and diff tests**
 
-Create `test-fixtures.ts` with one valid `LegacyObservableTraceCase`, one identical copy with an orphan `semantic-class:*` tag, required observable coverage derived from the valid case, one received trace whose first deliberate change is `/frames/1/visibleOptionIds/0`, `formContinueActions` containing one select plus one continue, and `rejectedContinueActions` containing continue without a legal pending selection. Export them as `expectedCase`, `casesWithOrphanTag`, `requiredCoverage`, `receivedTrace`, `formContinueActions`, and `rejectedContinueActions` so each test has one controlled purpose.
+Create `test-fixtures.ts` with one valid `LegacyObservableTraceCase`, one identical copy with an orphan `semantic-class:*` tag, required observable coverage derived from the valid case, one received trace whose first deliberate change is `/frames/1/visibleOptionIds/0`, `formContinueActions` containing one select plus one continue, and `rejectedContinueActions` containing continue without a legal pending selection. Also export a legacy-representable `maxSelectionActions` path that reaches `source` and selects `pork` then `chicken`, `maxSelectionBlockedOptionId` set to `duck`, and a separate negative `unchangedToggleActions` path that attempts to select that disabled third option. The positive authoring path must not contain the disabled action. Export each fixture separately so every test has one controlled purpose.
 
 ```ts
 test('executes seed actions and projects observable trace fields only', () => {
@@ -1794,6 +1820,27 @@ test('keeps select pending and projects its legacy-shaped answer', () => {
   expect(actionFrames.map(({ transition }) => transition)).toEqual(['toggle'])
   expect(actionFrames[0].pendingOptionIds).toEqual(['soup'])
   expect(actionFrames[0].legacyAnswers).toMatchObject({ form: 'soup' })
+})
+
+test('projects maximum-selection blocked state without a disabled action', () => {
+  const trace = executeObservableTrace(questionModel, maxSelectionActions)
+  expect(maxSelectionActions).not.toContainEqual({
+    type: 'select',
+    questionId: 'source',
+    optionId: maxSelectionBlockedOptionId,
+  })
+  const sourceFrame = [...trace.frames].reverse().find(
+    ({ displayedQuestionId }) => displayedQuestionId === 'source',
+  )
+  expect(sourceFrame?.disabledOptionIds).toContain(maxSelectionBlockedOptionId)
+  expect(deriveObservableCoverage(trace)).toContain(
+    'behavior:max-selection-blocked',
+  )
+})
+
+test('rejects an unchanged toggle as not legacy-representable', () => {
+  expect(() => executeObservableTrace(questionModel, unchangedToggleActions))
+    .toThrow('PARITY_SEED_NOT_LEGACY_REPRESENTABLE')
 })
 
 test('maps one continue action to submit then one terminal transition', () => {
@@ -1872,20 +1919,22 @@ Expected: runs the full patched legacy suite, then a separate network-denied ext
 }
 ```
 
-The corpus must directly observe every displayed legacy question and visible option, every seeded public action type the component exposes, all form/archetype branch rows as visible-option or answer changes, explicit allow-all rows as visible options, actual singleton forced-skip chains, observable minimum/maximum interactions, exclusive replacement, maximum-selection no-op, exclusions empty restoration, actual previous/next targets around forced positions, incomplete prefixes, and the results completion marker. Do not add a case or tag for repairs, diagnostics, invalid external inputs, invalidated IDs, global reachability, application result objects, canonical navigation behavior, dependency closures, compiler equivalence classes, or fixed-point metadata.
+The corpus must directly observe every displayed legacy question and visible option, every seeded public action type the component exposes, all form/archetype branch rows as visible-option or answer changes, explicit allow-all rows as visible options, actual singleton forced-skip chains, observable minimum/maximum interactions, exclusive replacement, maximum-selection blocked state, exclusions empty restoration, actual previous/next targets around forced positions, incomplete prefixes, and the results completion marker. The maximum case reaches the cap through real enabled selections and observes a visible disabled third ordinary option after settlement; it never adds a select action for that disabled option. Required coverage includes `behavior:max-selection-blocked` and rejects `behavior:max-no-op`. Do not add a case or tag for repairs, diagnostics, invalid external inputs, invalidated IDs, global reachability, application result objects, canonical navigation behavior, dependency closures, compiler equivalence classes, or fixed-point metadata.
 
 - [ ] **Step 4: Implement same-action runtime projection, divergence application, and replay**
 
 `executeObservableTrace(model, actions)` owns adapter-only current displayed question ID and pending option IDs by visited question in addition to the submitted `AnswerDraft` and settled `FlowState`. It emits one `initial` frame before actions, then applies this fixed v1 operation table without consulting expected fixtures:
 
-1. `select` or `deselect`: require `questionId` to equal the displayed question, call `updatePendingSelection`, leave `AnswerDraft` unchanged, and emit exactly one settled `toggle` frame. Project the current pending value into that question's legacy-shaped observable answer field so it matches the legacy option click's immediate `setAnswers`, but do not call `applyAnswer`.
+1. `select` or `deselect`: require `questionId` to equal the displayed question and require the option to be currently visible and enabled. Before calling `updatePendingSelection`, require a `select` option to be absent and a `deselect` option to be present. Afterward require `select` to be present and `deselect` to be absent; an unchanged result rejects the replay as `PARITY_SEED_NOT_LEGACY_REPRESENTABLE`. Leave `AnswerDraft` unchanged and emit exactly one settled `toggle` frame. Project the changed pending value into that question's legacy-shaped observable answer field so it matches the legacy option click's immediate `setAnswers`, but do not call `applyAnswer`. From the compiled pending-selection policy, project the equivalent disabled IDs for current visible options in display order; selected ordinary options remain enabled at the cap unless the legacy rule directly says otherwise, and exclusive-option state follows that same compiled policy. No DOM is required.
 2. `continue`: require `fromQuestionId` to equal the displayed question; call `applyAnswer(model, draft, { questionId: fromQuestionId, optionIds: pendingOptionIds })`; require `accepted: true`; then call `evaluateFlow(model, accepted.draft)` and replace adapter draft/state with the accepted settled result. Clear adapter pending projections for the committed question and any dependent IDs invalidated by the accepted result, without serializing those new-only IDs. Emit one `submit` frame. Emit one `forced-skip` frame, in compiled question order, for each actual settled forced answer traversed between `fromQuestionId` and the reached terminal screen. If settled status is `complete`, emit exactly one `complete`; otherwise obtain the reached question through `getNextInteractiveQuestion`, emit exactly one `next`, make it current, and initialize its pending value from an existing adapter pending projection, its submitted answer, or compiled initial UI options in that order. Every frame from this operation uses the continue action's single action index.
-3. Rejected `applyAnswer`, a missing terminal next question, a disabled/unavailable legacy Continue control, or any action/frame sequence that violates this table rejects fixture authoring/replay with `PARITY_SEED_NOT_LEGACY_REPRESENTABLE`. Do not emit a rejected frame and do not serialize `accepted`, diagnostics, or other new API result metadata.
+3. Rejected `applyAnswer`, a missing terminal next question, a disabled/unavailable legacy Continue control, a select/deselect against a disabled or invisible option, an unchanged toggle, or any action/frame sequence that violates this table rejects fixture authoring/replay with `PARITY_SEED_NOT_LEGACY_REPRESENTABLE`. Do not emit a rejected frame and do not serialize `accepted`, diagnostics, or other new API result metadata.
 4. `previous`: require `fromQuestionId` to equal the displayed question, call `getPreviousInteractiveQuestion`, change only adapter navigation, preserve all adapter pending projections, initialize the reached question from an existing pending projection, submitted answer, or compiled initial UI options in that order, and emit exactly one `previous` frame. It never calls `applyAnswer`; the formal draft still changes only on `continue`.
 
-The adapter may read runtime state to execute the operation, but it must never serialize the whole state or application result. The field-emission table is fixed in `observable-trace.ts`: initial/toggle frames emit displayed question, current visible options, pending IDs, and legacy-shaped answers; submit frames emit the submitted question and legacy-shaped answers; forced-skip frames emit the actual forced question/value; next/previous frames emit direction and reached question/results screen; complete emits the results marker and actual legacy-shaped answer state saved at completion. Single-select legacy answers project as strings and multi-select answers as arrays according to the fixed eight-question legacy representation map. `observedChanges` is a mechanical diff of consecutive projected fields.
+The adapter may read runtime state to execute the operation, but it must never serialize the whole state or application result. The field-emission table is fixed in `observable-trace.ts`: every interactive initial/toggle/next/previous frame emits displayed question, current visible options, equivalent ordered `disabledOptionIds`, pending IDs, and legacy-shaped answers; submit frames emit the submitted question and legacy-shaped answers; forced-skip frames emit the actual forced question/value; next/previous frames additionally emit direction and reached question/results screen; complete emits the results marker and actual legacy-shaped answer state saved at completion. Disabled IDs are always a duplicate-free ordered subset of the emitted visible IDs and never include hidden options. Single-select legacy answers project as strings and multi-select answers as arrays according to the fixed eight-question legacy representation map. `observedChanges` is a mechanical diff of consecutive projected fields.
 
-Validate every received trace through the same strict schema, derive frozen and received coverage independently from their validated actions/frames, require each stored frozen `coverageTags` list to equal its mechanical derivation, and compare code-point-stable frames and coverage in order. A missing optional legacy field remains absent in both projections by the fixed emission table; the comparator must not delete received fields merely because expected omitted them.
+Preserve the existing runtime unit test for the pure helper's defensive maximum behavior: directly attempting to add an ordinary option beyond `maxSelections` returns the original pending selection. That test remains runtime-only evidence. The observable adapter rejects the same unchanged result, the frozen authoring seed never performs that action, and parity coverage has no public maximum no-op behavior.
+
+Validate every received trace through the same strict schema, derive frozen and received coverage independently from their validated actions/frames, require each stored frozen `coverageTags` list to equal its mechanical derivation, require `behavior:max-selection-blocked`, forbid `behavior:max-no-op`, and compare code-point-stable frames and coverage in order. A missing optional legacy field remains absent in both projections by the fixed emission table; the comparator must not delete received fields merely because expected omitted them.
 
 Before applying a divergence, require `jsonPointer` to resolve under `/frames/`, hash the frozen observable value or stable missing sentinel, and compare `legacyValueHash`; require the current semantic hash to equal the divergence semantic hash. Apply entries in case-ID/pointer order. A mismatch prints case ID, ordered actions, first frame/pointer, bounded values, semantic hash, fixture manifest hash, and:
 
