@@ -9,6 +9,11 @@ export type DecodedAnswerDraft = Readonly<Record<string, readonly string[]>>
 export type CanonicalAnswers = AnswerDraft
 export type CompletedAnswers = Readonly<Record<QuestionId, readonly OptionId[]>>
 
+export interface AnswerSubmission {
+  readonly questionId: QuestionId
+  readonly optionIds: readonly OptionId[]
+}
+
 export type DecodeAnswerDraftResult =
   | {
       readonly ok: true
@@ -53,3 +58,26 @@ export type FlowState =
   | (FlowStateBase & { readonly status: 'incomplete'; readonly completedAnswers?: never })
   | (FlowStateBase & { readonly status: 'invalid'; readonly completedAnswers?: never })
   | (FlowStateBase & { readonly status: 'complete'; readonly completedAnswers: CompletedAnswers })
+
+export interface ForcedAnswerChange {
+  readonly questionId: QuestionId
+  readonly previousOptionIds?: readonly OptionId[]
+  readonly nextOptionIds?: readonly OptionId[]
+  readonly reason: 'single-allowed-option'
+}
+
+export type ApplyAnswerResult =
+  | {
+      readonly accepted: true
+      readonly changed: boolean
+      readonly draft: AnswerDraft
+      readonly state: FlowState
+      readonly invalidatedQuestionIds: readonly QuestionId[]
+      readonly forcedChanges: readonly ForcedAnswerChange[]
+    }
+  | {
+      readonly accepted: false
+      readonly draft: AnswerDraft
+      readonly state: FlowState
+      readonly diagnostics: readonly Diagnostic[]
+    }
