@@ -166,6 +166,21 @@
           "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883"
         }
       ]
+    },
+    {
+      "batch": "2A",
+      "status": "in-progress",
+      "legacySources": [],
+      "ownedScopes": [],
+      "newOwners": [
+        "packages/classification-core/src/compiler/questions/source-schema.test.ts",
+        "packages/classification-core/src/compiler/questions/source-schema.ts",
+        "packages/classification-core/src/contracts/deep-freeze.ts",
+        "packages/classification-core/src/contracts/question-model.ts"
+      ],
+      "transformation": "Added closed serializable question source contracts, strict compiler-only decoding, compiled question model metadata, and browser-neutral recursive freezing without migrating production question data.",
+      "behavior": "no-production-runtime-change",
+      "verification": []
     }
   ]
 }

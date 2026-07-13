@@ -56,3 +56,6 @@ export const definitionBundleSchema = z.strictObject({
 })
 
 export type DefinitionBundleSource = z.infer<typeof definitionBundleSchema>
+
+export { questionDefinitionSourceSchema } from './questions/source-schema.js'
+export type { QuestionDefinitionSource } from '../contracts/question-model.js'
