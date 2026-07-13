@@ -1339,6 +1339,45 @@ describe('no-follow and transactional publication', () => {
     expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).not.toBe('old')
   })
 
+  test('returns recovery-required when verify-only final lock release is indeterminate', async () => {
+    const fixture = await createExtractorFixture()
+    fixture.environment.hooks.afterExtraction = () => {
+      unlinkSync(publicationLockPath(fixture.destination))
+    }
+
+    const result = await getPublicRunBoundary()(fixture.environment, { verifyOnly: true })
+
+    expect(result).toEqual({
+      status: 'failed',
+      published: false,
+      error: {
+        code: 'recovery-required',
+        message: 'publication lock release is indeterminate; recovery required',
+      },
+    })
+    expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
+  })
+
+  test('keeps recovery-required precedence over an earlier extraction failure', async () => {
+    const fixture = await createExtractorFixture()
+    fixture.environment.hooks.afterExtraction = () => {
+      unlinkSync(publicationLockPath(fixture.destination))
+      throw new Error('ordinary extraction failure before final release')
+    }
+
+    const result = await getPublicRunBoundary()(fixture.environment, { verifyOnly: true })
+
+    expect(result).toEqual({
+      status: 'failed',
+      published: false,
+      error: {
+        code: 'recovery-required',
+        message: 'publication lock release is indeterminate; recovery required',
+      },
+    })
+    expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
+  })
+
   test('public verify-only boundary preserves trace manifest and fingerprint evidence', async () => {
     const fixture = await createExtractorFixture()
 
@@ -1680,6 +1719,37 @@ describe('extract CLI arguments', () => {
 
     expect(result).toEqual(failed)
     expect(JSON.parse(stdout.join(''))).toEqual({ mode: 'replace', ...failed })
+    expect(exitCodes).toEqual([1])
+  })
+
+  test('real CLI command preserves final-release recovery-required JSON and exit code', async () => {
+    const fixture = await createExtractorFixture()
+    fixture.environment.hooks.afterExtraction = () => {
+      unlinkSync(publicationLockPath(fixture.destination))
+    }
+    const stdout: string[] = []
+    const exitCodes: number[] = []
+
+    const result = await extractModule.runExtractCommand([
+      '--legacy',
+      '/tmp/non-live-legacy-fixture',
+      '--verify-only',
+    ], {
+      run: async () => getPublicRunBoundary()(fixture.environment, { verifyOnly: true }),
+      writeStdout: (value) => stdout.push(value),
+      setExitCode: (code) => exitCodes.push(code),
+    })
+
+    const expected = {
+      status: 'failed',
+      published: false,
+      error: {
+        code: 'recovery-required',
+        message: 'publication lock release is indeterminate; recovery required',
+      },
+    } as const
+    expect(result).toEqual(expected)
+    expect(JSON.parse(stdout.join(''))).toEqual({ mode: 'verify-only', ...expected })
     expect(exitCodes).toEqual([1])
   })
 })

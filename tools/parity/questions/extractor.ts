@@ -1825,7 +1825,11 @@ export async function runLegacyExtractor(
         releaseResult.error ?? new Error('publication lock release failed while held'),
       )
     } else if (releaseResult.state === 'indeterminate') {
-      cleanupErrors.push(new Error(indeterminateLockReleaseMessage))
+      if (primaryError) cleanupErrors.unshift(primaryError)
+      primaryError = new PublicationFailureException(
+        'recovery-required',
+        indeterminateLockReleaseMessage,
+      )
     }
   }
 
