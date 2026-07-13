@@ -93,11 +93,11 @@ Domain identity, localization identity, and authoring order are independent:
 | Field | Meaning |
 | --- | --- |
 | `QuestionId` | flow, dependency, fixture, and future persistence identity |
-| `OptionId` | answer, condition, fixture, and future persistence identity |
+| `OptionId` | answer identity within its owning `QuestionId`; conditions, fixtures, and future persistence always carry the question context |
 | `MessageId` | localization lookup only |
 | `order` | display and canonical ordering; never identity |
 
-Array position is never an identity or an implicit branch rule. Question and option IDs are globally stable contracts. A message-key change cannot rename an answer, and reordering source arrays cannot change identity.
+Array position is never an identity or an implicit branch rule. Question IDs are globally unique; option IDs are unique within their owning question because legacy values such as `pork` and `none` intentionally occur in more than one question. The canonical option identity is the pair `(QuestionId, OptionId)`, and documentation uses `option/<questionId>:<optionId>` as its unique concept key. A message-key change cannot rename an answer, and reordering source arrays cannot change identity.
 
 The source schema separates the semantic purpose of each condition:
 
@@ -147,6 +147,7 @@ The archetype decision tables for `tare`, `source`, `body`, `noodle`, and `signa
 
 Selection constraints must obey these local invariants:
 
+- question IDs are unique globally, and option IDs are unique within their owning question
 - question and option `order` values are unique within their level
 - single selection has `maxSelections === 1`
 - `minSelections` and `maxSelections` are non-negative, satisfiable, and consistent with selection type
