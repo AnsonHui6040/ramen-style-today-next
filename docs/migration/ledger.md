@@ -120,7 +120,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 ## Batch 2A — in-progress
 
 - Behavior: `no-production-runtime-change`
-- Transformation: Added closed serializable question contracts and transcribed the frozen eight-question legacy inventory into declarative production definitions with question-scoped options and mixed-domain provenance; runtime behavior remains unchanged.
+- Transformation: Added closed serializable question contracts, transcribed the frozen eight-question legacy inventory into declarative production definitions, and derived deterministic canonical question and semantic dependency graph data with question-scoped options and mixed-domain provenance; runtime behavior remains unchanged.
 
 ### Legacy sources
 
@@ -129,6 +129,10 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### New owners
 
+- `packages/classification-core/src/compiler/questions/canonicalize.test.ts`
+- `packages/classification-core/src/compiler/questions/canonicalize.ts`
+- `packages/classification-core/src/compiler/questions/dependencies.test.ts`
+- `packages/classification-core/src/compiler/questions/dependencies.ts`
 - `packages/classification-core/src/compiler/questions/source-schema.test.ts`
 - `packages/classification-core/src/compiler/questions/source-schema.ts`
 - `packages/classification-core/src/contracts/deep-freeze.test.ts`

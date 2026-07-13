@@ -176,6 +176,10 @@
       ],
       "ownedScopes": [],
       "newOwners": [
+        "packages/classification-core/src/compiler/questions/canonicalize.test.ts",
+        "packages/classification-core/src/compiler/questions/canonicalize.ts",
+        "packages/classification-core/src/compiler/questions/dependencies.test.ts",
+        "packages/classification-core/src/compiler/questions/dependencies.ts",
         "packages/classification-core/src/compiler/questions/source-schema.test.ts",
         "packages/classification-core/src/compiler/questions/source-schema.ts",
         "packages/classification-core/src/contracts/deep-freeze.test.ts",
@@ -185,7 +189,7 @@
         "packages/classification-core/src/definitions/questions.test.ts",
         "packages/classification-core/src/definitions/questions.ts"
       ],
-      "transformation": "Added closed serializable question contracts and transcribed the frozen eight-question legacy inventory into declarative production definitions with question-scoped options and mixed-domain provenance; runtime behavior remains unchanged.",
+      "transformation": "Added closed serializable question contracts, transcribed the frozen eight-question legacy inventory into declarative production definitions, and derived deterministic canonical question and semantic dependency graph data with question-scoped options and mixed-domain provenance; runtime behavior remains unchanged.",
       "behavior": "no-production-runtime-change",
       "verification": []
     }
