@@ -1361,6 +1361,12 @@ export function applyExpectedDivergences(
     const caseIndex = caseIndices.get(entry.caseId)!
     const traceCase = mutableCases[caseIndex]!
     const target = resolveDivergenceTarget(traceCase, entry.jsonPointer, entry.operation)
+    if (
+      entry.operation !== 'add'
+      && computeObservableDivergenceValueHash(target.value) !== entry.legacyValueHash
+    ) {
+      throw new Error('divergence mutable value hash mismatch')
+    }
     applyResolvedDivergence(target, entry.operation, entry.approvedValue)
   }
 

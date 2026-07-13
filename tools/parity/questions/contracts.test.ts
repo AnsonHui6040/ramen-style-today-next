@@ -1390,7 +1390,7 @@ describe('seed, manifest, and divergence contracts', () => {
     )).toThrow('semantic hash mismatch')
   })
 
-  test('verifies all legacy hashes against the frozen case before ordered application', () => {
+  test('rejects a replace when an earlier array add shifts its frozen target', () => {
     const semanticHash = '4'.repeat(64)
     const withoutCoverage = {
       ...validTraceCase,
@@ -1420,16 +1420,28 @@ describe('seed, manifest, and divergence contracts', () => {
         semanticHash,
       },
     ]
-    const applied = applyExpectedDivergences(
-      [traceCase],
-      { schemaVersion: 1, entries },
-      semanticHash,
-    )
-    expect(applied[0]?.frames[2]?.pendingOptionIds).toEqual([
-      'pork',
-      'tsukemen',
-      'dry',
-    ])
+    const outcome = (() => {
+      try {
+        const applied = applyExpectedDivergences(
+          [traceCase],
+          { schemaVersion: 1, entries },
+          semanticHash,
+        )
+        return {
+          status: 'applied',
+          pendingOptionIds: applied[0]?.frames[2]?.pendingOptionIds,
+        }
+      } catch (error) {
+        return {
+          status: 'rejected',
+          message: error instanceof Error ? error.message : String(error),
+        }
+      }
+    })()
+    expect(outcome).toEqual({
+      status: 'rejected',
+      message: 'divergence mutable value hash mismatch',
+    })
   })
 })
 
