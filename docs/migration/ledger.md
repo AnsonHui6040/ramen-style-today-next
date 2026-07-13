@@ -184,6 +184,8 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `tools/parity/questions/test-fixtures.ts`
 - `tools/questions/generate-question-model.test.ts`
 - `tools/questions/generate-question-model.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+- `tools/validation/check-runtime-imports.ts`
 
 ### Verification
 

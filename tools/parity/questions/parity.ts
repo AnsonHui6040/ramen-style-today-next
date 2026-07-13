@@ -4,11 +4,8 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import {
-  compileQuestions,
-  questionDefinitions,
-  type CompiledQuestionModel,
-} from '@ramen-style/classification-core/compiler'
+import type { CompiledQuestionModel } from '@ramen-style/classification-core'
+import { questionModel } from '@ramen-style/classification-core/generated/question-model'
 import { compareParityCase, type ParityMismatch } from './compare.js'
 import {
   applyExpectedDivergences,
@@ -19,10 +16,6 @@ import {
   type LegacyObservableTraceCase,
 } from './contracts.js'
 import { executeObservableTrace } from './observable-trace.js'
-
-const compilation = compileQuestions(questionDefinitions)
-if (!compilation.ok) throw new Error('production question definitions must compile')
-const questionModel = compilation.model
 
 export interface ParityDiagnostic {
   readonly code:

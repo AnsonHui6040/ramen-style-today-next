@@ -16,13 +16,6 @@ export { stableJson } from './stable-json.js'
 export { compareCodePoints } from '../contracts/source-path.js'
 export { classificationDefinition } from '../definitions/classification.js'
 export { questionDefinitions } from '../definitions/questions.js'
-export {
-  applyAnswer,
-  evaluateFlow,
-  getNextInteractiveQuestion,
-  getPreviousInteractiveQuestion,
-  updatePendingSelection,
-} from '../flow/index.js'
 export type {
   AllowedOptionDecisionRow,
   AllowedOptionSelection,
@@ -40,9 +33,3 @@ export type {
   ConceptRecord,
 } from '../contracts/model.js'
 export type { Diagnostic } from '../contracts/diagnostic.js'
-export type {
-  AnswerDraft,
-  OptionId,
-  PendingQuestionState,
-  QuestionId,
-} from '../flow/index.js'

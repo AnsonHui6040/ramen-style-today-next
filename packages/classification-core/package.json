@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./generated/question-model": "./src/generated/question-model.ts",
     "./compiler": "./src/compiler/index.ts"
   },
   "dependencies": {

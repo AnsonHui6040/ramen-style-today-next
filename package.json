@@ -20,6 +20,7 @@
     "parity:questions": "tsx tools/parity/questions/parity.ts",
     "questions:check": "tsx tools/questions/generate-question-model.ts --check",
     "questions:generate": "tsx tools/questions/generate-question-model.ts --write",
+    "runtime:imports:check": "tsx tools/validation/check-runtime-imports.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
     "build": "tsc -b packages/classification-core",

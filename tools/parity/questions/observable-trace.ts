@@ -11,7 +11,7 @@ import {
   type PendingQuestionState,
   type QuestionId,
   type SerializableCondition,
-} from '@ramen-style/classification-core/compiler'
+} from '@ramen-style/classification-core'
 import {
   deriveObservableCoverage,
   type LegacyObservableAction,

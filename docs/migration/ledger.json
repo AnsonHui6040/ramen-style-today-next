@@ -230,7 +230,9 @@
         "tools/parity/questions/seeds.json",
         "tools/parity/questions/test-fixtures.ts",
         "tools/questions/generate-question-model.test.ts",
-        "tools/questions/generate-question-model.ts"
+        "tools/questions/generate-question-model.ts",
+        "tools/validation/check-runtime-imports.test.ts",
+        "tools/validation/check-runtime-imports.ts"
       ],
       "transformation": "Added closed serializable question contracts, transcribed the frozen eight-question legacy inventory into declarative production definitions, derived deterministic canonical question and semantic dependency graph data, proved finite question-flow semantics, compiled the proof output into a deterministic tracked question artifact with distinct source and semantic hashes, and added browser-neutral draft decoding, canonical fixed-point flow evaluation, atomic submitted-answer transitions, generic pending-selection interactions, and stable-ID navigation; application runtime behavior remains unchanged.",
       "behavior": "no-production-runtime-change",

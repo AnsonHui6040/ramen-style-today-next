@@ -24,10 +24,12 @@ function isCoreSpecifier(value: string) {
   return value === corePackage || value.startsWith(`${corePackage}/`)
 }
 
+export function scanImportSpecifiers(source: string) {
+  return ts.preProcessFile(source, true, true).importedFiles.map(({ fileName }) => fileName)
+}
+
 function importsClassificationBehavior(source: string, relativePath: string) {
-  const preprocessedCoreImports = ts.preProcessFile(source, true, true).importedFiles.filter(
-    ({ fileName }) => isCoreSpecifier(fileName),
-  )
+  const preprocessedCoreImports = scanImportSpecifiers(source).filter(isCoreSpecifier)
   if (preprocessedCoreImports.length === 0) return false
 
   const sourceFile = ts.createSourceFile(

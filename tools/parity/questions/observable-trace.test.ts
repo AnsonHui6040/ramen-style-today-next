@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import {
-  compileQuestions,
-  questionDefinitions,
-} from '@ramen-style/classification-core/compiler'
+import { questionModel } from '@ramen-style/classification-core/generated/question-model'
 import {
   deriveObservableCoverage,
   legacyObservableSeedCaseSchema,
@@ -20,10 +17,6 @@ import {
   rejectedContinueActions,
   unchangedToggleActions,
 } from './test-fixtures.js'
-
-const compilation = compileQuestions(questionDefinitions)
-if (!compilation.ok) throw new Error('production question definitions must compile')
-const questionModel = compilation.model
 
 describe('observable runtime projection', () => {
   test('executes seed actions and projects observable trace fields only', () => {
