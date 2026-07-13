@@ -130,6 +130,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 - `packages/classification-core/src/compiler/questions/source-schema.test.ts`
 - `packages/classification-core/src/compiler/questions/source-schema.ts`
+- `packages/classification-core/src/contracts/deep-freeze.test.ts`
 - `packages/classification-core/src/contracts/deep-freeze.ts`
 - `packages/classification-core/src/contracts/question-model.ts`
 

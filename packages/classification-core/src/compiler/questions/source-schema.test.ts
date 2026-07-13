@@ -45,4 +45,24 @@ describe('questionDefinitionSourceSchema', () => {
       },
     }).success).toBe(false)
   })
+
+  test('rejects duplicate option orders', () => {
+    const result = questionDefinitionSourceSchema.safeParse({
+      ...validQuestion,
+      options: [
+        validQuestion.options[0],
+        {
+          ...validQuestion.options[0],
+          id: 'tsukemen',
+        },
+      ],
+    })
+
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error.issues).toContainEqual(expect.objectContaining({
+      path: ['options', 1, 'order'],
+      message: 'duplicate option order 0',
+    }))
+  })
 })

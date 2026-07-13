@@ -93,6 +93,18 @@ export const questionDefinitionSourceSchema = z.strictObject({
   }).optional(),
   weight: z.number().finite().nonnegative().optional(),
 }).superRefine((question, context) => {
+  const seenOptionOrders = new Set<number>()
+  question.options.forEach((option, index) => {
+    if (seenOptionOrders.has(option.order)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['options', index, 'order'],
+        message: `duplicate option order ${option.order}`,
+      })
+    }
+    seenOptionOrders.add(option.order)
+  })
+
   if (
     question.pendingSelection?.emptyBehavior.type === 'restore-initial-ui-options'
     && !question.initialUiOptionIds?.length

@@ -175,6 +175,7 @@
       "newOwners": [
         "packages/classification-core/src/compiler/questions/source-schema.test.ts",
         "packages/classification-core/src/compiler/questions/source-schema.ts",
+        "packages/classification-core/src/contracts/deep-freeze.test.ts",
         "packages/classification-core/src/contracts/deep-freeze.ts",
         "packages/classification-core/src/contracts/question-model.ts"
       ],
