@@ -1,8 +1,6 @@
 import {
   closeSync,
-  chmodSync,
   constants,
-  copyFileSync,
   cpSync,
   lstatSync,
   mkdirSync,
@@ -15,9 +13,9 @@ import {
   rmSync,
   symlinkSync,
   unlinkSync,
-  utimesSync,
   writeFileSync,
 } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -229,19 +227,30 @@ function replaceWithByteIdenticalInode(path: string) {
   const before = lstatSync(path)
   const bytes = readFileSync(path)
   const replacement = `${path}.byte-identical-replacement`
-  copyFileSync(path, replacement)
-  chmodSync(replacement, before.mode)
-  utimesSync(replacement, before.atimeMs / 1000, before.mtimeMs / 1000)
+  const copied = spawnSync('/bin/cp', ['-p', path, replacement], {
+    encoding: 'utf8',
+    shell: false,
+  })
+  if (copied.error) throw new Error(`test fixture copy failed: ${copied.error.message}`)
+  if (copied.status !== 0) {
+    throw new Error(
+      `test fixture copy failed with status ${String(copied.status)}: ${copied.stderr.trim()}`,
+    )
+  }
   renameSync(replacement, path)
   const after = lstatSync(path)
-  return {
+  const proof = {
     bytesPreserved: readFileSync(path).equals(bytes),
-    onlyInodeChanged: before.dev === after.dev
-      && before.ino !== after.ino
-      && before.mode === after.mode
-      && before.size === after.size
-      && before.mtimeMs === after.mtimeMs,
+    devicePreserved: before.dev === after.dev,
+    modePreserved: before.mode === after.mode,
+    sizePreserved: before.size === after.size,
+    mtimePreserved: before.mtimeMs === after.mtimeMs,
+    inodeChanged: before.ino !== after.ino,
   }
+  if (Object.values(proof).some((value) => !value)) {
+    throw new Error(`byte-identical inode replacement precondition failed: ${JSON.stringify(proof)}`)
+  }
+  return proof
 }
 
 interface FailedPublicationResult {
@@ -1327,7 +1336,7 @@ describe('no-follow and transactional publication', () => {
     writeFileSync(join(fixture.destination, 'manifest.json'), oldManifest)
     const oldIdentity = publicationDirectoryIdentity(fixture.destination)
     const events: string[] = []
-    let replacement = { bytesPreserved: false, onlyInodeChanged: false }
+    let replacement: ReturnType<typeof replaceWithByteIdenticalInode> | undefined
     fixture.environment.hooks.beforePublishStaging = (staging) => {
       events.push('staged-cases-inode-replaced')
       replacement = replaceWithByteIdenticalInode(join(staging, 'cases.json'))
@@ -1349,7 +1358,14 @@ describe('no-follow and transactional publication', () => {
       verifyOnly: false,
     })).rejects.toThrow('fixture cases file identity changed')
 
-    expect(replacement).toEqual({ bytesPreserved: true, onlyInodeChanged: true })
+    expect(replacement).toEqual({
+      bytesPreserved: true,
+      devicePreserved: true,
+      modePreserved: true,
+      sizePreserved: true,
+      mtimePreserved: true,
+      inodeChanged: true,
+    })
     expect(events).toEqual([
       'staged-cases-inode-replaced',
       'rollback-under-lock',
@@ -1370,7 +1386,7 @@ describe('no-follow and transactional publication', () => {
     writeFileSync(join(fixture.destination, 'manifest.json'), oldManifest)
     const oldIdentity = publicationDirectoryIdentity(fixture.destination)
     const events: string[] = []
-    let replacement = { bytesPreserved: false, onlyInodeChanged: false }
+    let replacement: ReturnType<typeof replaceWithByteIdenticalInode> | undefined
     fixture.environment.hooks.afterPublishStaging = (destination) => {
       events.push('installed-manifest-inode-replaced')
       replacement = replaceWithByteIdenticalInode(join(destination, 'manifest.json'))
@@ -1392,7 +1408,14 @@ describe('no-follow and transactional publication', () => {
       verifyOnly: false,
     })).rejects.toThrow('fixture manifest file identity changed')
 
-    expect(replacement).toEqual({ bytesPreserved: true, onlyInodeChanged: true })
+    expect(replacement).toEqual({
+      bytesPreserved: true,
+      devicePreserved: true,
+      modePreserved: true,
+      sizePreserved: true,
+      mtimePreserved: true,
+      inodeChanged: true,
+    })
     expect(events).toEqual([
       'installed-manifest-inode-replaced',
       'rollback-under-lock',
