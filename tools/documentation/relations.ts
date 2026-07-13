@@ -108,13 +108,14 @@ const validators = [
   'packages/classification-core/src/compiler/compile.ts',
 ] as const
 const tests = ['packages/classification-core/src/compiler/compile.test.ts'] as const
+const questionConsumers = ['tools/questions/generate-question-model.ts'] as const
 
 export const documentationRelations: readonly DocumentationRelation[] = [
   ...questionConceptKeys.map((conceptKey) => ({
     conceptKey,
     canonicalSource: 'tools/documentation/relations.ts',
     validators,
-    consumers: [],
+    consumers: questionConsumers,
     tests,
     migrations: [],
   })),

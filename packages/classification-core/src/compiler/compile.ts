@@ -1,20 +1,20 @@
 import { createHash } from 'node:crypto'
 
-import type { Diagnostic } from '../contracts/diagnostic.js'
+import { compareDiagnostics, type Diagnostic } from '../contracts/diagnostic.js'
 import type {
   ClassificationModel,
   ConceptKey,
   ConceptRecord,
 } from '../contracts/model.js'
-import type { QuestionDefinitionSource } from '../contracts/question-model.js'
+import type {
+  CompiledQuestion,
+  QuestionDefinitionSource,
+} from '../contracts/question-model.js'
 import { compareCodePoints } from '../contracts/source-path.js'
 import { DiagnosticCollector } from './collector.js'
 import { parseDefinitionBundle } from './parse.js'
-import { canonicalizeQuestionSource } from './questions/canonicalize.js'
-import {
-  deriveQuestionGraph,
-  extractConditionReferences,
-} from './questions/dependencies.js'
+import { compileQuestions } from './questions/compile.js'
+import { extractConditionReferences } from './questions/dependencies.js'
 import { stableJson } from './stable-json.js'
 
 export type CompileResult =
@@ -51,10 +51,11 @@ type ParsedDefinition = NonNullable<ReturnType<typeof parseDefinitionBundle>['de
 
 function buildInventory(
   definition: ParsedDefinition,
+  questions: readonly CompiledQuestion[],
   sourceFile: string,
 ) {
   const records: ConceptRecord[] = []
-  for (const question of definition.questions) {
+  for (const question of questions) {
     records.push({
       key: inventoryKey('question', question.id),
       kind: 'question',
@@ -112,6 +113,9 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
   if (!parsed.definition) return { ok: false, diagnostics: parsed.diagnostics }
 
   const definition = parsed.definition
+  const questionCompilation = compileQuestions(
+    definition.questions as readonly QuestionDefinitionSource[],
+  )
   const collector = new DiagnosticCollector()
   for (const id of duplicateValues(definition.questions.map((item) => item.id))) {
     collector.error({ code: 'QUESTION_DUPLICATE_ID', sourceFile, path: '/questions', entityId: id, message: `Duplicate question ${id}` })
@@ -145,17 +149,6 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
       message: `Unknown question dependency ${reference.referencedQuestionId}`,
     })
   }
-  const canonicalQuestions = canonicalizeQuestionSource(
-    definition.questions as unknown as readonly QuestionDefinitionSource[],
-  )
-  const questionGraph = deriveQuestionGraph(canonicalQuestions)
-  if (questionGraph.diagnostics.some(({ code }) => code === 'FLOW_CYCLE')) collector.error({
-    code: 'FLOW_CYCLE',
-    sourceFile,
-    path: '/questions',
-    message: 'Question dependency graph contains a cycle',
-  })
-
   const optionIdentitySet = new Set(optionIdentities)
   for (const [index, style] of definition.styles.entries()) {
     const identity = optionIdentity(
@@ -180,25 +173,35 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
     received: totalWeight,
   })
 
-  const inventory = buildInventory(definition, sourceFile)
-  for (const key of duplicateValues(inventory.map((item) => item.key))) {
-    collector.error({
-      code: 'CONCEPT_DUPLICATE_KEY',
-      sourceFile,
-      path: '/inventory',
-      entityId: key,
-      message: `Duplicate concept key ${key}`,
-    })
+  const inventory = questionCompilation.ok
+    ? buildInventory(definition, questionCompilation.model.questions, sourceFile)
+    : []
+  if (questionCompilation.ok) {
+    for (const key of duplicateValues(inventory.map((item) => item.key))) {
+      collector.error({
+        code: 'CONCEPT_DUPLICATE_KEY',
+        sourceFile,
+        path: '/inventory',
+        entityId: key,
+        message: `Duplicate concept key ${key}`,
+      })
+    }
   }
 
-  const diagnostics = collector.toArray()
-  if (collector.hasErrors()) return { ok: false, diagnostics }
-  const dataVersion = createHash('sha256').update(stableJson(definition)).digest('hex')
+  const diagnostics = [
+    ...collector.toArray(),
+    ...questionCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (collector.hasErrors() || !questionCompilation.ok) return { ok: false, diagnostics }
+  const dataVersion = createHash('sha256').update(stableJson({
+    ...definition,
+    questions: questionCompilation.model.questions,
+  })).digest('hex')
   const model = deepFreeze({
     modelVersion: definition.modelVersion,
     dataVersion,
     provenance: definition.provenance,
-    questions: definition.questions,
+    questions: questionCompilation.model.questions,
     styles: definition.styles,
     policy: definition.policy,
     inventory,

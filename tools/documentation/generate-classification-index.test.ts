@@ -20,6 +20,17 @@ import { installGeneratedOutputs } from './generate-classification-index.js'
 
 const sourceRoot = resolve(import.meta.dirname, '../..')
 
+function writeRegisteredConsumers(repoRoot: string) {
+  for (const [file, importedPackage] of [
+    ['tools/questions/generate-question-model.ts', '@ramen-style/classification-core/compiler'],
+    ['tools/validation/validate-classification.ts', '@ramen-style/classification-core/compiler'],
+  ] as const) {
+    const target = join(repoRoot, file)
+    mkdirSync(resolve(target, '..'), { recursive: true })
+    writeFileSync(target, `import '${importedPackage}'\n`)
+  }
+}
+
 test('write mode rejects an owned output symlink before changing any output', () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
   const externalRoot = mkdtempSync(join(tmpdir(), 'ramen-index-outside-'))
@@ -45,9 +56,7 @@ test('write mode rejects an owned output symlink before changing any output', ()
       mkdirSync(resolve(target, '..'), { recursive: true })
       writeFileSync(target, '')
     }
-    const validation = join(repoRoot, 'tools/validation/validate-classification.ts')
-    mkdirSync(resolve(validation, '..'), { recursive: true })
-    writeFileSync(validation, "import '@ramen-style/classification-core/compiler'\n")
+    writeRegisteredConsumers(repoRoot)
 
     writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
     symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
@@ -109,9 +118,7 @@ test('write mode rejects a symlinked classification root without writing outside
       mkdirSync(resolve(target, '..'), { recursive: true })
       writeFileSync(target, '')
     }
-    const validation = join(repoRoot, 'tools/validation/validate-classification.ts')
-    mkdirSync(resolve(validation, '..'), { recursive: true })
-    writeFileSync(validation, "import '@ramen-style/classification-core/compiler'\n")
+    writeRegisteredConsumers(repoRoot)
 
     writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
     symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
@@ -200,9 +207,7 @@ test('Git inventory preserves a newline-containing eligible consumer path', () =
       mkdirSync(resolve(target, '..'), { recursive: true })
       writeFileSync(target, '')
     }
-    const validation = join(repoRoot, 'tools/validation/validate-classification.ts')
-    mkdirSync(resolve(validation, '..'), { recursive: true })
-    writeFileSync(validation, "import '@ramen-style/classification-core/compiler'\n")
+    writeRegisteredConsumers(repoRoot)
     const newlineConsumer = join(repoRoot, 'apps/web/line\nbreak.ts')
     mkdirSync(resolve(newlineConsumer, '..'), { recursive: true })
     writeFileSync(newlineConsumer, "import '@ramen-style/classification-core'\n")

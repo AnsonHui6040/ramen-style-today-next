@@ -46,7 +46,9 @@
     },
     {
       "canonicalSource": "tools/documentation/relations.ts",
-      "consumers": [],
+      "consumers": [
+        "tools/questions/generate-question-model.ts"
+      ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -68,7 +70,9 @@
     },
     {
       "canonicalSource": "tools/documentation/relations.ts",
-      "consumers": [],
+      "consumers": [
+        "tools/questions/generate-question-model.ts"
+      ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -90,7 +94,9 @@
     },
     {
       "canonicalSource": "tools/documentation/relations.ts",
-      "consumers": [],
+      "consumers": [
+        "tools/questions/generate-question-model.ts"
+      ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -112,7 +118,9 @@
     },
     {
       "canonicalSource": "tools/documentation/relations.ts",
-      "consumers": [],
+      "consumers": [
+        "tools/questions/generate-question-model.ts"
+      ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -156,7 +164,9 @@
     },
     {
       "canonicalSource": "tools/documentation/relations.ts",
-      "consumers": [],
+      "consumers": [
+        "tools/questions/generate-question-model.ts"
+      ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -179,7 +189,9 @@
     },
     {
       "canonicalSource": "tools/documentation/relations.ts",
-      "consumers": [],
+      "consumers": [
+        "tools/questions/generate-question-model.ts"
+      ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -225,7 +237,7 @@
       ]
     }
   ],
-  "dataVersion": "09f76aa37cce4488a2a52a63201fef8105f09d056907c16eea818b7d6ec8e275",
+  "dataVersion": "5769471f0c5822f055c854f90b89a4137c28c4e1d82d282b4de3dc6c845709f8",
   "modelVersion": "batch1.1.0",
   "schemaVersion": 1,
   "synthetic": true

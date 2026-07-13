@@ -150,6 +150,11 @@ function deterministicSnapshot(locale: string) {
 }
 
 describe('classification documentation index', () => {
+  const detectedCoreConsumers = [
+    'tools/questions/generate-question-model.ts',
+    'tools/validation/validate-classification.ts',
+  ] as const
+
   test('emits identical compiler and documentation bytes across host locales', () => {
     const english = deterministicSnapshot('en_US.UTF-8')
     const lithuanian = deterministicSnapshot('lt_LT.UTF-8')
@@ -172,7 +177,7 @@ describe('classification documentation index', () => {
     const result = buildDocumentation(
       compiled.model,
       documentationRelations,
-      new Set(['tools/validation/validate-classification.ts']),
+      new Set(detectedCoreConsumers),
       paths,
     )
 
@@ -185,7 +190,7 @@ describe('classification documentation index', () => {
     const reversed = buildDocumentation(
       { ...compiled.model, inventory: [...compiled.model.inventory].reverse() },
       [...documentationRelations].reverse(),
-      new Set(['tools/validation/validate-classification.ts']),
+      new Set(detectedCoreConsumers),
       paths,
     )
     expect(reversed.manifest).toBe(result.manifest)
@@ -196,7 +201,7 @@ describe('classification documentation index', () => {
     const result = buildDocumentation(
       compiled.model,
       documentationRelations.slice(1),
-      new Set(['tools/unregistered.ts']),
+      new Set([...detectedCoreConsumers, 'tools/unregistered.ts']),
       new Set(),
     )
     expect(result.diagnostics.map((item) => item.code)).toContain('DOC_RELATION_INVALID')
@@ -219,7 +224,7 @@ describe('classification documentation index', () => {
         { ...first },
         { ...first, conceptKey: 'question/unknown' },
       ],
-      new Set(['tools/validation/validate-classification.ts']),
+      new Set(detectedCoreConsumers),
       paths,
     )
     expect(result.diagnostics.filter((item) => item.entityId === first.conceptKey)).not.toEqual([])
@@ -234,7 +239,7 @@ describe('classification documentation index', () => {
         { ...first, validators: ['../outside.ts'] },
         ...documentationRelations.slice(1),
       ],
-      new Set(['tools/validation/validate-classification.ts']),
+      new Set(detectedCoreConsumers),
       new Set([
         '../outside.ts',
         ...documentationRelations.flatMap((item) => [

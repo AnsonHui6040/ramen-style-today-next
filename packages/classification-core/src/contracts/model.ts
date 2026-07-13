@@ -1,4 +1,5 @@
 import type { DefinitionBundleSource } from '../compiler/source-schema.js'
+import type { CompiledQuestion } from './question-model.js'
 
 export type DeepReadonly<T> = T extends readonly (infer Item)[]
   ? readonly DeepReadonly<Item>[]
@@ -22,7 +23,7 @@ export interface ClassificationModel {
   readonly modelVersion: string
   readonly dataVersion: string
   readonly provenance: DeepReadonly<DefinitionBundleSource['provenance']>
-  readonly questions: DeepReadonly<DefinitionBundleSource['questions']>
+  readonly questions: DeepReadonly<readonly CompiledQuestion[]>
   readonly styles: DeepReadonly<DefinitionBundleSource['styles']>
   readonly policy: DeepReadonly<DefinitionBundleSource['policy']>
   readonly inventory: readonly ConceptRecord[]
