@@ -149,10 +149,10 @@ index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..3ba4a8cba5335ece847966a58e5ecffe
 +    legacyPendingTransition.current = null
 diff --git a/src/parity-question-extractor.test.tsx b/src/parity-question-extractor.test.tsx
 new file mode 100644
-index 0000000000000000000000000000000000000000..274cf9d9de910dbbc848a05c836e9750c78c242c
+index 0000000000000000000000000000000000000000..a466a363be9ec0f1c11ac5060fa77f441b38fe81
 --- /dev/null
 +++ b/src/parity-question-extractor.test.tsx
-@@ -0,0 +1,250 @@
+@@ -0,0 +1,256 @@
 +import { lstatSync, readFileSync, writeFileSync } from 'node:fs'
 +import { dirname, isAbsolute } from 'node:path'
 +
@@ -282,26 +282,32 @@ index 0000000000000000000000000000000000000000..274cf9d9de910dbbc848a05c836e9750
 +
 +async function extractCase(seedCase: SeedCase, seedIndex: number) {
 +  const observations: ObservationFrame[] = []
-+  const lastVisibleOptions = new Map<string, readonly string[]>()
 +  let activeActionIndex: number | undefined
 +  const unregister = registerLegacyQuestionObserver((observation) => {
 +    const previous = observations.at(-1)
-+    const changes = answerChanges(previous?.legacyAnswers, observation.legacyAnswers)
++    const changes = (
++      previous?.legacyAnswers !== undefined
++      && observation.legacyAnswers !== undefined
++    )
++      ? answerChanges(previous.legacyAnswers, observation.legacyAnswers)
++      : []
 +    let visibleOptionIds: {
 +      questionId: string
 +      before: readonly string[]
 +      after: readonly string[]
 +    } | undefined
-+    if (observation.displayedQuestionId && observation.visibleOptionIds) {
-+      const before = lastVisibleOptions.get(observation.displayedQuestionId)
-+      if (before && JSON.stringify(before) !== JSON.stringify(observation.visibleOptionIds)) {
-+        visibleOptionIds = {
-+          questionId: observation.displayedQuestionId,
-+          before,
-+          after: observation.visibleOptionIds,
-+        }
++    if (
++      observation.displayedQuestionId !== undefined
++      && previous?.displayedQuestionId === observation.displayedQuestionId
++      && previous.visibleOptionIds !== undefined
++      && observation.visibleOptionIds !== undefined
++      && JSON.stringify(previous.visibleOptionIds) !== JSON.stringify(observation.visibleOptionIds)
++    ) {
++      visibleOptionIds = {
++        questionId: observation.displayedQuestionId,
++        before: previous.visibleOptionIds,
++        after: observation.visibleOptionIds,
 +      }
-+      lastVisibleOptions.set(observation.displayedQuestionId, observation.visibleOptionIds)
 +    }
 +    observations.push({
 +      ...observation,

@@ -18,7 +18,9 @@ import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } fr
 import { fileURLToPath } from 'node:url'
 
 import {
+  computeExtractorAuthoringHash,
   deriveObservableCoverage,
+  extractorAuthoringSourcePaths,
   fixtureManifestSchema,
   legacyObservableSeedFileSchema,
   legacyObservableTraceCaseSchema,
@@ -138,6 +140,7 @@ export interface ExtractorHooks {
     readonly globalConfig: string
   }) => void
   beforePublishStaging?: (path: string) => void
+  afterPublishStaging?: (path: string) => void
   beforeRollback?: (path: string) => void
 }
 
@@ -148,7 +151,7 @@ export interface ExtractorEnvironment {
   readonly destination: string
   readonly patchPath: string
   readonly seedsPath: string
-  readonly extractorPath: string
+  readonly authoringSources: readonly AuthoringSource[]
   readonly tools: typeof trustedTools
   readonly expected: ExpectedExtractorLineage
   readonly spawn: (request: SpawnRequest) => Promise<SpawnResult>
@@ -164,7 +167,7 @@ export interface CreateExtractorEnvironmentInput {
   readonly destination: string
   readonly patchPath: string
   readonly seedsPath: string
-  readonly extractorPath?: string
+  readonly authoringSources?: readonly AuthoringSource[]
   readonly tools?: typeof trustedTools
   readonly expected: ExpectedExtractorLineage
   readonly spawn?: (request: SpawnRequest) => Promise<SpawnResult>
@@ -194,6 +197,11 @@ interface FileIdentity {
   readonly mtimeMs: number
 }
 
+export interface AuthoringSource {
+  readonly relativePath: (typeof extractorAuthoringSourcePaths)[number]
+  readonly path: string
+}
+
 interface RawTraceCase {
   readonly seedIndex: number
   readonly id: string
@@ -204,7 +212,10 @@ interface RawTraceCase {
 const sandboxProfile = '(version 1)(allow default)(deny network*)'
 const extractionSeed = 'ramen-question-observable-v1'
 const maximumExternalMessageLength = 300
-const extractorPath = fileURLToPath(import.meta.url)
+const defaultAuthoringSources = extractorAuthoringSourcePaths.map((relativePath) => ({
+  relativePath,
+  path: fileURLToPath(new URL(`./${basename(relativePath)}`, import.meta.url)),
+}))
 
 export function sanitizeExternalError(error: unknown, maximumLength = 300) {
   const ansiEscape = new RegExp(`${String.fromCodePoint(27)}\\[[0-?]*[ -/]*[@-~]`, 'g')
@@ -494,6 +505,13 @@ async function defaultSpawn(request: SpawnRequest): Promise<SpawnResult> {
 export function createExtractorEnvironment(
   input: CreateExtractorEnvironmentInput,
 ): ExtractorEnvironment {
+  const requestedAuthoringSources = input.authoringSources ?? defaultAuthoringSources
+  if (
+    requestedAuthoringSources.length !== extractorAuthoringSourcePaths.length
+    || requestedAuthoringSources.some((source, index) => (
+      source.relativePath !== extractorAuthoringSourcePaths[index]
+    ))
+  ) throw new Error('authoring source set mismatch')
   return {
     inheritedEnvironment: input.inheritedEnvironment ?? {},
     legacyRoot: resolve(input.legacyRoot),
@@ -501,7 +519,10 @@ export function createExtractorEnvironment(
     destination: resolve(input.destination),
     patchPath: resolve(input.patchPath),
     seedsPath: resolve(input.seedsPath),
-    extractorPath: resolve(input.extractorPath ?? extractorPath),
+    authoringSources: requestedAuthoringSources.map((source) => ({
+      relativePath: source.relativePath,
+      path: resolve(source.path),
+    })),
     tools: input.tools ?? trustedTools,
     expected: input.expected,
     spawn: input.spawn ?? defaultSpawn,
@@ -775,7 +796,8 @@ export async function runLegacyExtractor(
   let extractionRootIdentity: FileIdentity | undefined
   let stagingIdentity: FileIdentity | undefined
   let worktreeAttempted = false
-  let backupCreated = false
+  let backupIdentity: FileIdentity | undefined
+  let installedOutputIdentity: FileIdentity | undefined
   let published = false
   let primaryError: unknown
   const cleanupErrors: unknown[] = []
@@ -789,7 +811,9 @@ export async function runLegacyExtractor(
     assertNoFollowPath(environment.toolRoot, { kind: 'directory', allowMissingLeaf: false })
     assertNoFollowPath(environment.patchPath, { kind: 'file', allowMissingLeaf: false })
     assertNoFollowPath(environment.seedsPath, { kind: 'file', allowMissingLeaf: false })
-    assertNoFollowPath(environment.extractorPath, { kind: 'file', allowMissingLeaf: false })
+    for (const source of environment.authoringSources) {
+      assertNoFollowPath(source.path, { kind: 'file', allowMissingLeaf: false })
+    }
     ensureSafeDirectory(outputParent)
     assertNoFollowPath(outputParent, { kind: 'directory', allowMissingLeaf: false })
     assertNoFollowPath(environment.destination, {
@@ -813,6 +837,11 @@ export async function runLegacyExtractor(
     const seeds = legacyObservableSeedFileSchema.parse(
       JSON.parse(seedBytes.toString('utf8')) as unknown,
     )
+    const authoringSourceIdentity = environment.authoringSources.map((source) => ({
+      path: source.relativePath,
+      hash: sha256Bytes(readNoFollowFile(source.path, `authoring source ${source.relativePath}`)),
+    }))
+    const authoringHash = computeExtractorAuthoringHash(authoringSourceIdentity)
 
     ignoredBefore = await Promise.all(ignoredExtractorSensitivePaths.map((path) => (
       fingerprintIgnoredPath(environment.legacyRoot, path)
@@ -1052,7 +1081,13 @@ export async function runLegacyExtractor(
       cases,
     }
     const casesJson = stableJson(casesPayload)
-    const extractorHash = sha256Bytes(readNoFollowFile(environment.extractorPath, 'extractor source'))
+    const revalidatedAuthoringSourceIdentity = environment.authoringSources.map((source) => ({
+      path: source.relativePath,
+      hash: sha256Bytes(readNoFollowFile(source.path, `authoring source ${source.relativePath}`)),
+    }))
+    if (JSON.stringify(revalidatedAuthoringSourceIdentity) !== JSON.stringify(authoringSourceIdentity)) {
+      throw new Error('authoring source identity changed during extraction')
+    }
     manifest = fixtureManifestSchema.parse({
       fixtureSchemaVersion: 1,
       caseSchemaVersion: 1,
@@ -1064,7 +1099,11 @@ export async function runLegacyExtractor(
         lockfilePath: environment.expected.lockfilePath,
         lockfileHash: environment.expected.lockfileHash,
       },
-      extractor: { version: 1, hash: extractorHash },
+      extractor: {
+        version: 1,
+        sources: authoringSourceIdentity,
+        hash: authoringHash,
+      },
       instrumentation: { version: 1, hash: environment.expected.patchHash },
       runtime: {
         nodeVersion: environment.expected.nodeVersion,
@@ -1160,9 +1199,13 @@ export async function runLegacyExtractor(
       assertNoFollowPath(outputParent, { kind: 'directory', allowMissingLeaf: false })
       if (lstatIfPresent(environment.destination)) {
         if (!options.replace) throw new Error('output already exists; pass --replace')
-        snapshotRegularDirectory(environment.destination, 'existing output')
+        const existingOutputIdentity = snapshotRegularDirectory(
+          environment.destination,
+          'existing output',
+        )
         renameSync(environment.destination, paths.backup)
-        backupCreated = true
+        revalidateRegularDirectory(paths.backup, existingOutputIdentity, 'backup output')
+        backupIdentity = existingOutputIdentity
       }
       if (!stagingIdentity) throw new Error('staging output is missing')
       environment.hooks.beforePublishStaging?.(paths.staging)
@@ -1171,41 +1214,65 @@ export async function runLegacyExtractor(
         kind: 'directory',
         allowMissingLeaf: true,
       })
+      const replacementIdentity = stagingIdentity
       renameSync(paths.staging, environment.destination)
       stagingIdentity = undefined
+      installedOutputIdentity = replacementIdentity
+      revalidateRegularDirectory(
+        environment.destination,
+        replacementIdentity,
+        'installed output',
+      )
+      environment.hooks.afterPublishStaging?.(environment.destination)
       published = true
-      if (backupCreated) {
-        const backupIdentity = snapshotRegularDirectory(paths.backup, 'backup output')
-        removeOwnedPath(paths.backup, backupIdentity)
-        backupCreated = false
-      }
     } catch (error) {
       primaryError = error
     }
   }
 
-  if (primaryError && backupCreated) {
+  if (!primaryError && published && backupIdentity) {
     try {
-      environment.hooks.beforeRollback?.(paths.backup)
-      snapshotRegularDirectory(paths.backup, 'backup output')
-      assertNoFollowPath(environment.destination, {
-        kind: 'directory',
-        allowMissingLeaf: true,
-      })
-      renameSync(paths.backup, environment.destination)
-      backupCreated = false
+      removeOwnedPath(paths.backup, backupIdentity)
+      backupIdentity = undefined
     } catch (error) {
       cleanupErrors.push(error)
     }
   }
 
-  for (const [path, identity] of [
-    [paths.staging, stagingIdentity],
-    [paths.backup, backupCreated ? snapshotDirectoryIfPresent(paths.backup) : undefined],
-  ] as const) {
-    if (!identity) continue
+  if (primaryError && installedOutputIdentity) {
     try {
-      removeOwnedPath(path, identity)
+      removeOwnedPath(environment.destination, installedOutputIdentity)
+      installedOutputIdentity = undefined
+      published = false
+    } catch (error) {
+      cleanupErrors.push(error)
+    }
+  }
+
+  if (primaryError && backupIdentity) {
+    try {
+      environment.hooks.beforeRollback?.(paths.backup)
+      revalidateRegularDirectory(paths.backup, backupIdentity, 'backup output')
+      if (lstatIfPresent(environment.destination)) {
+        throw new Error('rollback destination is not empty')
+      }
+      const previousOutputIdentity = backupIdentity
+      renameSync(paths.backup, environment.destination)
+      backupIdentity = undefined
+      revalidateRegularDirectory(
+        environment.destination,
+        previousOutputIdentity,
+        'restored output',
+      )
+      published = false
+    } catch (error) {
+      cleanupErrors.push(error)
+    }
+  }
+
+  if (stagingIdentity) {
+    try {
+      removeOwnedPath(paths.staging, stagingIdentity)
     } catch (error) {
       cleanupErrors.push(error)
     }
@@ -1256,9 +1323,4 @@ function revalidateRegularDirectory(path: string, expected: FileIdentity, label:
 
 function directoryIdentitiesEqual(left: FileIdentity, right: FileIdentity) {
   return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode
-}
-
-function snapshotDirectoryIfPresent(path: string) {
-  if (!lstatIfPresent(path)) return undefined
-  return snapshotRegularDirectory(path, 'run-owned directory')
 }

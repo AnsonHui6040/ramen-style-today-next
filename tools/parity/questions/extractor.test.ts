@@ -23,6 +23,7 @@ import {
   normalizeGithubRepository,
   runLegacyExtractor,
   sanitizeExternalError,
+  type CreateExtractorEnvironmentInput,
   type ExtractorEnvironment,
   type SpawnRequest,
 } from './extractor.js'
@@ -119,6 +120,12 @@ interface ExtractorFixture {
   rewriteOriginalTsBuildInfo: () => void
   afterLegacySuite?: () => void
   runPaths: Array<{ staging: string; backup: string; extractionRoot: string }>
+  authoringSourcePaths: Record<
+    | 'tools/parity/questions/contracts.ts'
+    | 'tools/parity/questions/extractor.ts'
+    | 'tools/parity/questions/extract.ts',
+    string
+  >
 }
 
 function sha256File(file: string) {
@@ -135,6 +142,17 @@ async function createExtractorFixture(
   const destination = join(toolRoot, 'tools/parity/fixtures/questions/legacy-v1')
   const patchPath = join(toolRoot, 'tools/parity/questions/legacy-instrumentation.patch')
   const seedsPath = join(toolRoot, 'tools/parity/questions/seeds.json')
+  const authoringSourcePaths = {
+    'tools/parity/questions/contracts.ts': join(
+      toolRoot,
+      'tools/parity/questions/contracts.ts',
+    ),
+    'tools/parity/questions/extractor.ts': join(
+      toolRoot,
+      'tools/parity/questions/extractor.ts',
+    ),
+    'tools/parity/questions/extract.ts': join(toolRoot, 'tools/parity/questions/extract.ts'),
+  }
   const sourcePath = join(legacyRoot, 'src/App.tsx')
   const lockPath = join(legacyRoot, 'package-lock.json')
   mkdirSync(dirname(sourcePath), { recursive: true })
@@ -143,6 +161,9 @@ async function createExtractorFixture(
   writeFileSync(lockPath, '{"lockfileVersion":3}\n')
   writeFileSync(patchPath, 'diff --git a/src/App.tsx b/src/App.tsx\n')
   writeFileSync(seedsPath, `${JSON.stringify({ schemaVersion: 1, cases: seedCases }, null, 2)}\n`)
+  for (const [path, sourcePath] of Object.entries(authoringSourcePaths)) {
+    writeFileSync(sourcePath, `// deterministic fixture for ${path}\n`)
+  }
 
   const spawnRecords: SpawnRequest[] = []
   const runPaths: ExtractorFixture['runPaths'] = []
@@ -237,13 +258,21 @@ async function createExtractorFixture(
   const inheritedEnvironment = { ...options.inheritedEnvironment }
   if (options.inheritedHomeContainsExtractionRoot) inheritedEnvironment.HOME = process.cwd()
 
-  const environment = createExtractorEnvironment({
+  const environmentInput = {
     inheritedEnvironment,
     legacyRoot,
     toolRoot,
     destination,
     patchPath,
     seedsPath,
+    authoringSources: ([
+      'tools/parity/questions/contracts.ts',
+      'tools/parity/questions/extractor.ts',
+      'tools/parity/questions/extract.ts',
+    ] as const).map((relativePath) => ({
+      relativePath,
+      path: authoringSourcePaths[relativePath],
+    })),
     expected: {
       identity: {
         host: 'github.com',
@@ -263,8 +292,9 @@ async function createExtractorFixture(
       npmVersion: '11.12.1',
     },
     spawn,
-    onRunPaths: (paths) => runPaths.push(paths),
-  })
+    onRunPaths: (paths: ExtractorFixture['runPaths'][number]) => runPaths.push(paths),
+  } satisfies CreateExtractorEnvironmentInput
+  const environment = createExtractorEnvironment(environmentInput)
 
   const ignoredPaths = [
     'node_modules/.tmp/tsconfig.app.tsbuildinfo',
@@ -297,6 +327,7 @@ async function createExtractorFixture(
       )
     },
     runPaths,
+    authoringSourcePaths,
   })
   Object.defineProperty(fixture, 'afterLegacySuite', {
     get: () => afterLegacySuite,
@@ -346,6 +377,24 @@ describe('identity and transport normalization', () => {
 })
 
 describe('isolated execution and exact seed binding', () => {
+  test.each([
+    'tools/parity/questions/contracts.ts',
+    'tools/parity/questions/extractor.ts',
+    'tools/parity/questions/extract.ts',
+  ] as const)('changes extractor identity when authoring dependency %s changes', async (path) => {
+    const baselineFixture = await createExtractorFixture()
+    const baseline = await runLegacyExtractor(
+      baselineFixture.environment,
+      { verifyOnly: true },
+    )
+    const changedFixture = await createExtractorFixture()
+    writeFileSync(changedFixture.authoringSourcePaths[path], `// changed ${path}\n`)
+    const changed = await runLegacyExtractor(changedFixture.environment, { verifyOnly: true })
+
+    expect((changed.manifest as { extractor: { hash: string } }).extractor.hash)
+      .not.toBe((baseline.manifest as { extractor: { hash: string } }).extractor.hash)
+  })
+
   test('includes a tracked modification and patch-created untracked file in the exact patch surface', async () => {
     const fixture = await createExtractorFixture({
       patchSurfaceOutput: ' M src/App.tsx\0?? src/parity-question-extractor.test.tsx\0',
@@ -636,6 +685,54 @@ describe('no-follow and transactional publication', () => {
     )).toBe(false)
   })
 
+  test('retains the only previous backup when publication and rollback both fail', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    fixture.environment.hooks.beforePublishStaging = () => {
+      throw new Error('publish seam failure')
+    }
+    fixture.environment.hooks.beforeRollback = () => {
+      throw new Error('rollback seam failure')
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('publish seam failure')
+
+    expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
+    const retainedBackups = readdirSync(dirname(fixture.destination))
+      .filter((name) => name.includes('.backup-'))
+    expect(retainedBackups).toHaveLength(1)
+    expect(readFileSync(join(
+      dirname(fixture.destination),
+      retainedBackups[0]!,
+      'manifest.json',
+    ), 'utf8')).toBe('old')
+  })
+
+  test('removes an installed replacement before restoring old output after a later failure', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    const hooks = fixture.environment.hooks as typeof fixture.environment.hooks & {
+      afterPublishStaging?: (destination: string) => void
+    }
+    hooks.afterPublishStaging = () => {
+      throw new Error('post-install publication failure')
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('post-install publication failure')
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
+    expect(readdirSync(dirname(fixture.destination)).some((name) =>
+      name.includes('.backup-') || name.includes('.staging-'),
+    )).toBe(false)
+  })
+
   test('revalidates a sensitive path immediately before raw read', async () => {
     const fixture = await createExtractorFixture()
     fixture.environment.hooks.beforeReadRaw = (rawPath) => {
@@ -748,6 +845,11 @@ describe('tracked observation patch and seed surface', () => {
       'expectedFrames',
       'coverageTags',
     ]) expect(extractionTestAdditions).not.toContain(forbidden)
+    expect(extractionTestAdditions).not.toContain('lastVisibleOptions')
+    expect(extractionTestAdditions).toContain(
+      'previous?.displayedQuestionId === observation.displayedQuestionId',
+    )
+    expect(extractionTestAdditions).toContain('previous?.legacyAnswers !== undefined')
   })
 
   test('keeps seeds input-only with exactly id and actions per case', () => {

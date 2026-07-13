@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  computeExtractorAuthoringHash,
   deriveObservableCoverage,
   expectedDivergencesSchema,
   fixtureManifestSchema,
@@ -10,6 +11,21 @@ import {
   legacyObservableTraceFrameSchema,
   type LegacyObservableTraceCase,
 } from './contracts.js'
+
+const validAuthoringSources = [
+  {
+    path: 'tools/parity/questions/contracts.ts',
+    hash: 'c'.repeat(64),
+  },
+  {
+    path: 'tools/parity/questions/extractor.ts',
+    hash: 'd'.repeat(64),
+  },
+  {
+    path: 'tools/parity/questions/extract.ts',
+    hash: 'e'.repeat(64),
+  },
+] as const
 
 const validFrame = {
   sequence: 0,
@@ -79,7 +95,8 @@ const validFixtureManifest = {
   },
   extractor: {
     version: 1,
-    hash: 'e'.repeat(64),
+    sources: validAuthoringSources,
+    hash: computeExtractorAuthoringHash(validAuthoringSources),
   },
   instrumentation: {
     version: 1,
@@ -168,6 +185,118 @@ describe('observable legacy trace contracts', () => {
       ...validTraceCase,
       frames: [validFrame, { ...validFrame, sequence: 1 }],
     }).success).toBe(false)
+  })
+
+  test('rejects reordered action chunks and observations unrelated to their bound actions', () => {
+    const unrelatedTrace = {
+      id: 'reordered-unrelated-observations',
+      actions: [
+        { type: 'select', questionId: 'form', optionId: 'soup' },
+        { type: 'continue', fromQuestionId: 'form' },
+      ] as const,
+      frames: [
+        validFrame,
+        {
+          sequence: 1,
+          transition: 'submit',
+          actionIndex: 1,
+          displayedQuestionId: 'source',
+          visibleOptionIds: ['pork'],
+          legacyAnswers: { source: ['pork'] },
+          observedChanges: {
+            answers: [{ questionId: 'tare', before: 'shio', after: 'miso' }],
+          },
+        },
+        {
+          sequence: 2,
+          transition: 'next',
+          actionIndex: 1,
+          displayedQuestionId: 'body',
+          visibleOptionIds: ['rich'],
+          navigation: { direction: 'next', reachedQuestionId: 'noodle' },
+          legacyAnswers: { source: ['pork'] },
+          observedChanges: {
+            visibleOptionIds: {
+              questionId: 'archetype',
+              before: ['chintan'],
+              after: ['aburasoba'],
+            },
+          },
+        },
+        {
+          sequence: 3,
+          transition: 'toggle',
+          actionIndex: 0,
+          displayedQuestionId: 'tare',
+          visibleOptionIds: ['miso'],
+          pendingOptionIds: ['miso'],
+          legacyAnswers: { tare: 'miso' },
+        },
+      ],
+    } as const
+
+    expect(() => deriveObservableCoverage(unrelatedTrace)).toThrow()
+  })
+
+  test('rejects directly observed question and navigation fields unrelated to the bound action', () => {
+    const mismatches = [
+      validTraceCaseWithoutCoverage.frames.map((frame, index) => (
+        index === 1
+          ? { ...frame, displayedQuestionId: 'tare', visibleOptionIds: ['miso'] }
+          : frame
+      )),
+      validTraceCaseWithoutCoverage.frames.map((frame, index) => (
+        index === 2 ? { ...frame, displayedQuestionId: 'tare' } : frame
+      )),
+      validTraceCaseWithoutCoverage.frames.map((frame, index) => (
+        index === 3
+          ? {
+              ...frame,
+              displayedQuestionId: 'body',
+              navigation: { direction: 'next' as const, reachedQuestionId: 'noodle' },
+            }
+          : frame
+      )),
+    ]
+
+    for (const frames of mismatches) {
+      expect(() => deriveObservableCoverage({
+        actions: validTraceCaseWithoutCoverage.actions,
+        frames,
+      })).toThrow()
+    }
+  })
+
+  test('accepts only exact adjacent mechanical observedChanges when they are present', () => {
+    const exactFrames = validTraceCaseWithoutCoverage.frames.map((frame, index) => (
+      index === 1
+        ? {
+            ...frame,
+            observedChanges: {
+              answers: [{ questionId: 'form', after: 'soup' }],
+            },
+          }
+        : frame
+    ))
+    expect(() => deriveObservableCoverage({
+      actions: validTraceCaseWithoutCoverage.actions,
+      frames: exactFrames,
+    })).not.toThrow()
+
+    const fabricatedFrames = exactFrames.map((frame, index) => (
+      index === 1
+        ? {
+            ...frame,
+            observedChanges: {
+              answers: [{ questionId: 'tare', before: 'shio', after: 'miso' }],
+            },
+          }
+        : frame
+    ))
+    expect(() => deriveObservableCoverage({
+      actions: validTraceCaseWithoutCoverage.actions,
+      frames: fabricatedFrames,
+    })).toThrow()
   })
 
   test('maps toggle, continue, and previous actions to their exact frame grammar', () => {
@@ -303,18 +432,20 @@ describe('mechanically derived observable coverage', () => {
         { type: 'deselect', questionId: 'exclusions', optionId: 'pork' },
       ] as const,
       frames: [
-        validFrame,
+        {
+          ...validFrame,
+          legacyAnswers: { form: 'soup' },
+          pendingOptionIds: ['soup'],
+        },
         {
           sequence: 1,
           transition: 'toggle',
           actionIndex: 0,
-          pendingOptionIds: ['unsure'],
+          displayedQuestionId: 'form',
+          visibleOptionIds: ['soup', 'dry'],
+          pendingOptionIds: ['dry'],
+          legacyAnswers: { form: 'dry' },
           observedChanges: {
-            visibleOptionIds: {
-              questionId: 'archetype',
-              before: ['chintan'],
-              after: ['aburasoba'],
-            },
             answers: [{ questionId: 'form', before: 'soup', after: 'dry' }],
           },
         },
@@ -322,27 +453,44 @@ describe('mechanically derived observable coverage', () => {
           sequence: 2,
           transition: 'toggle',
           actionIndex: 1,
+          displayedQuestionId: 'source',
+          visibleOptionIds: ['pork'],
           pendingOptionIds: ['pork'],
+          legacyAnswers: { form: 'dry', source: ['pork'] },
           observedChanges: {
-            answers: [{ questionId: 'source', before: ['unsure'], after: ['pork'] }],
+            answers: [{ questionId: 'source', after: ['pork'] }],
           },
         },
         {
           sequence: 3,
           transition: 'toggle',
           actionIndex: 2,
+          displayedQuestionId: 'source',
+          visibleOptionIds: ['pork', 'chicken'],
           pendingOptionIds: ['pork'],
+          legacyAnswers: { form: 'dry', source: ['pork'] },
           observedChanges: {
-            answers: [{ questionId: 'source', before: ['pork'], after: ['pork'] }],
+            visibleOptionIds: {
+              questionId: 'source',
+              before: ['pork'],
+              after: ['pork', 'chicken'],
+            },
           },
         },
         {
           sequence: 4,
           transition: 'toggle',
           actionIndex: 3,
+          displayedQuestionId: 'exclusions',
+          visibleOptionIds: ['none', 'pork'],
           pendingOptionIds: ['none'],
+          legacyAnswers: {
+            form: 'dry',
+            source: ['pork'],
+            exclusions: ['none'],
+          },
           observedChanges: {
-            answers: [{ questionId: 'exclusions', before: ['pork'], after: ['none'] }],
+            answers: [{ questionId: 'exclusions', after: ['none'] }],
           },
         },
       ] as const,
@@ -418,6 +566,32 @@ describe('seed, manifest, and divergence contracts', () => {
           ...validFixtureManifest.runtime.npmConfigPolicy,
           userConfigPath: '/private/tmp/random/npm-user-config',
         },
+      },
+    }).success).toBe(false)
+  })
+
+  test('requires the exact ordered authoring sources and their canonical composite hash', () => {
+    expect(fixtureManifestSchema.safeParse({
+      ...validFixtureManifest,
+      extractor: {
+        version: 1,
+        hash: validFixtureManifest.extractor.hash,
+      },
+    }).success).toBe(false)
+    expect(fixtureManifestSchema.safeParse({
+      ...validFixtureManifest,
+      extractor: {
+        ...validFixtureManifest.extractor,
+        sources: [...validAuthoringSources].reverse(),
+      },
+    }).success).toBe(false)
+    expect(fixtureManifestSchema.safeParse({
+      ...validFixtureManifest,
+      extractor: {
+        ...validFixtureManifest.extractor,
+        sources: validAuthoringSources.map((source, index) => (
+          index === 0 ? { ...source, hash: 'f'.repeat(64) } : source
+        )),
       },
     }).success).toBe(false)
   })

@@ -1,6 +1,7 @@
 import { isAbsolute, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { extractorAuthoringSourcePaths } from './contracts.js'
 import {
   createExtractorEnvironment,
   legacySourceIdentity,
@@ -64,6 +65,10 @@ export async function main(arguments_: readonly string[]) {
     destination: resolve(toolRoot, 'tools/parity/fixtures/questions/legacy-v1'),
     patchPath,
     seedsPath,
+    authoringSources: extractorAuthoringSourcePaths.map((relativePath) => ({
+      relativePath,
+      path: resolve(toolRoot, relativePath),
+    })),
     expected: {
       identity: {
         host: legacySourceIdentity.host,
@@ -75,7 +80,7 @@ export async function main(arguments_: readonly string[]) {
       trackedSourceHashes,
       lockfilePath: 'package-lock.json',
       lockfileHash: 'be7ff42d1012d310916d38c082f63f8b5263981c6bd2ded2ff0f6dabe7fc29d2',
-      patchHash: 'b6419668948ea3f4f3398ab4d08ffbae81865b94e444c033391316263c78ba84',
+      patchHash: 'a5a4019587462ef7a1cd994bb53c07637072c174f53a54f7598e2610385ea854',
       seedsHash: 'f7a37a15c9b9fbdbd3b10311d3f11f1efdea548d6ba835605d1a987ca694173b',
       nodeVersion: '24.14.0',
       npmVersion: '11.12.1',

@@ -1,4 +1,31 @@
+import { createHash } from 'node:crypto'
+
 import { z } from 'zod'
+
+export const extractorAuthoringSourcePaths = [
+  'tools/parity/questions/contracts.ts',
+  'tools/parity/questions/extractor.ts',
+  'tools/parity/questions/extract.ts',
+] as const
+
+export interface ExtractorAuthoringSourceIdentity {
+  readonly path: (typeof extractorAuthoringSourcePaths)[number]
+  readonly hash: string
+}
+
+export function computeExtractorAuthoringHash(
+  sources: readonly { readonly path: string; readonly hash: string }[],
+) {
+  const digest = createHash('sha256')
+  digest.update('ramen-question-extractor-authoring-v1\0')
+  for (const source of sources) {
+    digest.update(source.path)
+    digest.update('\0')
+    digest.update(source.hash)
+    digest.update('\0')
+  }
+  return digest.digest('hex')
+}
 
 export type LegacyNavigationDirection = 'next' | 'previous'
 
@@ -283,79 +310,199 @@ type ParsedActionFrameInput = {
 }
 
 function validateActionFrames(input: ParsedActionFrameInput, context: z.RefinementCtx) {
+  let valid = true
+  const addIssue = (issue: Parameters<z.RefinementCtx['addIssue']>[0]) => {
+    valid = false
+    context.addIssue(issue)
+  }
   if (input.frames.length === 0) {
-    context.addIssue({ code: 'custom', path: ['frames'], message: 'at least one frame is required' })
-    return
+    addIssue({ code: 'custom', path: ['frames'], message: 'at least one frame is required' })
+    return false
   }
 
   input.frames.forEach((frame, index) => {
     if (frame.sequence !== index) {
-      context.addIssue({
+      addIssue({
         code: 'custom',
         path: ['frames', index, 'sequence'],
         message: 'frame sequences must begin at zero and increase by one',
       })
     }
     if ((index === 0) !== (frame.transition === 'initial')) {
-      context.addIssue({
+      addIssue({
         code: 'custom',
         path: ['frames', index, 'transition'],
         message: 'initial must be the single first frame',
       })
     }
     if (frame.actionIndex !== undefined && frame.actionIndex >= input.actions.length) {
-      context.addIssue({
+      addIssue({
         code: 'custom',
         path: ['frames', index, 'actionIndex'],
         message: 'frame actionIndex is out of range',
       })
     }
+    if (index > 0 && frame.observedChanges !== undefined) {
+      const expected = deriveMechanicalObservedChanges(input.frames[index - 1]!, frame)
+      if (!valuesEqual(frame.observedChanges, expected)) {
+        addIssue({
+          code: 'custom',
+          path: ['frames', index, 'observedChanges'],
+          message: 'observedChanges must equal the adjacent mechanical before/after diff',
+        })
+      }
+    }
   })
 
+  let frameCursor = 1
   input.actions.forEach((action, actionIndex) => {
-    const transitions = input.frames
-      .filter((frame) => frame.actionIndex === actionIndex)
-      .map((frame) => frame.transition)
+    const actionFrameStart = frameCursor
+    while (input.frames[frameCursor]?.actionIndex === actionIndex) frameCursor += 1
+    const actionFrames = input.frames.slice(actionFrameStart, frameCursor)
+    const transitions = actionFrames.map((frame) => frame.transition)
     if (action.type === 'select' || action.type === 'deselect') {
       if (transitions.length !== 1 || transitions[0] !== 'toggle') {
-        context.addIssue({
+        addIssue({
           code: 'custom',
           path: ['actions', actionIndex],
           message: `${action.type} requires exactly one toggle frame`,
         })
       }
-      return
-    }
-    if (action.type === 'previous') {
+    } else if (action.type === 'previous') {
       if (transitions.length !== 1 || transitions[0] !== 'previous') {
-        context.addIssue({
+        addIssue({
           code: 'custom',
           path: ['actions', actionIndex],
           message: 'previous requires exactly one previous frame',
         })
       }
-      return
+    } else {
+      const beginsWithSubmit = transitions[0] === 'submit'
+      const terminal = transitions.at(-1)
+      const hasOneTerminal = terminal === 'next' || terminal === 'complete'
+      const middleIsForced = transitions.slice(1, -1).every(
+        (transition) => transition === 'forced-skip',
+      )
+      if (transitions.length < 2 || !beginsWithSubmit || !hasOneTerminal || !middleIsForced) {
+        addIssue({
+          code: 'custom',
+          path: ['actions', actionIndex],
+          message: 'continue requires submit, forced-skip*, and one next or complete frame',
+        })
+      }
     }
-    const beginsWithSubmit = transitions[0] === 'submit'
-    const terminal = transitions.at(-1)
-    const hasOneTerminal = terminal === 'next' || terminal === 'complete'
-    const middleIsForced = transitions.slice(1, -1).every(
-      (transition) => transition === 'forced-skip',
-    )
-    if (transitions.length < 2 || !beginsWithSubmit || !hasOneTerminal || !middleIsForced) {
-      context.addIssue({
-        code: 'custom',
-        path: ['actions', actionIndex],
-        message: 'continue requires submit, forced-skip*, and one next or complete frame',
-      })
-    }
+
+    actionFrames.forEach((frame, offset) => {
+      const frameIndex = actionFrameStart + offset
+      if (frame.transition === 'toggle' && (action.type === 'select' || action.type === 'deselect')) {
+        if (
+          frame.displayedQuestionId !== undefined
+          && frame.displayedQuestionId !== action.questionId
+        ) {
+          addIssue({
+            code: 'custom',
+            path: ['frames', frameIndex, 'displayedQuestionId'],
+            message: 'toggle displayedQuestionId must match its bound action questionId',
+          })
+        }
+        if (frame.visibleOptionIds && !frame.visibleOptionIds.includes(action.optionId)) {
+          addIssue({
+            code: 'custom',
+            path: ['frames', frameIndex, 'visibleOptionIds'],
+            message: 'toggle visibleOptionIds must include its bound action optionId',
+          })
+        }
+      }
+      if (frame.transition === 'submit' && action.type === 'continue') {
+        if (
+          frame.displayedQuestionId !== undefined
+          && frame.displayedQuestionId !== action.fromQuestionId
+        ) {
+          addIssue({
+            code: 'custom',
+            path: ['frames', frameIndex, 'displayedQuestionId'],
+            message: 'submit displayedQuestionId must match its bound continue action',
+          })
+        }
+      }
+      if (frame.transition === 'next' || frame.transition === 'previous') {
+        const reachedQuestionId = frame.navigation?.reachedQuestionId
+        if (
+          frame.displayedQuestionId !== undefined
+          && reachedQuestionId !== undefined
+          && frame.displayedQuestionId !== reachedQuestionId
+        ) {
+          addIssue({
+            code: 'custom',
+            path: ['frames', frameIndex, 'displayedQuestionId'],
+            message: 'terminal displayedQuestionId must match the reached question',
+          })
+        }
+      }
+    })
   })
+
+  if (frameCursor !== input.frames.length) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameCursor, 'actionIndex'],
+      message: 'action frame chunks must consume indices 0 through N-1 in order',
+    })
+  }
+
+  return valid
+}
+
+function deriveMechanicalObservedChanges(
+  previous: z.infer<typeof legacyObservableTraceFrameSchema>,
+  current: z.infer<typeof legacyObservableTraceFrameSchema>,
+) {
+  const visibleOptionIds = (
+    previous.displayedQuestionId !== undefined
+    && previous.displayedQuestionId === current.displayedQuestionId
+    && previous.visibleOptionIds !== undefined
+    && current.visibleOptionIds !== undefined
+    && !valuesEqual(previous.visibleOptionIds, current.visibleOptionIds)
+  )
+    ? {
+        questionId: current.displayedQuestionId,
+        before: previous.visibleOptionIds,
+        after: current.visibleOptionIds,
+      }
+    : undefined
+
+  const answers = (
+    previous.legacyAnswers !== undefined
+    && current.legacyAnswers !== undefined
+  )
+    ? [...new Set([
+        ...Object.keys(previous.legacyAnswers),
+        ...Object.keys(current.legacyAnswers),
+      ])].flatMap((questionId) => {
+        const before = previous.legacyAnswers?.[questionId]
+        const after = current.legacyAnswers?.[questionId]
+        if (valuesEqual(before, after)) return []
+        return [{
+          questionId,
+          ...(before === undefined ? {} : { before }),
+          ...(after === undefined ? {} : { after }),
+        }]
+      })
+    : []
+
+  if (!visibleOptionIds && answers.length === 0) return undefined
+  return {
+    ...(visibleOptionIds ? { visibleOptionIds } : {}),
+    ...(answers.length > 0 ? { answers } : {}),
+  }
 }
 
 const actionFramesSchema = z.strictObject({
   actions: z.array(legacyObservableActionSchema).max(1024),
   frames: z.array(legacyObservableTraceFrameSchema).max(4096),
-}).superRefine(validateActionFrames)
+}).superRefine((input, context) => {
+  validateActionFrames(input, context)
+})
 
 function valuesEqual(left: unknown, right: unknown) {
   return JSON.stringify(left) === JSON.stringify(right)
@@ -431,7 +578,8 @@ const traceCaseShape = z.strictObject({
   coverageTags: z.array(z.string().min(1).max(256)).max(4096),
   frames: z.array(legacyObservableTraceFrameSchema).max(4096),
 }).superRefine((traceCase, context) => {
-  validateActionFrames(traceCase, context)
+  const actionFramesValid = validateActionFrames(traceCase, context)
+  if (!actionFramesValid) return
   try {
     const derived = deriveValidatedCoverage(traceCase)
     if (!valuesEqual(traceCase.coverageTags, derived)) {
@@ -490,6 +638,35 @@ const runtimeContractSchema = z.strictObject({
   }),
 })
 
+const extractorAuthoringSourcesSchema = z.tuple([
+  z.strictObject({
+    path: z.literal(extractorAuthoringSourcePaths[0]),
+    hash: sha256Schema,
+  }),
+  z.strictObject({
+    path: z.literal(extractorAuthoringSourcePaths[1]),
+    hash: sha256Schema,
+  }),
+  z.strictObject({
+    path: z.literal(extractorAuthoringSourcePaths[2]),
+    hash: sha256Schema,
+  }),
+])
+
+const extractorIdentitySchema = z.strictObject({
+  version: z.literal(1),
+  sources: extractorAuthoringSourcesSchema,
+  hash: sha256Schema,
+}).superRefine((identity, context) => {
+  if (identity.hash !== computeExtractorAuthoringHash(identity.sources)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['hash'],
+      message: 'extractor hash must match the canonical ordered authoring source identity',
+    })
+  }
+})
+
 export const fixtureManifestSchema = z.strictObject({
   fixtureSchemaVersion: z.literal(1),
   caseSchemaVersion: z.literal(1),
@@ -505,10 +682,7 @@ export const fixtureManifestSchema = z.strictObject({
     lockfilePath: repositoryPathSchema,
     lockfileHash: sha256Schema,
   }),
-  extractor: z.strictObject({
-    version: z.number().int().positive(),
-    hash: sha256Schema,
-  }),
+  extractor: extractorIdentitySchema,
   instrumentation: z.strictObject({
     version: z.number().int().positive(),
     hash: sha256Schema,
