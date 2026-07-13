@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { dirname, relative, resolve, sep } from 'node:path'
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { scanImportSpecifiers } from '../documentation/scan-imports.js'
@@ -25,6 +25,7 @@ export type RuntimeImportReason =
   | 'forbidden-path:scoring'
   | 'forbidden-path:styles'
   | 'forbidden-path:catalog'
+  | 'forbidden-path:outside-repository'
   | 'unresolved-local-import'
 
 export interface ForbiddenRuntimeImport {
@@ -55,6 +56,22 @@ function toPosix(value: string) {
 
 function repositoryPath(repoRoot: string, absolutePath: string) {
   return toPosix(relative(repoRoot, absolutePath))
+}
+
+function isInside(root: string, target: string) {
+  const relativePath = relative(root, target)
+  return !isAbsolute(relativePath)
+    && relativePath !== '..'
+    && !relativePath.startsWith(`..${sep}`)
+}
+
+function isInsideRepository(
+  lexicalRoot: string,
+  physicalRoot: string,
+  target: string,
+) {
+  return isInside(lexicalRoot, resolve(target))
+    && isInside(physicalRoot, realpathSync(target))
 }
 
 function isRegularFile(file: string) {
@@ -125,8 +142,12 @@ export function checkRuntimeImports(
   entrypoint = 'packages/classification-core/src/index.ts',
 ): RuntimeImportCheckResult {
   const absoluteRoot = resolve(repoRoot)
+  const physicalRoot = realpathSync(absoluteRoot)
   const entry = resolveSourceFile(resolve(absoluteRoot, entrypoint))
   if (!entry) throw new Error(`Runtime entrypoint does not exist: ${entrypoint}`)
+  if (!isInsideRepository(absoluteRoot, physicalRoot, entry)) {
+    throw new Error(`Runtime entrypoint must stay inside repository root: ${entrypoint}`)
+  }
 
   const visited = new Set<string>()
   const forbidden: ForbiddenRuntimeImport[] = []
@@ -153,6 +174,14 @@ export function checkRuntimeImports(
           from: currentRelative,
           specifier,
           reason: 'unresolved-local-import',
+        })
+        continue
+      }
+      if (!isInsideRepository(absoluteRoot, physicalRoot, resolved)) {
+        forbidden.push({
+          from: currentRelative,
+          specifier,
+          reason: 'forbidden-path:outside-repository',
         })
         continue
       }
