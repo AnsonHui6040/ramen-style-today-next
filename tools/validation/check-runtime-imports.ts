@@ -1,12 +1,19 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { scanImportSpecifiers } from '../documentation/scan-imports.js'
+import * as ts from 'typescript'
+import { scanModuleLoads } from '../documentation/scan-imports.js'
 
 const corePackage = '@ramen-style/classification-core'
 const sourceExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'] as const
 const forbiddenNames = new Set(['legacy', 'persistence', 'scoring', 'styles', 'catalog'])
+const nodeNextOptions = {
+  module: ts.ModuleKind.NodeNext,
+  moduleResolution: ts.ModuleResolutionKind.NodeNext,
+  target: ts.ScriptTarget.ES2024,
+  resolveJsonModule: true,
+} satisfies ts.CompilerOptions
 
 export type RuntimeImportReason =
   | 'forbidden-module:node'
@@ -26,6 +33,7 @@ export type RuntimeImportReason =
   | 'forbidden-path:styles'
   | 'forbidden-path:catalog'
   | 'forbidden-path:outside-repository'
+  | 'nonliteral-dynamic-module-load'
   | 'unresolved-local-import'
 
 export interface ForbiddenRuntimeImport {
@@ -121,7 +129,14 @@ function forbiddenPathReason(relativePath: string): RuntimeImportReason | undefi
 }
 
 function resolveLocalImport(repoRoot: string, fromFile: string, specifier: string) {
-  if (specifier.startsWith('.')) return resolveSourceFile(resolve(dirname(fromFile), specifier))
+  if (specifier.startsWith('.')) {
+    return ts.resolveModuleName(
+      specifier,
+      fromFile,
+      nodeNextOptions,
+      ts.sys,
+    ).resolvedModule?.resolvedFileName
+  }
   if (specifier === corePackage) {
     return resolveSourceFile(resolve(repoRoot, 'packages/classification-core/src/index.ts'))
   }
@@ -135,6 +150,10 @@ function resolveLocalImport(repoRoot: string, fromFile: string, specifier: strin
     return resolveSourceFile(resolve(repoRoot, 'packages/classification-core/src/compiler/index.ts'))
   }
   return undefined
+}
+
+function isCoreSpecifier(specifier: string) {
+  return specifier === corePackage || specifier.startsWith(`${corePackage}/`)
 }
 
 export function checkRuntimeImports(
@@ -158,7 +177,14 @@ export function checkRuntimeImports(
     if (visited.has(currentRelative)) continue
     visited.add(currentRelative)
 
-    for (const specifier of scanImportSpecifiers(readFileSync(current, 'utf8'))) {
+    const moduleLoads = scanModuleLoads(readFileSync(current, 'utf8'), currentRelative)
+    for (const kind of moduleLoads.nonliteralDynamicLoads) forbidden.push({
+      from: currentRelative,
+      specifier: `${kind}(<nonliteral>)`,
+      reason: 'nonliteral-dynamic-module-load',
+    })
+
+    for (const specifier of moduleLoads.specifiers) {
       const moduleReason = forbiddenModuleReason(specifier)
       if (moduleReason) forbidden.push({
         from: currentRelative,
@@ -166,7 +192,7 @@ export function checkRuntimeImports(
         reason: moduleReason,
       })
 
-      const isLocal = specifier.startsWith('.') || specifier.startsWith(corePackage)
+      const isLocal = specifier.startsWith('.') || isCoreSpecifier(specifier)
       if (!isLocal) continue
       const resolved = resolveLocalImport(absoluteRoot, current, specifier)
       if (!resolved) {

@@ -8,9 +8,15 @@ import {
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
+import * as ts from 'typescript'
 import { describe, expect, test } from 'vitest'
 
 import { checkRuntimeImports } from './check-runtime-imports.js'
+
+const nodeNextOptions = {
+  module: ts.ModuleKind.NodeNext,
+  moduleResolution: ts.ModuleResolutionKind.NodeNext,
+} satisfies ts.CompilerOptions
 
 describe('runtime import boundary', () => {
   test('keeps the real public runtime dependency graph browser-neutral', () => {
@@ -85,6 +91,162 @@ describe('runtime import boundary', () => {
       expect(result.visited).toContain('packages/classification-core/src/flow/index.ts')
       expect(result.visited).toContain('packages/classification-core/src/compiler/index.ts')
       expect(result.forbidden.some(({ specifier }) => specifier === 'node:fs')).toBe(false)
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test.each([
+    { importExtension: '.js', sourceExtension: '.ts' },
+    { importExtension: '.mjs', sourceExtension: '.mts' },
+    { importExtension: '.cjs', sourceExtension: '.cts' },
+  ])('matches NodeNext $importExtension to $sourceExtension extension substitution', ({
+    importExtension,
+    sourceExtension,
+  }) => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-nodenext-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      const entry = join(sourceRoot, 'index.ts')
+      const specifier = `./bridge${importExtension}`
+      const sourceTarget = join(sourceRoot, `bridge${sourceExtension}`)
+      mkdirSync(join(sourceRoot, 'definitions'), { recursive: true })
+      writeFileSync(entry, `export * from '${specifier}'\n`)
+      writeFileSync(join(sourceRoot, `bridge${importExtension}`), 'export const harmless = true\n')
+      writeFileSync(
+        sourceTarget,
+        "export * from './definitions/questions.js'\n",
+      )
+      writeFileSync(
+        join(sourceRoot, 'definitions/questions.ts'),
+        'export const definitionsOnly = true\n',
+      )
+
+      const typescriptResolved = ts.resolveModuleName(
+        specifier,
+        entry,
+        nodeNextOptions,
+        ts.sys,
+      ).resolvedModule?.resolvedFileName
+      expect(typescriptResolved).toBe(sourceTarget)
+
+      const result = checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      )
+      expect(result.forbidden).toEqual([{
+        from: `packages/classification-core/src/bridge${sourceExtension}`,
+        specifier: './definitions/questions.js',
+        reason: 'forbidden-path:definitions',
+      }])
+      expect(result.visited).toContain(`packages/classification-core/src/bridge${sourceExtension}`)
+      expect(result.visited).not.toContain(`packages/classification-core/src/bridge${importExtension}`)
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('fails closed on a computed dynamic import', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-computed-import-'))
+    try {
+      mkdirSync(join(repoRoot, 'packages/classification-core/src'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'packages/classification-core/src/index.ts'),
+        [
+          "const target = 'node:fs'",
+          'export const load = () => import(target)',
+          "const harmless = 'import(target)'",
+          'void harmless',
+          '',
+        ].join('\n'),
+      )
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      ).forbidden).toEqual([{
+        from: 'packages/classification-core/src/index.ts',
+        specifier: 'import(<nonliteral>)',
+        reason: 'nonliteral-dynamic-module-load',
+      }])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('fails closed on a computed CommonJS require', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-computed-require-'))
+    try {
+      mkdirSync(join(repoRoot, 'packages/classification-core/src'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'packages/classification-core/src/index.ts'),
+        [
+          "const target = './compiler/index.js'",
+          'export const load = () => require(target)',
+          "const harmless = 'require(target)'",
+          'void harmless',
+          '',
+        ].join('\n'),
+      )
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      ).forbidden).toEqual([{
+        from: 'packages/classification-core/src/index.ts',
+        specifier: 'require(<nonliteral>)',
+        reason: 'nonliteral-dynamic-module-load',
+      }])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('keeps literal dynamic import and require targets in ordinary validation', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-literal-loads-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(sourceRoot, { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'index.ts'),
+        [
+          "void import('./dynamic.js')",
+          "const loaded = require('./commonjs.js')",
+          'void loaded',
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(join(sourceRoot, 'dynamic.ts'), "import 'node:crypto'\n")
+      writeFileSync(join(sourceRoot, 'commonjs.ts'), "import 'zod'\n")
+
+      const result = checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      )
+      expect(result.forbidden.map(({ reason }) => reason)).toEqual([
+        'forbidden-module:node',
+        'forbidden-module:zod',
+      ])
+      expect(result.visited).toContain('packages/classification-core/src/commonjs.ts')
+      expect(result.visited).toContain('packages/classification-core/src/dynamic.ts')
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('does not classify a core-package prefix collision as a local route', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-core-prefix-'))
+    try {
+      mkdirSync(join(repoRoot, 'packages/classification-core/src'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'packages/classification-core/src/index.ts'),
+        "import '@ramen-style/classification-core-utils'\n",
+      )
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      ).forbidden).toEqual([])
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
     }
