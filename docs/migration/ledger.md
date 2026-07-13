@@ -120,7 +120,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 ## Batch 2A — in-progress
 
 - Behavior: `no-production-runtime-change`
-- Transformation: Added closed serializable question contracts, transcribed the frozen eight-question legacy inventory into declarative production definitions, derived deterministic canonical question and semantic dependency graph data, proved finite question-flow semantics, and compiled the proof output into a deterministic tracked question artifact with distinct source and semantic hashes; runtime behavior remains unchanged.
+- Transformation: Added closed serializable question contracts, transcribed the frozen eight-question legacy inventory into declarative production definitions, derived deterministic canonical question and semantic dependency graph data, proved finite question-flow semantics, compiled the proof output into a deterministic tracked question artifact with distinct source and semantic hashes, and added browser-neutral draft decoding and canonical fixed-point flow evaluation; application runtime behavior remains unchanged.
 
 ### Legacy sources
 
@@ -150,6 +150,13 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `packages/classification-core/src/definitions/classification.ts`
 - `packages/classification-core/src/definitions/questions.test.ts`
 - `packages/classification-core/src/definitions/questions.ts`
+- `packages/classification-core/src/flow/decode.test.ts`
+- `packages/classification-core/src/flow/decode.ts`
+- `packages/classification-core/src/flow/evaluate.test.ts`
+- `packages/classification-core/src/flow/evaluate.ts`
+- `packages/classification-core/src/flow/index.ts`
+- `packages/classification-core/src/flow/test-fixtures.ts`
+- `packages/classification-core/src/flow/types.ts`
 - `packages/classification-core/src/generated/question-model.ts`
 - `tools/questions/generate-question-model.test.ts`
 - `tools/questions/generate-question-model.ts`
