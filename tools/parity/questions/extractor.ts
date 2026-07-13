@@ -272,9 +272,15 @@ interface RecoveryArchiveIdentity {
   readonly sha256: string
 }
 
+interface ExpectedFixtureFile {
+  readonly json: string
+  readonly sha256: string
+  readonly identity: FileIdentity
+}
+
 interface ExpectedFixtureFiles {
-  readonly casesJson: string
-  readonly manifestJson: string
+  readonly cases: ExpectedFixtureFile
+  readonly manifest: ExpectedFixtureFile
 }
 
 interface FileIdentity {
@@ -395,10 +401,18 @@ function validateFixtureDirectoryOnDisk(
 
   const casesPath = join(directory, 'cases.json')
   const manifestPath = join(directory, 'manifest.json')
+  revalidateRegularFile(casesPath, expected.cases.identity, 'fixture cases file')
+  revalidateRegularFile(manifestPath, expected.manifest.identity, 'fixture manifest file')
   const actualCases = readNoFollowFileWithIdentity(casesPath, 'fixture cases file')
   const actualManifest = readNoFollowFileWithIdentity(manifestPath, 'fixture manifest file')
-  revalidateRegularFile(casesPath, actualCases.identity, 'fixture cases file')
-  revalidateRegularFile(manifestPath, actualManifest.identity, 'fixture manifest file')
+  if (!identitiesEqual(actualCases.identity, expected.cases.identity)) {
+    throw new Error('fixture cases file identity changed')
+  }
+  if (!identitiesEqual(actualManifest.identity, expected.manifest.identity)) {
+    throw new Error('fixture manifest file identity changed')
+  }
+  revalidateRegularFile(casesPath, expected.cases.identity, 'fixture cases file')
+  revalidateRegularFile(manifestPath, expected.manifest.identity, 'fixture manifest file')
 
   const casesEnvelope = parseStrictFixtureCases(actualCases.bytes)
   const manifest = fixtureManifestSchema.parse(parseFixtureJson(
@@ -425,16 +439,16 @@ function validateFixtureDirectoryOnDisk(
   }
 
   if (
-    !bytesEqual(actualCases.bytes, expected.casesJson)
-    || actualCasesHash !== sha256Bytes(expected.casesJson)
+    !bytesEqual(actualCases.bytes, expected.cases.json)
+    || actualCasesHash !== expected.cases.sha256
   ) throw new Error('fixture cases file does not match generated cases')
   if (
-    !bytesEqual(actualManifest.bytes, expected.manifestJson)
-    || sha256Bytes(actualManifest.bytes) !== sha256Bytes(expected.manifestJson)
+    !bytesEqual(actualManifest.bytes, expected.manifest.json)
+    || sha256Bytes(actualManifest.bytes) !== expected.manifest.sha256
   ) throw new Error('fixture manifest file does not match generated manifest')
 
-  revalidateRegularFile(casesPath, actualCases.identity, 'fixture cases file')
-  revalidateRegularFile(manifestPath, actualManifest.identity, 'fixture manifest file')
+  revalidateRegularFile(casesPath, expected.cases.identity, 'fixture cases file')
+  revalidateRegularFile(manifestPath, expected.manifest.identity, 'fixture manifest file')
   revalidateRegularDirectory(directory, directoryIdentity, 'fixture directory')
 }
 
@@ -1642,13 +1656,28 @@ export async function runLegacyExtractor(
       fixtureContentHash: sha256Bytes(casesJson),
     })
     const manifestJson = stableJson(manifest)
-    expectedFixtureFiles = { casesJson, manifestJson }
 
     if (!options.verifyOnly) {
       mkdirSync(paths.staging, { mode: 0o700 })
       stagingIdentity = snapshotRegularDirectory(paths.staging, 'staging output')
-      writeExclusive(join(paths.staging, 'cases.json'), casesJson)
-      writeExclusive(join(paths.staging, 'manifest.json'), manifestJson)
+      const casesPath = join(paths.staging, 'cases.json')
+      const manifestPath = join(paths.staging, 'manifest.json')
+      writeExclusive(casesPath, casesJson)
+      const casesIdentity = snapshotRegularFile(casesPath, 'fixture cases file')
+      writeExclusive(manifestPath, manifestJson)
+      const manifestIdentity = snapshotRegularFile(manifestPath, 'fixture manifest file')
+      expectedFixtureFiles = {
+        cases: {
+          json: casesJson,
+          sha256: sha256Bytes(casesJson),
+          identity: casesIdentity,
+        },
+        manifest: {
+          json: manifestJson,
+          sha256: sha256Bytes(manifestJson),
+          identity: manifestIdentity,
+        },
+      }
       validateFixtureDirectoryOnDisk(
         paths.staging,
         stagingIdentity,

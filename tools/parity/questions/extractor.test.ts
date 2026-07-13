@@ -1,6 +1,8 @@
 import {
   closeSync,
+  chmodSync,
   constants,
+  copyFileSync,
   cpSync,
   lstatSync,
   mkdirSync,
@@ -13,6 +15,7 @@ import {
   rmSync,
   symlinkSync,
   unlinkSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -220,6 +223,25 @@ function publicationResidue(destination: string) {
     || name.startsWith(`.${outputName}.backup-`)
     || name.startsWith(`.${outputName}.recovery-`)
   ))
+}
+
+function replaceWithByteIdenticalInode(path: string) {
+  const before = lstatSync(path)
+  const bytes = readFileSync(path)
+  const replacement = `${path}.byte-identical-replacement`
+  copyFileSync(path, replacement)
+  chmodSync(replacement, before.mode)
+  utimesSync(replacement, before.atimeMs / 1000, before.mtimeMs / 1000)
+  renameSync(replacement, path)
+  const after = lstatSync(path)
+  return {
+    bytesPreserved: readFileSync(path).equals(bytes),
+    onlyInodeChanged: before.dev === after.dev
+      && before.ino !== after.ino
+      && before.mode === after.mode
+      && before.size === after.size
+      && before.mtimeMs === after.mtimeMs,
+  }
 }
 
 interface FailedPublicationResult {
@@ -1191,7 +1213,7 @@ describe('no-follow and transactional publication', () => {
     await expect(runLegacyExtractor(fixture.environment, {
       replace: true,
       verifyOnly: false,
-    })).rejects.toThrow('fixture cases is not valid JSON')
+    })).rejects.toThrow('fixture cases file identity changed')
 
     expect(events).toEqual([
       'staged-cases-corrupted',
@@ -1232,7 +1254,7 @@ describe('no-follow and transactional publication', () => {
     await expect(runLegacyExtractor(fixture.environment, {
       replace: true,
       verifyOnly: false,
-    })).rejects.toThrow('fixture manifest is not valid JSON')
+    })).rejects.toThrow('fixture manifest file identity changed')
 
     expect(events).toEqual([
       'installed-manifest-corrupted',
@@ -1282,7 +1304,7 @@ describe('no-follow and transactional publication', () => {
     await expect(runLegacyExtractor(fixture.environment, {
       replace: true,
       verifyOnly: false,
-    })).rejects.toThrow('fixture manifest content hash does not match actual cases')
+    })).rejects.toThrow('fixture manifest file identity changed')
 
     expect(events).toEqual([
       'installed-manifest-semantically-corrupted',
@@ -1290,6 +1312,92 @@ describe('no-follow and transactional publication', () => {
       'old-publication-verified',
     ])
     expect(canonicalMutationApplied).toBe(true)
+    expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+    expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    expect(publicationResidue(fixture.destination)).toEqual([])
+  })
+
+  test('rejects a byte-identical staged cases inode replacement under lock', async () => {
+    const fixture = await createExtractorFixture()
+    const oldCases = Buffer.from('old-cases-bytes')
+    const oldManifest = Buffer.from('old-manifest-bytes')
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'cases.json'), oldCases)
+    writeFileSync(join(fixture.destination, 'manifest.json'), oldManifest)
+    const oldIdentity = publicationDirectoryIdentity(fixture.destination)
+    const events: string[] = []
+    let replacement = { bytesPreserved: false, onlyInodeChanged: false }
+    fixture.environment.hooks.beforePublishStaging = (staging) => {
+      events.push('staged-cases-inode-replaced')
+      replacement = replaceWithByteIdenticalInode(join(staging, 'cases.json'))
+    }
+    fixture.environment.hooks.beforeRollback = () => {
+      events.push('rollback-under-lock')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+    fixture.environment.hooks.afterRollbackVerified = () => {
+      events.push('old-publication-verified')
+      expectCooperativePublicationLockHeld(fixture.destination)
+      expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+      expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+      expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('fixture cases file identity changed')
+
+    expect(replacement).toEqual({ bytesPreserved: true, onlyInodeChanged: true })
+    expect(events).toEqual([
+      'staged-cases-inode-replaced',
+      'rollback-under-lock',
+      'old-publication-verified',
+    ])
+    expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+    expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    expect(publicationResidue(fixture.destination)).toEqual([])
+  })
+
+  test('rejects a byte-identical installed manifest inode replacement under lock', async () => {
+    const fixture = await createExtractorFixture()
+    const oldCases = Buffer.from('old-cases-bytes')
+    const oldManifest = Buffer.from('old-manifest-bytes')
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'cases.json'), oldCases)
+    writeFileSync(join(fixture.destination, 'manifest.json'), oldManifest)
+    const oldIdentity = publicationDirectoryIdentity(fixture.destination)
+    const events: string[] = []
+    let replacement = { bytesPreserved: false, onlyInodeChanged: false }
+    fixture.environment.hooks.afterPublishStaging = (destination) => {
+      events.push('installed-manifest-inode-replaced')
+      replacement = replaceWithByteIdenticalInode(join(destination, 'manifest.json'))
+    }
+    fixture.environment.hooks.beforeRollback = () => {
+      events.push('rollback-under-lock')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+    fixture.environment.hooks.afterRollbackVerified = () => {
+      events.push('old-publication-verified')
+      expectCooperativePublicationLockHeld(fixture.destination)
+      expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+      expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+      expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('fixture manifest file identity changed')
+
+    expect(replacement).toEqual({ bytesPreserved: true, onlyInodeChanged: true })
+    expect(events).toEqual([
+      'installed-manifest-inode-replaced',
+      'rollback-under-lock',
+      'old-publication-verified',
+    ])
     expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
     expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
     expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
