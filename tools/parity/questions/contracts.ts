@@ -243,6 +243,18 @@ const frameShape = z.strictObject({
         path: ['forcedAutoAnswer'],
         message: 'forced-skip requires forcedAutoAnswer',
       })
+    } else {
+      const directlyObservedAnswer = frame.legacyAnswers?.[frame.forcedAutoAnswer.questionId]
+      if (
+        directlyObservedAnswer !== undefined
+        && !canonicalAnswerValuesEqual(directlyObservedAnswer, frame.forcedAutoAnswer.value)
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['legacyAnswers', frame.forcedAutoAnswer.questionId],
+          message: 'forcedAutoAnswer must match the same-frame legacy answer',
+        })
+      }
     }
   } else if (frame.forcedAutoAnswer !== undefined) {
     context.addIssue({
@@ -256,12 +268,26 @@ const frameShape = z.strictObject({
     if (frame.navigation?.direction !== 'next') {
       context.addIssue({ code: 'custom', path: ['navigation'], message: 'next requires next navigation' })
     }
+    if (frame.navigation?.reachedScreen !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['navigation', 'reachedScreen'],
+        message: 'next may only name a reached question',
+      })
+    }
   } else if (frame.transition === 'previous') {
     if (frame.navigation?.direction !== 'previous') {
       context.addIssue({
         code: 'custom',
         path: ['navigation'],
         message: 'previous requires previous navigation',
+      })
+    }
+    if (frame.navigation?.reachedScreen !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['navigation', 'reachedScreen'],
+        message: 'previous may only name a reached question',
       })
     }
   } else if (frame.transition === 'complete') {
@@ -279,6 +305,20 @@ const frameShape = z.strictObject({
         message: 'complete navigation may only move next',
       })
     }
+    if (frame.navigation?.reachedQuestionId !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['navigation', 'reachedQuestionId'],
+        message: 'complete may only reach results',
+      })
+    }
+    if (frame.displayedQuestionId !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['displayedQuestionId'],
+        message: 'complete forbids an ordinary displayed question',
+      })
+    }
   } else {
     if (frame.navigation !== undefined) {
       context.addIssue({
@@ -294,6 +334,19 @@ const frameShape = z.strictObject({
         message: 'completionMarker is allowed only for complete',
       })
     }
+  }
+
+  if (
+    (frame.transition === 'next' || frame.transition === 'previous')
+    && frame.displayedQuestionId !== undefined
+    && frame.navigation?.reachedQuestionId !== undefined
+    && frame.displayedQuestionId !== frame.navigation.reachedQuestionId
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['displayedQuestionId'],
+      message: 'terminal displayedQuestionId must match the reached question',
+    })
   }
 })
 
@@ -355,11 +408,35 @@ function validateActionFrames(input: ParsedActionFrameInput, context: z.Refineme
   })
 
   let frameCursor = 1
+  let settledDisplayedQuestionId = input.frames[0]?.displayedQuestionId
   input.actions.forEach((action, actionIndex) => {
     const actionFrameStart = frameCursor
     while (input.frames[frameCursor]?.actionIndex === actionIndex) frameCursor += 1
     const actionFrames = input.frames.slice(actionFrameStart, frameCursor)
     const transitions = actionFrames.map((frame) => frame.transition)
+    const sourceQuestionId = 'questionId' in action ? action.questionId : action.fromQuestionId
+    if (
+      settledDisplayedQuestionId !== undefined
+      && settledDisplayedQuestionId !== sourceQuestionId
+    ) {
+      addIssue({
+        code: 'custom',
+        path: ['actions', actionIndex],
+        message: 'action source must match the settled pre-action displayed question',
+      })
+    }
+    const preActionFrame = input.frames[actionFrameStart - 1]
+    if (
+      (action.type === 'select' || action.type === 'deselect')
+      && preActionFrame?.visibleOptionIds !== undefined
+      && !preActionFrame.visibleOptionIds.includes(action.optionId)
+    ) {
+      addIssue({
+        code: 'custom',
+        path: ['actions', actionIndex, 'optionId'],
+        message: 'action option must be present in directly observed pre-action options',
+      })
+    }
     if (action.type === 'select' || action.type === 'deselect') {
       if (transitions.length !== 1 || transitions[0] !== 'toggle') {
         addIssue({
@@ -412,6 +489,13 @@ function validateActionFrames(input: ParsedActionFrameInput, context: z.Refineme
             message: 'toggle visibleOptionIds must include its bound action optionId',
           })
         }
+        validateToggleState(
+          action,
+          input.frames[frameIndex - 1],
+          frame,
+          frameIndex,
+          addIssue,
+        )
       }
       if (frame.transition === 'submit' && action.type === 'continue') {
         if (
@@ -440,6 +524,16 @@ function validateActionFrames(input: ParsedActionFrameInput, context: z.Refineme
         }
       }
     })
+
+    for (const frame of actionFrames) {
+      if (frame.transition === 'complete') {
+        settledDisplayedQuestionId = undefined
+      } else if (frame.transition === 'next' || frame.transition === 'previous') {
+        settledDisplayedQuestionId = frame.displayedQuestionId
+      } else if (frame.displayedQuestionId !== undefined) {
+        settledDisplayedQuestionId = frame.displayedQuestionId
+      }
+    }
   })
 
   if (frameCursor !== input.frames.length) {
@@ -451,6 +545,71 @@ function validateActionFrames(input: ParsedActionFrameInput, context: z.Refineme
   }
 
   return valid
+}
+
+function canonicalAnswerValue(value: LegacyObservedAnswerValue) {
+  return typeof value === 'string' ? [value] : value
+}
+
+function canonicalAnswerValuesEqual(
+  left: LegacyObservedAnswerValue,
+  right: LegacyObservedAnswerValue,
+) {
+  return valuesEqual(canonicalAnswerValue(left), canonicalAnswerValue(right))
+}
+
+function validateToggleState(
+  action: Extract<LegacyObservableAction, { readonly type: 'select' | 'deselect' }>,
+  previous: z.infer<typeof legacyObservableTraceFrameSchema> | undefined,
+  current: z.infer<typeof legacyObservableTraceFrameSchema>,
+  frameIndex: number,
+  addIssue: (issue: Parameters<z.RefinementCtx['addIssue']>[0]) => void,
+) {
+  const directlyObservedAnswer = current.legacyAnswers?.[action.questionId]
+  const previousObservedAnswer = previous?.legacyAnswers?.[action.questionId]
+  const pendingConsistent = current.pendingOptionIds === undefined || (
+    action.type === 'select'
+      ? current.pendingOptionIds.includes(action.optionId) || (
+          previous?.pendingOptionIds !== undefined
+          && valuesEqual(current.pendingOptionIds, previous.pendingOptionIds)
+        )
+      : !current.pendingOptionIds.includes(action.optionId)
+  )
+  if (!pendingConsistent) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameIndex, 'pendingOptionIds'],
+      message: 'toggle pendingOptionIds must match its bound action operation',
+    })
+  }
+
+  const answerConsistent = directlyObservedAnswer === undefined || (
+    action.type === 'select'
+      ? canonicalAnswerValue(directlyObservedAnswer).includes(action.optionId) || (
+          previousObservedAnswer !== undefined
+          && canonicalAnswerValuesEqual(directlyObservedAnswer, previousObservedAnswer)
+        )
+      : !canonicalAnswerValue(directlyObservedAnswer).includes(action.optionId)
+  )
+  if (!answerConsistent) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameIndex, 'legacyAnswers', action.questionId],
+      message: 'toggle legacy answer must match its bound action operation',
+    })
+  }
+
+  if (
+    current.pendingOptionIds !== undefined
+    && directlyObservedAnswer !== undefined
+    && !valuesEqual(current.pendingOptionIds, canonicalAnswerValue(directlyObservedAnswer))
+  ) {
+    addIssue({
+      code: 'custom',
+      path: ['frames', frameIndex, 'legacyAnswers', action.questionId],
+      message: 'same-frame pending and legacy answer observations must agree',
+    })
+  }
 }
 
 function deriveMechanicalObservedChanges(
@@ -709,38 +868,128 @@ export const fixtureManifestSchema = z.strictObject({
   }
 })
 
-const forbiddenPointerSegments = new Set([
-  'canonicalAnswers',
-  'reachableQuestionIds',
-  'interactiveQuestionIds',
-  'allowedOptionIdsByQuestion',
-  'repairs',
-  'diagnostics',
-  'invalidatedQuestionIds',
-  'accepted',
-  'rejected',
-  'dependencyClosures',
-  'fixedPointIterations',
-  'navigationQuery',
-  'semanticHash',
-  'implementationSha',
-  'assurance',
-])
+interface ObservableDivergenceRoute {
+  readonly acceptsValue: (value: unknown) => boolean
+}
 
-function isObservableFramePointer(pointer: string) {
-  if (!/^\/frames\/(?:0|[1-9][0-9]*)(?:\/|$)/.test(pointer)) return false
-  const segments = pointer.slice(1).split('/').map((segment) => (
+function routeFor(schema: z.ZodType): ObservableDivergenceRoute {
+  return { acceptsValue: (value) => schema.safeParse(value).success }
+}
+
+function decodeJsonPointer(pointer: string) {
+  if (!pointer.startsWith('/')) return undefined
+  const encodedSegments = pointer.slice(1).split('/')
+  if (encodedSegments.some((segment) => /~(?:[^01]|$)/.test(segment))) return undefined
+  return encodedSegments.map((segment) => (
     segment.replaceAll('~1', '/').replaceAll('~0', '~')
   ))
-  return segments.every((segment) => !forbiddenPointerSegments.has(segment))
+}
+
+function isCanonicalArrayIndex(
+  segment: string,
+  maximumExclusive: number,
+  operation: 'add' | 'replace' | 'remove',
+) {
+  if (segment === '-') return operation === 'add'
+  if (!/^(?:0|[1-9][0-9]*)$/.test(segment)) return false
+  return Number(segment) < maximumExclusive
+}
+
+function parseObservableFrameRoute(
+  pointer: string,
+  operation: 'add' | 'replace' | 'remove',
+): ObservableDivergenceRoute | undefined {
+  const segments = decodeJsonPointer(pointer)
+  if (
+    !segments
+    || segments[0] !== 'frames'
+    || !isCanonicalArrayIndex(segments[1] ?? '', 4096, 'replace')
+  ) return undefined
+  const route = segments.slice(2)
+  if (route.length === 1) {
+    if (route[0] === 'sequence' || route[0] === 'actionIndex') {
+      return routeFor(z.number().int().nonnegative())
+    }
+    if (route[0] === 'transition') {
+      return routeFor(z.enum([
+        'initial',
+        'toggle',
+        'submit',
+        'forced-skip',
+        'next',
+        'previous',
+        'complete',
+      ]))
+    }
+    if (route[0] === 'displayedQuestionId') return routeFor(identifierSchema)
+    if (route[0] === 'completionMarker') return routeFor(z.literal('results'))
+    return undefined
+  }
+
+  if (
+    (route[0] === 'visibleOptionIds' || route[0] === 'pendingOptionIds')
+    && route.length === 2
+    && isCanonicalArrayIndex(route[1]!, 256, operation)
+  ) return routeFor(identifierSchema)
+
+  if (route[0] === 'legacyAnswers' && identifierSchema.safeParse(route[1]).success) {
+    if (route.length === 2) return routeFor(legacyObservedAnswerValueSchema)
+    if (
+      route.length === 3
+      && isCanonicalArrayIndex(route[2]!, 256, operation)
+    ) return routeFor(identifierSchema)
+    return undefined
+  }
+
+  if (route[0] === 'forcedAutoAnswer') {
+    if (route.length === 2 && route[1] === 'questionId') return routeFor(identifierSchema)
+    if (route.length === 2 && route[1] === 'value') {
+      return routeFor(legacyObservedAnswerValueSchema)
+    }
+    if (
+      route.length === 3
+      && route[1] === 'value'
+      && isCanonicalArrayIndex(route[2]!, 256, operation)
+    ) return routeFor(identifierSchema)
+    return undefined
+  }
+
+  if (route[0] === 'navigation' && route.length === 2) {
+    if (route[1] === 'direction') return routeFor(z.enum(['next', 'previous']))
+    if (route[1] === 'reachedQuestionId') return routeFor(identifierSchema)
+    if (route[1] === 'reachedScreen') return routeFor(z.literal('results'))
+    return undefined
+  }
+
+  if (route[0] !== 'observedChanges') return undefined
+  if (route[1] === 'visibleOptionIds') {
+    if (route.length === 3 && route[2] === 'questionId') return routeFor(identifierSchema)
+    if (
+      route.length === 4
+      && (route[2] === 'before' || route[2] === 'after')
+      && isCanonicalArrayIndex(route[3]!, 256, operation)
+    ) return routeFor(identifierSchema)
+    return undefined
+  }
+  if (
+    route[1] !== 'answers'
+    || !isCanonicalArrayIndex(route[2] ?? '', 256, 'replace')
+  ) return undefined
+  if (route.length === 4 && route[3] === 'questionId') return routeFor(identifierSchema)
+  if (route.length === 4 && (route[3] === 'before' || route[3] === 'after')) {
+    return routeFor(legacyObservedAnswerValueSchema)
+  }
+  if (
+    route.length === 5
+    && (route[3] === 'before' || route[3] === 'after')
+    && isCanonicalArrayIndex(route[4]!, 256, operation)
+  ) return routeFor(identifierSchema)
+  return undefined
 }
 
 const divergenceSchema = z.strictObject({
   caseId: caseIdSchema,
-  jsonPointer: z.string().min(1).max(1024).refine(
-    isObservableFramePointer,
-    'divergence pointer must name an observable frame field',
-  ),
+  jsonPointer: z.string().min(1).max(1024),
   operation: z.enum(['add', 'replace', 'remove']),
   legacyValueHash: sha256Schema,
   approvedValue: z.json().optional(),
@@ -749,6 +998,14 @@ const divergenceSchema = z.strictObject({
   approvalIdentity: z.string().min(1).max(256),
   rationale: z.string().min(1).max(2000),
 }).superRefine((divergence, context) => {
+  const route = parseObservableFrameRoute(divergence.jsonPointer, divergence.operation)
+  if (!route) {
+    context.addIssue({
+      code: 'custom',
+      path: ['jsonPointer'],
+      message: 'divergence pointer must name an observable frame leaf or array element',
+    })
+  }
   if (divergence.operation === 'remove' && divergence.approvedValue !== undefined) {
     context.addIssue({
       code: 'custom',
@@ -761,6 +1018,18 @@ const divergenceSchema = z.strictObject({
       code: 'custom',
       path: ['approvedValue'],
       message: 'add and replace require approvedValue',
+    })
+  }
+  if (
+    route
+    && divergence.operation !== 'remove'
+    && divergence.approvedValue !== undefined
+    && !route.acceptsValue(divergence.approvedValue)
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['approvedValue'],
+      message: 'approvedValue must match the observable route value type',
     })
   }
 })

@@ -133,6 +133,10 @@ interface RunPaths {
 
 export interface ExtractorHooks {
   beforeReadPatch?: (path: string) => void
+  beforePatchCheck?: (paths: {
+    readonly externalPatch: string
+    readonly boundPatch: string
+  }) => void
   beforeReadSeeds?: (path: string) => void
   beforeReadRaw?: (path: string) => void
   beforeNpmInvocation?: (paths: {
@@ -369,12 +373,22 @@ function revalidateRegularFile(path: string, expected: FileIdentity, label: stri
 }
 
 function readNoFollowFile(path: string, label: string, hook?: (path: string) => void) {
+  return readNoFollowFileWithIdentity(path, label, hook).bytes
+}
+
+function readNoFollowFileWithIdentity(
+  path: string,
+  label: string,
+  hook?: (path: string) => void,
+) {
   const identity = snapshotRegularFile(path, label)
   hook?.(path)
   revalidateRegularFile(path, identity, label)
   const descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
-    return readFileSync(descriptor)
+    const bytes = readFileSync(descriptor)
+    revalidateRegularFile(path, identity, label)
+    return { bytes, identity }
   } finally {
     closeSync(descriptor)
   }
@@ -382,6 +396,105 @@ function readNoFollowFile(path: string, label: string, hook?: (path: string) => 
 
 function sha256Bytes(bytes: Uint8Array | string) {
   return createHash('sha256').update(bytes).digest('hex')
+}
+
+function gitBlobHash(bytes: Uint8Array) {
+  return createHash('sha1')
+    .update(`blob ${bytes.byteLength}\0`)
+    .update(bytes)
+    .digest('hex')
+}
+
+interface InstrumentationPatchTarget {
+  readonly path: 'src/App.tsx' | 'src/parity-question-extractor.test.tsx'
+  readonly oldHash: string
+  readonly newHash: string
+}
+
+function parseInstrumentationPatchTargets(bytes: Buffer): readonly InstrumentationPatchTarget[] {
+  const lines = bytes.toString('utf8').split('\n')
+  const targets: Array<{ path: string; oldHash?: string; newHash?: string }> = []
+  for (const line of lines) {
+    const header = /^diff --git a\/([^ ]+) b\/([^ ]+)$/.exec(line)
+    if (header) {
+      if (header[1] !== header[2]) throw new Error('instrumentation patch content mismatch')
+      targets.push({ path: header[1]! })
+      continue
+    }
+    const index = /^index ([a-f0-9]{40})\.\.([a-f0-9]{40})(?: [0-7]{6})?$/.exec(line)
+    if (index && targets.length > 0) {
+      const target = targets.at(-1)!
+      if (target.oldHash !== undefined) throw new Error('instrumentation patch content mismatch')
+      target.oldHash = index[1]!
+      target.newHash = index[2]!
+    }
+  }
+  const expectedPaths = [
+    'src/App.tsx',
+    'src/parity-question-extractor.test.tsx',
+  ]
+  if (
+    targets.length !== expectedPaths.length
+    || targets.some((target, index) => (
+      target.path !== expectedPaths[index]
+      || target.oldHash === undefined
+      || target.newHash === undefined
+      || target.newHash === '0'.repeat(40)
+      || (index === 0 && target.oldHash === '0'.repeat(40))
+      || (index === 1 && target.oldHash !== '0'.repeat(40))
+    ))
+  ) throw new Error('instrumentation patch content mismatch')
+  return targets as InstrumentationPatchTarget[]
+}
+
+function revalidateBoundPatch(
+  externalPatch: string,
+  externalIdentity: FileIdentity,
+  boundPatch: string,
+  boundIdentity: FileIdentity,
+  expectedHash: string,
+) {
+  revalidateRegularFile(
+    externalPatch,
+    externalIdentity,
+    'external instrumentation patch',
+  )
+  revalidateRegularFile(boundPatch, boundIdentity, 'bound instrumentation patch')
+  const bytes = readNoFollowFile(boundPatch, 'bound instrumentation patch')
+  revalidateRegularFile(boundPatch, boundIdentity, 'bound instrumentation patch')
+  assertExpectedValue(sha256Bytes(bytes), expectedHash, 'bound instrumentation patch hash')
+}
+
+function verifyInstrumentationPatchBase(
+  worktree: string,
+  targets: readonly InstrumentationPatchTarget[],
+) {
+  for (const target of targets) {
+    const path = resolve(worktree, target.path)
+    assertDescendant(path, worktree, 'instrumentation patch target')
+    if (target.oldHash === '0'.repeat(40)) {
+      if (lstatIfPresent(path)) throw new Error('instrumentation patch content mismatch')
+      continue
+    }
+    const bytes = readNoFollowFile(path, `instrumentation patch base ${target.path}`)
+    if (gitBlobHash(bytes) !== target.oldHash) {
+      throw new Error('instrumentation patch content mismatch')
+    }
+  }
+}
+
+function verifyInstrumentationPatchResult(
+  worktree: string,
+  targets: readonly InstrumentationPatchTarget[],
+) {
+  for (const target of targets) {
+    const path = resolve(worktree, target.path)
+    assertDescendant(path, worktree, 'instrumentation patch target')
+    const bytes = readNoFollowFile(path, `instrumentation patch result ${target.path}`)
+    if (gitBlobHash(bytes) !== target.newHash) {
+      throw new Error('instrumentation patch content mismatch')
+    }
+  }
 }
 
 async function sha256RegularFile(path: string, expected: FileIdentity) {
@@ -740,8 +853,8 @@ function bindAndValidateCases(
   })
 }
 
-function writeExclusive(path: string, content: string) {
-  writeFileSync(path, content, { encoding: 'utf8', flag: 'wx', mode: 0o600 })
+function writeExclusive(path: string, content: string | Uint8Array) {
+  writeFileSync(path, content, { flag: 'wx', mode: 0o600 })
 }
 
 function removeOwnedPath(path: string, expected?: FileIdentity) {
@@ -781,6 +894,7 @@ export async function runLegacyExtractor(
     extractionRoot: join(outputParent, `.${outputName}.extract-${token}`),
   }
   const worktree = join(paths.extractionRoot, 'worktree')
+  const boundPatch = join(paths.extractionRoot, 'instrumentation.patch')
   const seedCopy = join(paths.extractionRoot, 'seed-copy.json')
   const rawOutput = join(paths.extractionRoot, 'raw-output.json')
   const capability = join(paths.extractionRoot, `capability-${token}.json`)
@@ -822,12 +936,17 @@ export async function runLegacyExtractor(
     })
     for (const tool of Object.entries(environment.tools)) assertTrustedTool(tool[1], tool[0])
 
-    const patchBytes = readNoFollowFile(
+    const {
+      bytes: patchBytes,
+      identity: externalPatchIdentity,
+    } = readNoFollowFileWithIdentity(
       environment.patchPath,
       'instrumentation patch',
       environment.hooks.beforeReadPatch,
     )
-    assertExpectedValue(sha256Bytes(patchBytes), environment.expected.patchHash, 'patch hash')
+    const verifiedPatchHash = sha256Bytes(patchBytes)
+    assertExpectedValue(verifiedPatchHash, environment.expected.patchHash, 'patch hash')
+    const patchTargets = parseInstrumentationPatchTargets(patchBytes)
     const seedBytes = readNoFollowFile(
       environment.seedsPath,
       'seed source',
@@ -866,6 +985,9 @@ export async function runLegacyExtractor(
 
     mkdirSync(paths.extractionRoot, { mode: 0o700 })
     extractionRootIdentity = snapshotRegularDirectory(paths.extractionRoot, 'extraction root')
+    assertDescendant(boundPatch, paths.extractionRoot, 'bound instrumentation patch')
+    writeExclusive(boundPatch, patchBytes)
+    const boundPatchIdentity = snapshotRegularFile(boundPatch, 'bound instrumentation patch')
     writeExclusive(npmConfigs.userConfig, '')
     writeExclusive(npmConfigs.globalConfig, '')
     const npmConfigIdentities = {
@@ -960,6 +1082,18 @@ export async function runLegacyExtractor(
     writeExclusive(seedCopy, seedBytes.toString('utf8'))
     const seedCopyIdentity = snapshotRegularFile(seedCopy, 'copied seeds')
     revalidateRegularFile(seedCopy, seedCopyIdentity, 'copied seeds')
+    environment.hooks.beforePatchCheck?.({
+      externalPatch: environment.patchPath,
+      boundPatch,
+    })
+    revalidateBoundPatch(
+      environment.patchPath,
+      externalPatchIdentity,
+      boundPatch,
+      boundPatchIdentity,
+      verifiedPatchHash,
+    )
+    verifyInstrumentationPatchBase(worktree, patchTargets)
 
     await execute(environment, {
       role: 'patch-check',
@@ -970,18 +1104,26 @@ export async function runLegacyExtractor(
         'apply',
         '--unidiff-zero',
         '--check',
-        environment.patchPath,
+        boundPatch,
       ],
       cwd: worktree,
       environment: childEnvironment,
     })
+    revalidateBoundPatch(
+      environment.patchPath,
+      externalPatchIdentity,
+      boundPatch,
+      boundPatchIdentity,
+      verifiedPatchHash,
+    )
     await execute(environment, {
       role: 'patch-apply',
       executable: environment.tools.git,
-      args: ['-C', worktree, 'apply', '--unidiff-zero', environment.patchPath],
+      args: ['-C', worktree, 'apply', '--unidiff-zero', boundPatch],
       cwd: worktree,
       environment: childEnvironment,
     })
+    verifyInstrumentationPatchResult(worktree, patchTargets)
     await execute(environment, {
       role: 'patch-diff-check',
       executable: environment.tools.git,
@@ -1104,7 +1246,7 @@ export async function runLegacyExtractor(
         sources: authoringSourceIdentity,
         hash: authoringHash,
       },
-      instrumentation: { version: 1, hash: environment.expected.patchHash },
+      instrumentation: { version: 1, hash: verifiedPatchHash },
       runtime: {
         nodeVersion: environment.expected.nodeVersion,
         npmVersion: environment.expected.npmVersion,

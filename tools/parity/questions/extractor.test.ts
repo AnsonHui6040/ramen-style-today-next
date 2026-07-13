@@ -33,6 +33,42 @@ const roots: string[] = []
 const hash = (character: string) => character.repeat(64)
 const commit = 'a'.repeat(40)
 const treeHash = 'b'.repeat(40)
+const fixtureOriginalApp = 'export default function App() { return null }\n'
+const fixturePatchedApp = 'export default function App() { return "instrumented" }\n'
+const fixturePatchedTest = 'export const observer = true\n'
+
+function gitBlobHash(content: string) {
+  return createHash('sha1')
+    .update(`blob ${Buffer.byteLength(content)}\0`)
+    .update(content)
+    .digest('hex')
+}
+
+function fixturePatch(appContent: string, testContent: string) {
+  return [
+    'diff --git a/src/App.tsx b/src/App.tsx',
+    `index ${gitBlobHash(fixtureOriginalApp)}..${gitBlobHash(appContent)} 100644`,
+    '--- a/src/App.tsx',
+    '+++ b/src/App.tsx',
+    '@@ -1 +1 @@',
+    `-${fixtureOriginalApp.trimEnd()}`,
+    `+${appContent.trimEnd()}`,
+    'diff --git a/src/parity-question-extractor.test.tsx b/src/parity-question-extractor.test.tsx',
+    'new file mode 100644',
+    `index ${'0'.repeat(40)}..${gitBlobHash(testContent)}`,
+    '--- /dev/null',
+    '+++ b/src/parity-question-extractor.test.tsx',
+    '@@ -0,0 +1 @@',
+    `+${testContent.trimEnd()}`,
+    '',
+  ].join('\n')
+}
+
+const fixturePatchBytes = fixturePatch(fixturePatchedApp, fixturePatchedTest)
+const alternateFixturePatchBytes = fixturePatch(
+  'export default function App() { return "alternate" }\n',
+  'export const observer = "alternate"\n',
+)
 const allowedEnvironmentKeys = [
   'CI',
   'GIT_CONFIG_NOSYSTEM',
@@ -105,6 +141,8 @@ interface FixtureOptions {
   inheritedHomeContainsExtractionRoot?: boolean
   failRole?: SpawnRequest['role']
   cleanupFailure?: boolean
+  replaceExternalPatchAfterHash?: boolean
+  postApplyContentMismatch?: boolean
 }
 
 interface ExtractorFixture {
@@ -157,9 +195,9 @@ async function createExtractorFixture(
   const lockPath = join(legacyRoot, 'package-lock.json')
   mkdirSync(dirname(sourcePath), { recursive: true })
   mkdirSync(dirname(patchPath), { recursive: true })
-  writeFileSync(sourcePath, 'export default function App() { return null }\n')
+  writeFileSync(sourcePath, fixtureOriginalApp)
   writeFileSync(lockPath, '{"lockfileVersion":3}\n')
-  writeFileSync(patchPath, 'diff --git a/src/App.tsx b/src/App.tsx\n')
+  writeFileSync(patchPath, fixturePatchBytes)
   writeFileSync(seedsPath, `${JSON.stringify({ schemaVersion: 1, cases: seedCases }, null, 2)}\n`)
   for (const [path, sourcePath] of Object.entries(authoringSourcePaths)) {
     writeFileSync(sourcePath, `// deterministic fixture for ${path}\n`)
@@ -214,9 +252,21 @@ async function createExtractorFixture(
       mkdirSync(worktree, { recursive: true })
       cpSync(sourcePath, join(worktree, 'src/App.tsx'), { recursive: true })
       cpSync(lockPath, join(worktree, 'package-lock.json'))
+      if (options.replaceExternalPatchAfterHash) {
+        unlinkSync(patchPath)
+        writeFileSync(patchPath, alternateFixturePatchBytes)
+      }
       return { stdout: '' }
     }
-    if (request.role === 'patch-check' || request.role === 'patch-apply') return { stdout: '' }
+    if (request.role === 'patch-check') return { stdout: '' }
+    if (request.role === 'patch-apply') {
+      writeFileSync(
+        join(request.cwd, 'src/App.tsx'),
+        options.postApplyContentMismatch ? 'tampered after apply\n' : fixturePatchedApp,
+      )
+      writeFileSync(join(request.cwd, 'src/parity-question-extractor.test.tsx'), fixturePatchedTest)
+      return { stdout: '' }
+    }
     if (request.role === 'patch-diff-check') return { stdout: '' }
     if (request.role === 'patch-diff-files') {
       return {
@@ -416,12 +466,65 @@ describe('isolated execution and exact seed binding', () => {
 
   test('applies the whitespace-clean zero-context patch with explicit Git opt-in', async () => {
     const fixture = await createExtractorFixture()
+    let observedBoundPatch: string | undefined
+    fixture.environment.hooks.beforePatchCheck = ({ externalPatch, boundPatch }) => {
+      observedBoundPatch = boundPatch
+      expect(externalPatch).toBe(fixture.environment.patchPath)
+      expect(boundPatch.startsWith(`${fixture.runPaths[0]!.extractionRoot}/`)).toBe(true)
+      const stats = lstatSync(boundPatch)
+      expect(stats.isFile()).toBe(true)
+      expect(stats.isSymbolicLink()).toBe(false)
+      expect(readFileSync(boundPatch)).toEqual(readFileSync(externalPatch))
+    }
     await runLegacyExtractor(fixture.environment, { verifyOnly: true })
 
     const patchCheck = fixture.spawnRecords.find(({ role }) => role === 'patch-check')
     const patchApply = fixture.spawnRecords.find(({ role }) => role === 'patch-apply')
     expect(patchCheck?.args.slice(2, 5)).toEqual(['apply', '--unidiff-zero', '--check'])
     expect(patchApply?.args.slice(2, 4)).toEqual(['apply', '--unidiff-zero'])
+    expect(patchCheck?.args.at(-1)).toBe(observedBoundPatch)
+    expect(patchApply?.args.at(-1)).toBe(observedBoundPatch)
+    expect(observedBoundPatch).not.toBe(fixture.environment.patchPath)
+  })
+
+  test('rejects external patch replacement after the initial verified hash', async () => {
+    const fixture = await createExtractorFixture({ replaceExternalPatchAfterHash: true })
+
+    await expect(runLegacyExtractor(fixture.environment, { verifyOnly: true })).rejects.toThrow(
+      'external instrumentation patch identity changed',
+    )
+    expect(fixture.spawnRecords.some(({ role }) => role === 'patch-check')).toBe(false)
+  })
+
+  test('rejects replacement of the run-owned bound patch before Git reads it', async () => {
+    const fixture = await createExtractorFixture()
+    let hookCalled = false
+    const hooks = fixture.environment.hooks as typeof fixture.environment.hooks & {
+      beforePatchCheck?: (paths: {
+        readonly externalPatch: string
+        readonly boundPatch: string
+      }) => void
+    }
+    hooks.beforePatchCheck = ({ boundPatch }) => {
+      hookCalled = true
+      unlinkSync(boundPatch)
+      writeFileSync(boundPatch, alternateFixturePatchBytes)
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, { verifyOnly: true })).rejects.toThrow(
+      'bound instrumentation patch identity changed',
+    )
+    expect(hookCalled).toBe(true)
+    expect(fixture.spawnRecords.some(({ role }) => role === 'patch-check')).toBe(false)
+  })
+
+  test('rejects post-apply content that does not match the verified patch result', async () => {
+    const fixture = await createExtractorFixture({ postApplyContentMismatch: true })
+
+    await expect(runLegacyExtractor(fixture.environment, { verifyOnly: true })).rejects.toThrow(
+      'instrumentation patch content mismatch',
+    )
+    expect(fixture.spawnRecords.some(({ role }) => role === 'npm-ci')).toBe(false)
   })
 
   test.each([
