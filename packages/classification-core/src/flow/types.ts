@@ -66,6 +66,31 @@ export interface ForcedAnswerChange {
   readonly reason: 'single-allowed-option'
 }
 
+export interface PendingQuestionState<
+  Question extends string = QuestionId,
+  Option extends string = OptionId,
+> {
+  readonly questionId: Question
+  readonly optionOrder: readonly Option[]
+  readonly allowedOptionIds: readonly Option[]
+  readonly exclusiveOptionIds: readonly Option[]
+  readonly minSelections: number
+  readonly maxSelections: number
+  readonly initialUiOptionIds: readonly Option[]
+  readonly emptyBehavior:
+    | { readonly type: 'allow-empty' }
+    | { readonly type: 'restore-initial-ui-options' }
+}
+
+export type PendingSelectionOperation<Option extends string = OptionId> =
+  | { readonly type: 'select'; readonly optionId: Option }
+  | { readonly type: 'deselect'; readonly optionId: Option }
+
+export interface PendingSelectionResult<Option extends string = OptionId> {
+  readonly optionIds: readonly Option[]
+  readonly diagnostics: readonly Diagnostic[]
+}
+
 export type ApplyAnswerResult =
   | {
       readonly accepted: true

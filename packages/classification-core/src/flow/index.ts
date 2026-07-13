@@ -1,6 +1,12 @@
 export { applyAnswer } from './apply-answer.js'
 export { decodeAnswerDraft } from './decode.js'
 export { evaluateFlow } from './evaluate.js'
+export {
+  getFirstActionableQuestion,
+  getNextInteractiveQuestion,
+  getPreviousInteractiveQuestion,
+} from './navigation.js'
+export { updatePendingSelection } from './pending-selection.js'
 export type {
   AnswerDraft,
   AnswerSubmission,
@@ -15,5 +21,8 @@ export type {
   ForcedAnswer,
   ForcedAnswerChange,
   OptionId,
+  PendingQuestionState,
+  PendingSelectionOperation,
+  PendingSelectionResult,
   QuestionId,
 } from './types.js'
