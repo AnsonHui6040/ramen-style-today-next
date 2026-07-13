@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  applyExpectedDivergences,
   computeExtractorAuthoringHash,
+  computeObservableDivergenceValueHash,
   deriveObservableCoverage,
   expectedDivergencesSchema,
   fixtureManifestSchema,
@@ -9,6 +11,7 @@ import {
   legacyObservableSeedFileSchema,
   legacyObservableTraceCaseSchema,
   legacyObservableTraceFrameSchema,
+  observableDivergenceMissingValueHash,
   type LegacyObservableTraceCase,
 } from './contracts.js'
 
@@ -32,6 +35,7 @@ const validFrame = {
   transition: 'initial',
   displayedQuestionId: 'form',
   visibleOptionIds: ['soup', 'dry'],
+  disabledOptionIds: [],
   pendingOptionIds: [],
   legacyAnswers: {},
 } as const
@@ -50,6 +54,7 @@ const validTraceCaseWithoutCoverage = {
       actionIndex: 0,
       displayedQuestionId: 'form',
       visibleOptionIds: ['soup', 'dry'],
+      disabledOptionIds: [],
       pendingOptionIds: ['soup'],
       legacyAnswers: { form: 'soup' },
     },
@@ -618,7 +623,7 @@ describe('observable legacy trace contracts', () => {
     expect(() => deriveObservableCoverage(input)).toThrow()
   })
 
-  test('accepts optional observations but rejects an unchanged observed toggle', () => {
+  test('rejects omitted action observations and an unchanged observed toggle', () => {
     const optionalInput = {
       id: 'optional-action-observations',
       actions: [{ type: 'select', questionId: 'form', optionId: 'soup' }] as const,
@@ -627,7 +632,7 @@ describe('observable legacy trace contracts', () => {
         { sequence: 1, transition: 'toggle', actionIndex: 0 },
       ] as const,
     }
-    expect(() => deriveObservableCoverage(optionalInput)).not.toThrow()
+    expect(() => deriveObservableCoverage(optionalInput)).toThrow()
 
     const noOpInput = {
       id: 'observable-max-no-op',
@@ -650,6 +655,47 @@ describe('observable legacy trace contracts', () => {
       ] as const,
     }
     expect(() => deriveObservableCoverage(noOpInput)).toThrow()
+  })
+
+  test.each([
+    {
+      action: { type: 'select', questionId: 'form', optionId: 'soup' } as const,
+      before: [] as readonly string[],
+      after: ['soup'] as readonly string[],
+    },
+    {
+      action: { type: 'deselect', questionId: 'form', optionId: 'soup' } as const,
+      before: ['soup'] as readonly string[],
+      after: [] as readonly string[],
+    },
+  ])('requires disabled and selection proof for $action.type', ({ action, before, after }) => {
+    const frameBase = {
+      displayedQuestionId: 'form',
+      visibleOptionIds: ['soup', 'dry'],
+    } as const
+    const missingDisabled = {
+      actions: [action],
+      frames: [
+        { sequence: 0, transition: 'initial', ...frameBase, pendingOptionIds: before },
+        {
+          sequence: 1,
+          transition: 'toggle',
+          actionIndex: 0,
+          ...frameBase,
+          pendingOptionIds: after,
+        },
+      ],
+    } as const
+    const missingSelection = {
+      actions: [action],
+      frames: [
+        { sequence: 0, transition: 'initial', ...frameBase, disabledOptionIds: [] },
+        { sequence: 1, transition: 'toggle', actionIndex: 0, ...frameBase },
+      ],
+    } as const
+
+    expect(() => deriveObservableCoverage(missingDisabled)).toThrow()
+    expect(() => deriveObservableCoverage(missingSelection)).toThrow()
   })
 
   test('rejects a toggle with only one directly observed selection boundary', () => {
@@ -1204,6 +1250,186 @@ describe('seed, manifest, and divergence contracts', () => {
       schemaVersion: 1,
       entries: [{ ...validDivergence, operation: 'remove' }],
     }).success).toBe(false)
+  })
+
+  test('rejects divergences whose concrete application invalidates the observable trace', () => {
+    const semanticHash = '4'.repeat(64)
+    const transitionEntry = {
+      ...validDivergence,
+      jsonPointer: '/frames/1/transition',
+      operation: 'replace' as const,
+      legacyValueHash: computeObservableDivergenceValueHash('toggle'),
+      approvedValue: 'initial',
+      semanticHash,
+    }
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [transitionEntry],
+    }).success).toBe(true)
+    expect(() => applyExpectedDivergences(
+      [validTraceCase],
+      { schemaVersion: 1, entries: [transitionEntry] },
+      semanticHash,
+    )).toThrow('invalid observable trace')
+
+    const crossArrayEntry = {
+      ...validDivergence,
+      jsonPointer: '/frames/1/disabledOptionIds/-',
+      operation: 'add' as const,
+      legacyValueHash: observableDivergenceMissingValueHash,
+      approvedValue: 'soup',
+      semanticHash,
+    }
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [crossArrayEntry],
+    }).success).toBe(true)
+    expect(() => applyExpectedDivergences(
+      [validTraceCase],
+      { schemaVersion: 1, entries: [crossArrayEntry] },
+      semanticHash,
+    )).toThrow('invalid observable trace')
+  })
+
+  test.each([
+    {
+      name: 'optional removal',
+      jsonPointer: '/frames/2/displayedQuestionId',
+      operation: 'remove' as const,
+      legacyValue: 'form',
+      approvedValue: undefined,
+    },
+    {
+      name: 'array removal',
+      jsonPointer: '/frames/2/pendingOptionIds/1',
+      operation: 'remove' as const,
+      legacyValue: 'dry',
+      approvedValue: undefined,
+    },
+    {
+      name: 'array replacement',
+      jsonPointer: '/frames/2/pendingOptionIds/1',
+      operation: 'replace' as const,
+      legacyValue: 'dry',
+      approvedValue: 'tsukemen',
+    },
+    {
+      name: 'nested replacement',
+      jsonPointer: '/frames/3/navigation/reachedQuestionId',
+      operation: 'replace' as const,
+      legacyValue: 'archetype',
+      approvedValue: 'archetype',
+    },
+    {
+      name: 'array append',
+      jsonPointer: '/frames/2/pendingOptionIds/-',
+      operation: 'add' as const,
+      legacyValue: undefined,
+      approvedValue: 'tsukemen',
+    },
+  ])('applies a schema-valid concrete divergence: $name', ({
+    jsonPointer,
+    operation,
+    legacyValue,
+    approvedValue,
+  }) => {
+    const semanticHash = '4'.repeat(64)
+    const withoutCoverage = {
+      ...validTraceCase,
+      frames: validTraceCase.frames.map((frame, index) => (
+        index === 2 ? { ...frame, pendingOptionIds: ['soup', 'dry'] } : frame
+      )),
+    }
+    const traceCase = {
+      ...withoutCoverage,
+      coverageTags: deriveObservableCoverage(withoutCoverage),
+    }
+    const entry = {
+      ...validDivergence,
+      jsonPointer,
+      operation,
+      legacyValueHash: legacyValue === undefined
+        ? observableDivergenceMissingValueHash
+        : computeObservableDivergenceValueHash(legacyValue),
+      approvedValue,
+      semanticHash,
+    }
+    const applied = applyExpectedDivergences(
+      [traceCase],
+      { schemaVersion: 1, entries: [entry] },
+      semanticHash,
+    )
+    expect(legacyObservableTraceCaseSchema.safeParse(applied[0]).success).toBe(true)
+  })
+
+  test('rejects stale divergence value and semantic hashes at the application boundary', () => {
+    const semanticHash = '4'.repeat(64)
+    const entry = {
+      ...validDivergence,
+      jsonPointer: '/frames/1/displayedQuestionId',
+      operation: 'replace' as const,
+      legacyValueHash: '0'.repeat(64),
+      approvedValue: 'form',
+      semanticHash,
+    }
+    expect(() => applyExpectedDivergences(
+      [validTraceCase],
+      { schemaVersion: 1, entries: [entry] },
+      semanticHash,
+    )).toThrow('legacy value hash mismatch')
+    expect(() => applyExpectedDivergences(
+      [validTraceCase],
+      {
+        schemaVersion: 1,
+        entries: [{
+          ...entry,
+          legacyValueHash: computeObservableDivergenceValueHash('form'),
+        }],
+      },
+      '5'.repeat(64),
+    )).toThrow('semantic hash mismatch')
+  })
+
+  test('verifies all legacy hashes against the frozen case before ordered application', () => {
+    const semanticHash = '4'.repeat(64)
+    const withoutCoverage = {
+      ...validTraceCase,
+      frames: validTraceCase.frames.map((frame, index) => (
+        index === 2 ? { ...frame, pendingOptionIds: ['soup', 'dry'] } : frame
+      )),
+    }
+    const traceCase = {
+      ...withoutCoverage,
+      coverageTags: deriveObservableCoverage(withoutCoverage),
+    }
+    const entries = [
+      {
+        ...validDivergence,
+        jsonPointer: '/frames/2/pendingOptionIds/0',
+        operation: 'add' as const,
+        legacyValueHash: observableDivergenceMissingValueHash,
+        approvedValue: 'pork',
+        semanticHash,
+      },
+      {
+        ...validDivergence,
+        jsonPointer: '/frames/2/pendingOptionIds/1',
+        operation: 'replace' as const,
+        legacyValueHash: computeObservableDivergenceValueHash('dry'),
+        approvedValue: 'tsukemen',
+        semanticHash,
+      },
+    ]
+    const applied = applyExpectedDivergences(
+      [traceCase],
+      { schemaVersion: 1, entries },
+      semanticHash,
+    )
+    expect(applied[0]?.frames[2]?.pendingOptionIds).toEqual([
+      'pork',
+      'tsukemen',
+      'dry',
+    ])
   })
 })
 

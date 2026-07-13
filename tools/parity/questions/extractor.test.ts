@@ -98,6 +98,7 @@ const rawFrames = [
     transition: 'initial',
     displayedQuestionId: 'form',
     visibleOptionIds: ['soup', 'dry'],
+    disabledOptionIds: [],
     pendingOptionIds: [],
     legacyAnswers: {},
   },
@@ -107,6 +108,7 @@ const rawFrames = [
     actionIndex: 0,
     displayedQuestionId: 'form',
     visibleOptionIds: ['soup', 'dry'],
+    disabledOptionIds: [],
     pendingOptionIds: ['soup'],
     legacyAnswers: { form: 'soup' },
   },
@@ -794,6 +796,35 @@ describe('no-follow and transactional publication', () => {
     await expect(runLegacyExtractor(fixture.environment, { verifyOnly: false })).rejects.toThrow(
       'output already exists; pass --replace',
     )
+  })
+
+  test.each([
+    { mode: 'new destination', replace: false },
+    { mode: 'existing destination', replace: true },
+  ])('blocks $mode publication when pre-publication cleanup fails', async ({ replace }) => {
+    const fixture = await createExtractorFixture({ cleanupFailure: true })
+    if (replace) {
+      mkdirSync(fixture.destination, { recursive: true })
+      writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    }
+    let publicationCalls = 0
+    fixture.environment.hooks.beforePublishStaging = () => {
+      publicationCalls += 1
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace,
+      verifyOnly: false,
+    })).rejects.toThrow('extractor cleanup failed')
+    expect(publicationCalls).toBe(0)
+    if (replace) {
+      expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
+    } else {
+      expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
+    }
+    expect(readdirSync(dirname(fixture.destination)).some((name) => (
+      name.includes('.backup-') || name.includes('.staging-')
+    ))).toBe(false)
   })
 
   test('rolls back the old output when publication fails after backup rename', async () => {

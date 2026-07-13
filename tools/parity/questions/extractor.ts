@@ -1395,7 +1395,7 @@ export async function runLegacyExtractor(
     cleanupErrors.push(error)
   }
 
-  if (!primaryError && !options.verifyOnly) {
+  if (!primaryError && cleanupErrors.length === 0 && !options.verifyOnly) {
     try {
       assertNoFollowPath(outputParent, { kind: 'directory', allowMissingLeaf: false })
       if (lstatIfPresent(environment.destination)) {

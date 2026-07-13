@@ -458,23 +458,34 @@ function validateActionFrames(input: ParsedActionFrameInput, context: z.Refineme
       })
     }
     const preActionFrame = input.frames[actionFrameStart - 1]
-    if (
-      (action.type === 'select' || action.type === 'deselect')
-      && preActionFrame?.visibleOptionIds !== undefined
-      && !preActionFrame.visibleOptionIds.includes(action.optionId)
-    ) {
-      addIssue({
-        code: 'custom',
-        path: ['actions', actionIndex, 'optionId'],
-        message: 'action option must be present in directly observed pre-action options',
-      })
-    }
-    if (action.type === 'select' && preActionFrame?.disabledOptionIds?.includes(action.optionId)) {
-      addIssue({
-        code: 'custom',
-        path: ['actions', actionIndex, 'optionId'],
-        message: 'select option must be enabled in the directly observed pre-action frame',
-      })
+    if (action.type === 'select' || action.type === 'deselect') {
+      if (preActionFrame?.displayedQuestionId !== action.questionId) {
+        addIssue({
+          code: 'custom',
+          path: ['frames', actionFrameStart - 1, 'displayedQuestionId'],
+          message: 'toggle pre-action frame must directly display its action question',
+        })
+      }
+      if (!preActionFrame?.visibleOptionIds?.includes(action.optionId)) {
+        addIssue({
+          code: 'custom',
+          path: ['actions', actionIndex, 'optionId'],
+          message: 'action option must be present in directly observed pre-action options',
+        })
+      }
+      if (preActionFrame?.disabledOptionIds === undefined) {
+        addIssue({
+          code: 'custom',
+          path: ['frames', actionFrameStart - 1, 'disabledOptionIds'],
+          message: 'toggle pre-action frame must directly observe disabled options',
+        })
+      } else if (preActionFrame.disabledOptionIds.includes(action.optionId)) {
+        addIssue({
+          code: 'custom',
+          path: ['actions', actionIndex, 'optionId'],
+          message: `${action.type} option must be enabled in the pre-action frame`,
+        })
+      }
     }
     if (action.type === 'select' || action.type === 'deselect') {
       if (transitions.length !== 1 || transitions[0] !== 'toggle') {
@@ -611,7 +622,7 @@ function validateToggleState(
     || previous?.legacyAnswers !== undefined
   const currentSelectionObserved = current.pendingOptionIds !== undefined
     || current.legacyAnswers !== undefined
-  if (previousSelectionObserved !== currentSelectionObserved) {
+  if (!previousSelectionObserved || !currentSelectionObserved) {
     addIssue({
       code: 'custom',
       path: ['frames', frameIndex],
@@ -1205,3 +1216,167 @@ export const expectedDivergencesSchema = z.strictObject({
     })
   }
 })
+
+const observableDivergenceHashDomain = 'ramen-observable-divergence-v1\0'
+
+export function computeObservableDivergenceValueHash(value: unknown) {
+  const jsonValue = z.json().parse(value)
+  return createHash('sha256')
+    .update(observableDivergenceHashDomain)
+    .update('value\0')
+    .update(JSON.stringify(jsonValue))
+    .digest('hex')
+}
+
+export const observableDivergenceMissingValueHash = createHash('sha256')
+  .update(observableDivergenceHashDomain)
+  .update('missing\0')
+  .digest('hex')
+
+interface ResolvedDivergenceTarget {
+  readonly parent: Record<string, unknown> | unknown[]
+  readonly key: string | number
+  readonly exists: boolean
+  readonly value?: unknown
+}
+
+function resolveDivergenceTarget(
+  traceCase: Record<string, unknown>,
+  pointer: string,
+  operation: DivergenceOperation,
+): ResolvedDivergenceTarget {
+  const segments = decodeJsonPointer(pointer)
+  if (!segments) throw new Error('divergence pointer does not resolve')
+  let current: unknown = traceCase
+  for (const segment of segments.slice(0, -1)) {
+    if (Array.isArray(current)) {
+      if (!/^(?:0|[1-9][0-9]*)$/.test(segment)) {
+        throw new Error('divergence pointer does not resolve')
+      }
+      const index = Number(segment)
+      if (index >= current.length) throw new Error('divergence pointer does not resolve')
+      current = current[index]
+    } else if (
+      current
+      && typeof current === 'object'
+      && Object.prototype.hasOwnProperty.call(current, segment)
+    ) {
+      current = (current as Record<string, unknown>)[segment]
+    } else {
+      throw new Error('divergence pointer does not resolve')
+    }
+  }
+
+  if (!current || typeof current !== 'object') {
+    throw new Error('divergence pointer does not resolve')
+  }
+  const segment = segments.at(-1)
+  if (segment === undefined) throw new Error('divergence pointer does not resolve')
+  if (Array.isArray(current)) {
+    if (segment === '-') {
+      if (operation !== 'add') throw new Error('divergence pointer does not resolve')
+      return { parent: current, key: current.length, exists: false }
+    }
+    if (!/^(?:0|[1-9][0-9]*)$/.test(segment)) {
+      throw new Error('divergence pointer does not resolve')
+    }
+    const index = Number(segment)
+    if (operation === 'add') {
+      if (index > current.length) throw new Error('divergence pointer does not resolve')
+      return { parent: current, key: index, exists: false }
+    }
+    if (index >= current.length) throw new Error('divergence pointer does not resolve')
+    return { parent: current, key: index, exists: true, value: current[index] }
+  }
+
+  const exists = Object.prototype.hasOwnProperty.call(current, segment)
+  if (operation === 'add' ? exists : !exists) {
+    throw new Error('divergence operation does not match the concrete trace')
+  }
+  return {
+    parent: current as Record<string, unknown>,
+    key: segment,
+    exists,
+    ...(exists ? { value: (current as Record<string, unknown>)[segment] } : {}),
+  }
+}
+
+function applyResolvedDivergence(
+  target: ResolvedDivergenceTarget,
+  operation: DivergenceOperation,
+  approvedValue: unknown,
+) {
+  if (Array.isArray(target.parent)) {
+    const index = target.key as number
+    if (operation === 'add') target.parent.splice(index, 0, approvedValue)
+    else if (operation === 'replace') target.parent[index] = approvedValue
+    else target.parent.splice(index, 1)
+    return
+  }
+  const key = target.key as string
+  if (operation === 'remove') delete target.parent[key]
+  else target.parent[key] = approvedValue
+}
+
+export function applyExpectedDivergences(
+  traceCases: readonly LegacyObservableTraceCase[],
+  manifestInput: unknown,
+  currentSemanticHash: string,
+): readonly LegacyObservableTraceCase[] {
+  const semanticHash = sha256Schema.parse(currentSemanticHash)
+  const manifest = expectedDivergencesSchema.parse(manifestInput)
+  const parsedCases = legacyObservableTraceCaseSchema.array().parse(traceCases)
+  const mutableCases = structuredClone(parsedCases) as unknown as Array<Record<string, unknown>>
+  const caseIndices = new Map<string, number>()
+  parsedCases.forEach((traceCase, index) => {
+    const id = traceCase.id as string
+    if (caseIndices.has(id)) throw new Error('duplicate concrete trace case ID')
+    caseIndices.set(id, index)
+  })
+
+  // Validate every declaration against one immutable received snapshot before
+  // applying any ordered mutations. Otherwise an earlier array insertion can
+  // silently change the legacy value addressed by a later pointer.
+  for (const entry of manifest.entries) {
+    if (entry.semanticHash !== semanticHash) {
+      throw new Error('divergence semantic hash mismatch')
+    }
+    const caseIndex = caseIndices.get(entry.caseId)
+    if (caseIndex === undefined) throw new Error('divergence case does not resolve')
+    const route = parseObservableFrameRoute(entry.jsonPointer, entry.operation)
+    if (!route || !route.allowedOperations.includes(entry.operation)) {
+      throw new Error('divergence operation is not allowed for the observable route')
+    }
+    const frozenCase = parsedCases[caseIndex] as unknown as Record<string, unknown>
+    const target = resolveDivergenceTarget(frozenCase, entry.jsonPointer, entry.operation)
+    const receivedHash = target.exists
+      ? computeObservableDivergenceValueHash(target.value)
+      : observableDivergenceMissingValueHash
+    if (receivedHash !== entry.legacyValueHash) {
+      throw new Error('divergence legacy value hash mismatch')
+    }
+  }
+
+  for (const entry of manifest.entries) {
+    const caseIndex = caseIndices.get(entry.caseId)!
+    const traceCase = mutableCases[caseIndex]!
+    const target = resolveDivergenceTarget(traceCase, entry.jsonPointer, entry.operation)
+    applyResolvedDivergence(target, entry.operation, entry.approvedValue)
+  }
+
+  return Object.freeze(mutableCases.map((traceCase) => {
+    try {
+      const withoutCoverage = {
+        id: traceCase.id as string,
+        actions: traceCase.actions as readonly LegacyObservableAction[],
+        frames: traceCase.frames as readonly LegacyObservableTraceFrame[],
+      }
+      return legacyObservableTraceCaseSchema.parse({
+        ...withoutCoverage,
+        coverageTags: deriveObservableCoverage(withoutCoverage),
+      })
+    } catch {
+      throw new Error('divergence application produced an invalid observable trace')
+    }
+  }))
+}
