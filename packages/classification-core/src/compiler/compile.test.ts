@@ -66,6 +66,84 @@ describe('classification compiler shell', () => {
     )
   })
 
+  test('rejects unknown question references from every condition-bearing field', () => {
+    const invalid = mutableDefinition()
+    const question = invalid.questions[0]!
+    question.availableWhen = { type: 'answered', questionId: 'missing-available' }
+    question.options[0]!.availableWhen = {
+      type: 'answer-includes',
+      questionId: 'missing-option',
+      optionId: 'unknown',
+    }
+    question.allowedOptions = [{
+      when: { type: 'answered', questionId: 'missing-allowed-row' },
+      selection: { type: 'all' },
+    }]
+    question.selection.overrides = [{
+      when: { type: 'answered', questionId: 'missing-override' },
+      min: 1,
+      max: 1,
+    }]
+    question.autoAnswer = {
+      type: 'single-allowed-option',
+      when: { type: 'answered', questionId: 'missing-auto-answer' },
+    }
+
+    const result = compileClassification(invalid, sourceFile)
+
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics.filter((item) => item.code === 'REFERENCE_UNKNOWN')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: '/questions/0/availableWhen/questionId',
+          entityId: 'form',
+        }),
+        expect.objectContaining({
+          path: '/questions/0/options/0/availableWhen/questionId',
+          entityId: 'form',
+        }),
+        expect.objectContaining({
+          path: '/questions/0/allowedOptions/0/when/questionId',
+          entityId: 'form',
+        }),
+        expect.objectContaining({
+          path: '/questions/0/selection/overrides/0/when/questionId',
+          entityId: 'form',
+        }),
+        expect.objectContaining({
+          path: '/questions/0/autoAnswer/when/questionId',
+          entityId: 'form',
+        }),
+      ]),
+    )
+  })
+
+  test('rejects cycles discovered through nested condition variants', () => {
+    const invalid = mutableDefinition()
+    invalid.questions[0]!.availableWhen = {
+      type: 'all',
+      conditions: [{
+        type: 'any',
+        conditions: [{
+          type: 'not',
+          condition: {
+            type: 'answer-includes',
+            questionId: 'archetype',
+            optionId: 'chintan',
+          },
+        }],
+      }],
+    }
+
+    const result = compileClassification(invalid, sourceFile)
+
+    expect(result.ok).toBe(false)
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      code: 'FLOW_CYCLE',
+      path: '/questions',
+    }))
+  })
+
   test('allows repeated option values across questions but rejects them within one question', () => {
     expect(compileClassification(classificationDefinition, sourceFile).ok).toBe(true)
 
