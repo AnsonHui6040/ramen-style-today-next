@@ -1,0 +1,484 @@
+import { describe, expect, test } from 'vitest'
+
+import {
+  deriveObservableCoverage,
+  expectedDivergencesSchema,
+  fixtureManifestSchema,
+  legacyObservableSeedCaseSchema,
+  legacyObservableSeedFileSchema,
+  legacyObservableTraceCaseSchema,
+  legacyObservableTraceFrameSchema,
+  type LegacyObservableTraceCase,
+} from './contracts.js'
+
+const validFrame = {
+  sequence: 0,
+  transition: 'initial',
+  displayedQuestionId: 'form',
+  visibleOptionIds: ['soup', 'dry'],
+  pendingOptionIds: [],
+  legacyAnswers: {},
+} as const
+
+const validTraceCaseWithoutCoverage = {
+  id: 'soup-chintan-complete',
+  actions: [
+    { type: 'select', questionId: 'form', optionId: 'soup' },
+    { type: 'continue', fromQuestionId: 'form' },
+  ],
+  frames: [
+    validFrame,
+    {
+      sequence: 1,
+      transition: 'toggle',
+      actionIndex: 0,
+      displayedQuestionId: 'form',
+      visibleOptionIds: ['soup', 'dry'],
+      pendingOptionIds: ['soup'],
+      legacyAnswers: { form: 'soup' },
+    },
+    {
+      sequence: 2,
+      transition: 'submit',
+      actionIndex: 1,
+      displayedQuestionId: 'form',
+      legacyAnswers: { form: 'soup' },
+    },
+    {
+      sequence: 3,
+      transition: 'next',
+      actionIndex: 1,
+      displayedQuestionId: 'archetype',
+      navigation: { direction: 'next', reachedQuestionId: 'archetype' },
+      legacyAnswers: { form: 'soup' },
+    },
+  ],
+} as const
+
+const validTraceCase = {
+  ...validTraceCaseWithoutCoverage,
+  coverageTags: deriveObservableCoverage(validTraceCaseWithoutCoverage),
+}
+
+const validFixtureManifest = {
+  fixtureSchemaVersion: 1,
+  caseSchemaVersion: 1,
+  source: {
+    repository: {
+      host: 'github.com',
+      owner: 'AnsonHui6040',
+      repository: 'ramen-style-today',
+    },
+    commit: 'a'.repeat(40),
+    treeHash: 'b'.repeat(40),
+    trackedSourceHashes: {
+      'src/App.tsx': 'c'.repeat(64),
+    },
+    lockfilePath: 'package-lock.json',
+    lockfileHash: 'd'.repeat(64),
+  },
+  extractor: {
+    version: 1,
+    hash: 'e'.repeat(64),
+  },
+  instrumentation: {
+    version: 1,
+    hash: 'f'.repeat(64),
+  },
+  runtime: {
+    nodeVersion: '24.14.0',
+    npmVersion: '11.12.1',
+    timezone: 'UTC',
+    locale: 'C.UTF-8',
+    seed: 'ramen-question-observable-v1',
+    lifecycleScripts: 'disabled',
+    extractionNetwork: 'denied',
+    dependencies: 'physical-isolated',
+    fullSuiteBeforeExtraction: true,
+    npmConfigPolicy: {
+      userConfig: 'isolated-empty-file',
+      globalConfig: 'isolated-empty-file',
+      distinctFiles: true,
+      npmArgvModified: false,
+    },
+  },
+  caseIds: ['soup-chintan-complete'],
+  caseCount: 1,
+  fixtureContentHash: '1'.repeat(64),
+} as const
+
+const validDivergence = {
+  caseId: 'soup-chintan-complete',
+  jsonPointer: '/frames/1/visibleOptionIds/0',
+  operation: 'replace',
+  legacyValueHash: '2'.repeat(64),
+  approvedValue: 'tsukemen',
+  semanticHash: '3'.repeat(64),
+  adr: 'docs/adr/0001.md',
+  approvalIdentity: 'reviewer@example.com',
+  rationale: 'Approved visible option correction.',
+} as const
+
+describe('observable legacy trace contracts', () => {
+  test('accepts observable frames with unobservable fields omitted', () => {
+    expect(legacyObservableTraceCaseSchema.safeParse(validTraceCase).success).toBe(true)
+    expect(legacyObservableTraceFrameSchema.safeParse({
+      sequence: 1,
+      transition: 'previous',
+      actionIndex: 0,
+      navigation: { direction: 'previous', reachedQuestionId: 'form' },
+    }).success).toBe(true)
+  })
+
+  test.each([
+    'canonicalAnswers',
+    'reachableQuestionIds',
+    'interactiveQuestionIds',
+    'allowedOptionIdsByQuestion',
+    'repairs',
+    'diagnostics',
+    'invalidatedQuestionIds',
+    'accepted',
+    'rejected',
+    'dependencyClosures',
+    'fixedPointIterations',
+    'navigationQuery',
+    'semanticHash',
+    'implementationSha',
+    'assurance',
+  ])('rejects new-only frozen field %s', (field) => {
+    expect(legacyObservableTraceFrameSchema.safeParse({
+      ...validFrame,
+      [field]: [],
+    }).success).toBe(false)
+  })
+
+  test('requires contiguous sequences and the single action-free initial frame', () => {
+    expect(legacyObservableTraceCaseSchema.safeParse({
+      ...validTraceCase,
+      frames: validTraceCase.frames.map((frame, index) => (
+        index === 2 ? { ...frame, sequence: 9 } : frame
+      )),
+    }).success).toBe(false)
+    expect(legacyObservableTraceCaseSchema.safeParse({
+      ...validTraceCase,
+      frames: [{ ...validFrame, actionIndex: 0 }, ...validTraceCase.frames.slice(1)],
+    }).success).toBe(false)
+    expect(legacyObservableTraceCaseSchema.safeParse({
+      ...validTraceCase,
+      frames: [validFrame, { ...validFrame, sequence: 1 }],
+    }).success).toBe(false)
+  })
+
+  test('maps toggle, continue, and previous actions to their exact frame grammar', () => {
+    const previousCaseWithoutCoverage = {
+      id: 'previous-case',
+      actions: [{ type: 'previous', fromQuestionId: 'archetype' }] as const,
+      frames: [
+        validFrame,
+        {
+          sequence: 1,
+          transition: 'previous',
+          actionIndex: 0,
+          displayedQuestionId: 'form',
+          navigation: { direction: 'previous', reachedQuestionId: 'form' },
+        },
+      ] as const,
+    }
+    expect(legacyObservableTraceCaseSchema.safeParse({
+      ...previousCaseWithoutCoverage,
+      coverageTags: deriveObservableCoverage(previousCaseWithoutCoverage),
+    }).success).toBe(true)
+
+    const badTransitions = [
+      ['next'],
+      ['submit'],
+      ['submit', 'toggle', 'next'],
+      ['submit', 'next', 'complete'],
+      ['submit', 'forced-skip'],
+    ] as const
+    for (const transitions of badTransitions) {
+      const frames = [validFrame, ...transitions.map((transition, index) => ({
+        sequence: index + 1,
+        transition,
+        actionIndex: 0,
+        ...(transition === 'next'
+          ? { navigation: { direction: 'next' as const } }
+          : {}),
+        ...(transition === 'complete'
+          ? { completionMarker: 'results' as const }
+          : {}),
+        ...(transition === 'forced-skip'
+          ? { forcedAutoAnswer: { questionId: 'tare', value: 'miso' } }
+          : {}),
+      }))]
+      const input = {
+        id: 'bad-continue',
+        actions: [{ type: 'continue', fromQuestionId: 'form' }],
+        coverageTags: [],
+        frames,
+      }
+      expect(legacyObservableTraceCaseSchema.safeParse(input).success).toBe(false)
+    }
+  })
+
+  test('requires transition-specific observable markers and forbids them elsewhere', () => {
+    expect(legacyObservableTraceFrameSchema.safeParse({
+      sequence: 1,
+      transition: 'forced-skip',
+      actionIndex: 0,
+    }).success).toBe(false)
+    expect(legacyObservableTraceFrameSchema.safeParse({
+      sequence: 1,
+      transition: 'toggle',
+      actionIndex: 0,
+      forcedAutoAnswer: { questionId: 'tare', value: 'miso' },
+    }).success).toBe(false)
+    expect(legacyObservableTraceFrameSchema.safeParse({
+      sequence: 1,
+      transition: 'next',
+      actionIndex: 0,
+      navigation: { direction: 'previous' },
+    }).success).toBe(false)
+    expect(legacyObservableTraceFrameSchema.safeParse({
+      sequence: 1,
+      transition: 'complete',
+      actionIndex: 0,
+    }).success).toBe(false)
+  })
+
+  test('accepts a same-action forced-skip chain ending at results', () => {
+    const inputWithoutCoverage = {
+      id: 'forced-complete',
+      actions: [{ type: 'continue', fromQuestionId: 'archetype' }] as const,
+      frames: [
+        validFrame,
+        { sequence: 1, transition: 'submit', actionIndex: 0 },
+        {
+          sequence: 2,
+          transition: 'forced-skip',
+          actionIndex: 0,
+          forcedAutoAnswer: { questionId: 'tare', value: 'miso' },
+        },
+        {
+          sequence: 3,
+          transition: 'complete',
+          actionIndex: 0,
+          navigation: { direction: 'next', reachedScreen: 'results' },
+          completionMarker: 'results',
+        },
+      ] as const,
+    }
+    expect(legacyObservableTraceCaseSchema.safeParse({
+      ...inputWithoutCoverage,
+      coverageTags: deriveObservableCoverage(inputWithoutCoverage),
+    }).success).toBe(true)
+  })
+})
+
+describe('mechanically derived observable coverage', () => {
+  test('derives, deduplicates, and code-point sorts observable tags', () => {
+    expect(validTraceCase.coverageTags).toEqual([
+      'action:continue',
+      'action:select',
+      'navigation-target:archetype',
+      'option:form:dry',
+      'option:form:soup',
+      'question:archetype',
+      'question:form',
+      'transition:initial',
+      'transition:next',
+      'transition:submit',
+      'transition:toggle',
+    ])
+  })
+
+  test('derives named behaviors only from validated before/after observations', () => {
+    const input = {
+      id: 'observable-behaviors',
+      actions: [
+        { type: 'select', questionId: 'form', optionId: 'dry' },
+        { type: 'select', questionId: 'source', optionId: 'pork' },
+        { type: 'select', questionId: 'source', optionId: 'chicken' },
+        { type: 'deselect', questionId: 'exclusions', optionId: 'pork' },
+      ] as const,
+      frames: [
+        validFrame,
+        {
+          sequence: 1,
+          transition: 'toggle',
+          actionIndex: 0,
+          pendingOptionIds: ['unsure'],
+          observedChanges: {
+            visibleOptionIds: {
+              questionId: 'archetype',
+              before: ['chintan'],
+              after: ['aburasoba'],
+            },
+            answers: [{ questionId: 'form', before: 'soup', after: 'dry' }],
+          },
+        },
+        {
+          sequence: 2,
+          transition: 'toggle',
+          actionIndex: 1,
+          pendingOptionIds: ['pork'],
+          observedChanges: {
+            answers: [{ questionId: 'source', before: ['unsure'], after: ['pork'] }],
+          },
+        },
+        {
+          sequence: 3,
+          transition: 'toggle',
+          actionIndex: 2,
+          pendingOptionIds: ['pork'],
+          observedChanges: {
+            answers: [{ questionId: 'source', before: ['pork'], after: ['pork'] }],
+          },
+        },
+        {
+          sequence: 4,
+          transition: 'toggle',
+          actionIndex: 3,
+          pendingOptionIds: ['none'],
+          observedChanges: {
+            answers: [{ questionId: 'exclusions', before: ['pork'], after: ['none'] }],
+          },
+        },
+      ] as const,
+    }
+    const tags = deriveObservableCoverage(input)
+    expect(tags).toEqual(expect.arrayContaining([
+      'behavior:branch-visible-change',
+      'behavior:branch-answer-change',
+      'behavior:exclusive-replacement',
+      'behavior:max-no-op',
+      'behavior:empty-restoration',
+    ]))
+  })
+
+  test.each([
+    'semantic-class:branch',
+    'repair:stale',
+    'diagnostic:invalid',
+    'invalid-input:option',
+    'reachability:all',
+    'dependency:form',
+    'fixed-point:2',
+    'application-result:accepted',
+  ])('rejects excluded coverage tag %s', (tag) => {
+    expect(legacyObservableTraceCaseSchema.safeParse({
+      ...validTraceCase,
+      coverageTags: [...validTraceCase.coverageTags, tag],
+    }).success).toBe(false)
+  })
+})
+
+describe('seed, manifest, and divergence contracts', () => {
+  test('seed cases reject output-derived coverage metadata', () => {
+    expect(legacyObservableSeedCaseSchema.safeParse({
+      id: validTraceCase.id,
+      actions: validTraceCase.actions,
+      coverageTags: validTraceCase.coverageTags,
+    }).success).toBe(false)
+    expect(legacyObservableSeedFileSchema.safeParse({
+      schemaVersion: 1,
+      cases: [{
+        id: validTraceCase.id,
+        actions: validTraceCase.actions,
+        frames: validTraceCase.frames,
+      }],
+    }).success).toBe(false)
+  })
+
+  test('frozen manifest accepts immutable lineage and rejects current verification fields', () => {
+    expect(fixtureManifestSchema.safeParse(validFixtureManifest).success).toBe(true)
+    for (const field of [
+      'verifiedSemanticHash',
+      'paritySuiteVersion',
+      'implementationSha',
+      'assurance',
+      'generatedAt',
+      'hostPath',
+    ]) {
+      expect(fixtureManifestSchema.safeParse({
+        ...validFixtureManifest,
+        [field]: field === 'verifiedSemanticHash' ? 'a'.repeat(64) : 'forbidden',
+      }).success).toBe(false)
+    }
+  })
+
+  test('frozen manifest records only the stable npm config policy', () => {
+    expect(fixtureManifestSchema.safeParse(validFixtureManifest).success).toBe(true)
+    expect(fixtureManifestSchema.safeParse({
+      ...validFixtureManifest,
+      runtime: {
+        ...validFixtureManifest.runtime,
+        npmConfigPolicy: {
+          ...validFixtureManifest.runtime.npmConfigPolicy,
+          userConfigPath: '/private/tmp/random/npm-user-config',
+        },
+      },
+    }).success).toBe(false)
+  })
+
+  test('requires ordered unique case IDs and matching case count', () => {
+    expect(fixtureManifestSchema.safeParse({
+      ...validFixtureManifest,
+      caseIds: ['a', 'a'],
+      caseCount: 2,
+    }).success).toBe(false)
+    expect(fixtureManifestSchema.safeParse({
+      ...validFixtureManifest,
+      caseCount: 2,
+    }).success).toBe(false)
+  })
+
+  test('accepts reviewed frame pointers and operation-specific values', () => {
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [validDivergence],
+    }).success).toBe(true)
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [{
+        ...validDivergence,
+        operation: 'remove',
+        approvedValue: undefined,
+      }],
+    }).success).toBe(true)
+  })
+
+  test.each([
+    '/canonicalAnswers/form',
+    '/frames/1/repairs/0',
+    '/frames/1/dependencyClosures/form',
+    '/frames/1/fixedPointIterations',
+    '/frames/1/accepted',
+    '/frames/1/navigationQuery',
+  ])('rejects divergence pointer outside observable frames: %s', (jsonPointer) => {
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [{ ...validDivergence, jsonPointer }],
+    }).success).toBe(false)
+  })
+
+  test('requires approved values for add/replace and forbids them for remove', () => {
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [{ ...validDivergence, approvedValue: undefined }],
+    }).success).toBe(false)
+    expect(expectedDivergencesSchema.safeParse({
+      schemaVersion: 1,
+      entries: [{ ...validDivergence, operation: 'remove' }],
+    }).success).toBe(false)
+  })
+})
+
+test('parsed trace values remain immutable at the public contract boundary', () => {
+  const parsed = legacyObservableTraceCaseSchema.parse(validTraceCase) as LegacyObservableTraceCase
+  expect(Object.isFrozen(parsed)).toBe(true)
+  expect(Object.isFrozen(parsed.actions)).toBe(true)
+  expect(Object.isFrozen(parsed.frames)).toBe(true)
+  expect(Object.isFrozen(parsed.frames[0]?.legacyAnswers)).toBe(true)
+})
