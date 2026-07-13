@@ -207,6 +207,21 @@ function expectCooperativePublicationLockHeld(destination: string) {
   throw new Error('second cooperative author acquired the publication lock')
 }
 
+function publicationDirectoryIdentity(path: string) {
+  const stats = lstatSync(path)
+  return { dev: stats.dev, ino: stats.ino, mode: stats.mode }
+}
+
+function publicationResidue(destination: string) {
+  const outputName = basename(destination)
+  return readdirSync(dirname(destination)).filter((name) => (
+    name === `.${outputName}.lock`
+    || name.startsWith(`.${outputName}.staging-`)
+    || name.startsWith(`.${outputName}.backup-`)
+    || name.startsWith(`.${outputName}.recovery-`)
+  ))
+}
+
 interface FailedPublicationResult {
   readonly status: 'failed'
   readonly published: false
@@ -1144,6 +1159,141 @@ describe('no-follow and transactional publication', () => {
 
     expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
     expect(lstatSync(join(fixture.destination, 'unsafe-link')).isSymbolicLink()).toBe(true)
+  })
+
+  test('rejects same-size invalid staged cases and restores the old publication under lock', async () => {
+    const fixture = await createExtractorFixture()
+    const oldCases = Buffer.from('old-cases-bytes')
+    const oldManifest = Buffer.from('old-manifest-bytes')
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'cases.json'), oldCases)
+    writeFileSync(join(fixture.destination, 'manifest.json'), oldManifest)
+    const oldIdentity = publicationDirectoryIdentity(fixture.destination)
+    const events: string[] = []
+    fixture.environment.hooks.beforePublishStaging = (staging) => {
+      events.push('staged-cases-corrupted')
+      const path = join(staging, 'cases.json')
+      const original = readFileSync(path)
+      writeFileSync(path, Buffer.alloc(original.length, 'x'))
+    }
+    fixture.environment.hooks.beforeRollback = () => {
+      events.push('rollback-under-lock')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+    fixture.environment.hooks.afterRollbackVerified = () => {
+      events.push('old-publication-verified')
+      expectCooperativePublicationLockHeld(fixture.destination)
+      expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+      expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+      expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('fixture cases is not valid JSON')
+
+    expect(events).toEqual([
+      'staged-cases-corrupted',
+      'rollback-under-lock',
+      'old-publication-verified',
+    ])
+    expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+    expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    expect(publicationResidue(fixture.destination)).toEqual([])
+  })
+
+  test('rejects invalid installed manifest and restores the old publication under lock', async () => {
+    const fixture = await createExtractorFixture()
+    const oldCases = Buffer.from('old-cases-bytes')
+    const oldManifest = Buffer.from('old-manifest-bytes')
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'cases.json'), oldCases)
+    writeFileSync(join(fixture.destination, 'manifest.json'), oldManifest)
+    const oldIdentity = publicationDirectoryIdentity(fixture.destination)
+    const events: string[] = []
+    fixture.environment.hooks.afterPublishStaging = (destination) => {
+      events.push('installed-manifest-corrupted')
+      writeFileSync(join(destination, 'manifest.json'), '{invalid-json')
+    }
+    fixture.environment.hooks.beforeRollback = () => {
+      events.push('rollback-under-lock')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+    fixture.environment.hooks.afterRollbackVerified = () => {
+      events.push('old-publication-verified')
+      expectCooperativePublicationLockHeld(fixture.destination)
+      expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+      expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+      expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('fixture manifest is not valid JSON')
+
+    expect(events).toEqual([
+      'installed-manifest-corrupted',
+      'rollback-under-lock',
+      'old-publication-verified',
+    ])
+    expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+    expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    expect(publicationResidue(fixture.destination)).toEqual([])
+  })
+
+  test('rejects a canonical installed manifest with a false fixture content hash', async () => {
+    const fixture = await createExtractorFixture()
+    const oldCases = Buffer.from('old-cases-bytes')
+    const oldManifest = Buffer.from('old-manifest-bytes')
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'cases.json'), oldCases)
+    writeFileSync(join(fixture.destination, 'manifest.json'), oldManifest)
+    const oldIdentity = publicationDirectoryIdentity(fixture.destination)
+    const events: string[] = []
+    let canonicalMutationApplied = false
+    fixture.environment.hooks.afterPublishStaging = (destination) => {
+      events.push('installed-manifest-semantically-corrupted')
+      const path = join(destination, 'manifest.json')
+      const original = readFileSync(path, 'utf8')
+      const mutated = original.replace(
+        /("fixtureContentHash": ")[0-9a-f]{64}(")/,
+        `$1${'0'.repeat(64)}$2`,
+      )
+      canonicalMutationApplied = mutated !== original
+        && Buffer.byteLength(mutated) === Buffer.byteLength(original)
+      writeFileSync(path, mutated)
+    }
+    fixture.environment.hooks.beforeRollback = () => {
+      events.push('rollback-under-lock')
+      expectCooperativePublicationLockHeld(fixture.destination)
+    }
+    fixture.environment.hooks.afterRollbackVerified = () => {
+      events.push('old-publication-verified')
+      expectCooperativePublicationLockHeld(fixture.destination)
+      expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+      expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+      expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    }
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('fixture manifest content hash does not match actual cases')
+
+    expect(events).toEqual([
+      'installed-manifest-semantically-corrupted',
+      'rollback-under-lock',
+      'old-publication-verified',
+    ])
+    expect(canonicalMutationApplied).toBe(true)
+    expect(publicationDirectoryIdentity(fixture.destination)).toEqual(oldIdentity)
+    expect(readFileSync(join(fixture.destination, 'cases.json'))).toEqual(oldCases)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'))).toEqual(oldManifest)
+    expect(publicationResidue(fixture.destination)).toEqual([])
   })
 
   test('restores and verifies the original before a second author can enter', async () => {

@@ -272,6 +272,11 @@ interface RecoveryArchiveIdentity {
   readonly sha256: string
 }
 
+interface ExpectedFixtureFiles {
+  readonly casesJson: string
+  readonly manifestJson: string
+}
+
 interface FileIdentity {
   readonly dev: number
   readonly ino: number
@@ -345,6 +350,92 @@ function stableValue(value: unknown): unknown {
 
 function stableJson(value: unknown) {
   return `${JSON.stringify(stableValue(value), null, 2)}\n`
+}
+
+function parseFixtureJson(bytes: Uint8Array, label: string): unknown {
+  try {
+    return JSON.parse(Buffer.from(bytes).toString('utf8')) as unknown
+  } catch {
+    throw new Error(`${label} is not valid JSON`)
+  }
+}
+
+function parseStrictFixtureCases(bytes: Uint8Array) {
+  const parsed = parseFixtureJson(bytes, 'fixture cases')
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('fixture cases envelope must be an object')
+  }
+  const record = parsed as Record<string, unknown>
+  const keys = Object.keys(record).sort(codePointCompare)
+  if (JSON.stringify(keys) !== JSON.stringify(['cases', 'schemaVersion'])) {
+    throw new Error('fixture cases envelope must contain exactly cases and schemaVersion')
+  }
+  if (record.schemaVersion !== 1) throw new Error('fixture cases schemaVersion must be 1')
+  return {
+    schemaVersion: 1 as const,
+    cases: legacyObservableTraceCaseSchema.array().parse(record.cases),
+  }
+}
+
+function bytesEqual(left: Uint8Array | string, right: Uint8Array | string) {
+  return Buffer.from(left).equals(Buffer.from(right))
+}
+
+function validateFixtureDirectoryOnDisk(
+  directory: string,
+  directoryIdentity: FileIdentity,
+  expected: ExpectedFixtureFiles,
+) {
+  revalidateRegularDirectory(directory, directoryIdentity, 'fixture directory')
+  const entries = readdirSync(directory).sort(codePointCompare)
+  revalidateRegularDirectory(directory, directoryIdentity, 'fixture directory')
+  if (JSON.stringify(entries) !== JSON.stringify(['cases.json', 'manifest.json'])) {
+    throw new Error('fixture directory must contain exactly cases.json and manifest.json')
+  }
+
+  const casesPath = join(directory, 'cases.json')
+  const manifestPath = join(directory, 'manifest.json')
+  const actualCases = readNoFollowFileWithIdentity(casesPath, 'fixture cases file')
+  const actualManifest = readNoFollowFileWithIdentity(manifestPath, 'fixture manifest file')
+  revalidateRegularFile(casesPath, actualCases.identity, 'fixture cases file')
+  revalidateRegularFile(manifestPath, actualManifest.identity, 'fixture manifest file')
+
+  const casesEnvelope = parseStrictFixtureCases(actualCases.bytes)
+  const manifest = fixtureManifestSchema.parse(parseFixtureJson(
+    actualManifest.bytes,
+    'fixture manifest',
+  ))
+  const canonicalCasesJson = stableJson(casesEnvelope)
+  const canonicalManifestJson = stableJson(manifest)
+  if (!bytesEqual(actualCases.bytes, canonicalCasesJson)) {
+    throw new Error('fixture cases file is not stable canonical JSON')
+  }
+  if (!bytesEqual(actualManifest.bytes, canonicalManifestJson)) {
+    throw new Error('fixture manifest file is not stable canonical JSON')
+  }
+
+  const actualCaseIds = casesEnvelope.cases.map(({ id }) => id)
+  if (
+    manifest.caseCount !== casesEnvelope.cases.length
+    || JSON.stringify(manifest.caseIds) !== JSON.stringify(actualCaseIds)
+  ) throw new Error('fixture manifest case identity does not match actual cases')
+  const actualCasesHash = sha256Bytes(actualCases.bytes)
+  if (manifest.fixtureContentHash !== actualCasesHash) {
+    throw new Error('fixture manifest content hash does not match actual cases')
+  }
+
+  if (
+    !bytesEqual(actualCases.bytes, expected.casesJson)
+    || actualCasesHash !== sha256Bytes(expected.casesJson)
+  ) throw new Error('fixture cases file does not match generated cases')
+  if (
+    !bytesEqual(actualManifest.bytes, expected.manifestJson)
+    || sha256Bytes(actualManifest.bytes) !== sha256Bytes(expected.manifestJson)
+  ) throw new Error('fixture manifest file does not match generated manifest')
+
+  revalidateRegularFile(casesPath, actualCases.identity, 'fixture cases file')
+  revalidateRegularFile(manifestPath, actualManifest.identity, 'fixture manifest file')
+  revalidateRegularDirectory(directory, directoryIdentity, 'fixture directory')
 }
 
 function isMissingPathError(error: unknown): error is NodeJS.ErrnoException {
@@ -1181,6 +1272,7 @@ export async function runLegacyExtractor(
   let worktreeAttempted = false
   let backupIdentity: FileIdentity | undefined
   let recoveryArchiveIdentity: RecoveryArchiveIdentity | undefined
+  let expectedFixtureFiles: ExpectedFixtureFiles | undefined
   let installedOutputIdentity: FileIdentity | undefined
   let publicationTargetMutated = false
   let preCommitRecoveryComplete = true
@@ -1549,14 +1641,19 @@ export async function runLegacyExtractor(
       caseCount: cases.length,
       fixtureContentHash: sha256Bytes(casesJson),
     })
+    const manifestJson = stableJson(manifest)
+    expectedFixtureFiles = { casesJson, manifestJson }
 
     if (!options.verifyOnly) {
       mkdirSync(paths.staging, { mode: 0o700 })
       stagingIdentity = snapshotRegularDirectory(paths.staging, 'staging output')
       writeExclusive(join(paths.staging, 'cases.json'), casesJson)
-      writeExclusive(join(paths.staging, 'manifest.json'), stableJson(manifest))
-      legacyObservableTraceCaseSchema.array().parse(cases)
-      fixtureManifestSchema.parse(manifest)
+      writeExclusive(join(paths.staging, 'manifest.json'), manifestJson)
+      validateFixtureDirectoryOnDisk(
+        paths.staging,
+        stagingIdentity,
+        expectedFixtureFiles,
+      )
     }
   } catch (error) {
     primaryError = error
@@ -1646,8 +1743,13 @@ export async function runLegacyExtractor(
         revalidateRegularDirectory(paths.backup, existingOutputIdentity, 'backup output')
       }
       if (!stagingIdentity) throw new Error('staging output is missing')
+      if (!expectedFixtureFiles) throw new Error('validated fixture files are missing')
       environment.hooks.beforePublishStaging?.(paths.staging)
-      revalidateRegularDirectory(paths.staging, stagingIdentity, 'staging output')
+      validateFixtureDirectoryOnDisk(
+        paths.staging,
+        stagingIdentity,
+        expectedFixtureFiles,
+      )
       assertNoFollowPath(environment.destination, {
         kind: 'directory',
         allowMissingLeaf: true,
@@ -1664,6 +1766,11 @@ export async function runLegacyExtractor(
         'installed output',
       )
       environment.hooks.afterPublishStaging?.(environment.destination)
+      validateFixtureDirectoryOnDisk(
+        environment.destination,
+        installedOutputIdentity,
+        expectedFixtureFiles,
+      )
       if (backupIdentity) {
         recoveryArchiveIdentity = createVerifiedRecoveryArchive(
           paths.backup,
