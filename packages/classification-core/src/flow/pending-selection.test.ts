@@ -208,6 +208,172 @@ describe('updatePendingSelection', () => {
     }])
   })
 
+  test.each(['type', 'optionId'] as const)(
+    'rejects an accessor-backed %s without invoking its throwing getter',
+    (key) => {
+      let getterCalls = 0
+      const operation: Record<string, unknown> = {
+        type: 'select',
+        optionId: 'pork',
+      }
+      Object.defineProperty(operation, key, {
+        enumerable: true,
+        configurable: true,
+        get() {
+          getterCalls += 1
+          throw new Error(`executed ${key} getter`)
+        },
+      })
+      const current = ['none', 'pork']
+      const callerObjects = captureCallerObjects([operation, current])
+
+      const result = updatePendingSelection(
+        makeQuestionState(),
+        current,
+        operation as unknown as PendingSelectionOperation<string>,
+      )
+
+      expect(getterCalls).toBe(0)
+      expect(result.optionIds).toEqual(['pork', 'none'])
+      expect(result.diagnostics).toMatchObject([{
+        code: 'STRUCTURE_INVALID',
+        path: `/operation/${key}`,
+        expected: 'own enumerable data property',
+        received: 'accessor',
+      }])
+      expect(Object.isFrozen(result)).toBe(true)
+      expect(Object.isFrozen(result.diagnostics[0])).toBe(true)
+      expectCallerObjectsUnchanged(callerObjects)
+    },
+  )
+
+  test.each(['type', 'optionId'] as const)(
+    'rejects a prototype-provided %s as a missing own operation field',
+    (key) => {
+      const prototype = { [key]: key === 'type' ? 'select' : 'pork' }
+      const operation = Object.assign(
+        Object.create(prototype) as Record<string, unknown>,
+        key === 'type' ? { optionId: 'pork' } : { type: 'select' },
+      )
+      const current = ['none', 'pork']
+      const callerObjects = captureCallerObjects([prototype, operation, current])
+
+      const result = updatePendingSelection(
+        makeQuestionState(),
+        current,
+        operation as unknown as PendingSelectionOperation<string>,
+      )
+
+      expect(result.optionIds).toEqual(['pork', 'none'])
+      expect(result.diagnostics).toMatchObject([{
+        code: 'STRUCTURE_INVALID',
+        path: `/operation/${key}`,
+        expected: 'own enumerable data property',
+        received: 'missing',
+      }])
+      expect(Object.isFrozen(result)).toBe(true)
+      expect(Object.isFrozen(result.optionIds)).toBe(true)
+      expect(Object.isFrozen(result.diagnostics)).toBe(true)
+      expectCallerObjectsUnchanged(callerObjects)
+    },
+  )
+
+  test.each(['type', 'optionId'] as const)(
+    'rejects a non-enumerable own %s operation field',
+    (key) => {
+      const operation: Record<string, unknown> = {
+        type: 'select',
+        optionId: 'pork',
+      }
+      Object.defineProperty(operation, key, {
+        value: operation[key],
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      })
+
+      const result = updatePendingSelection(
+        makeQuestionState(),
+        ['pork'],
+        operation as unknown as PendingSelectionOperation<string>,
+      )
+
+      expect(result.optionIds).toEqual(['pork'])
+      expect(result.diagnostics).toMatchObject([{
+        code: 'STRUCTURE_INVALID',
+        path: `/operation/${key}`,
+        expected: 'own enumerable data property',
+        received: 'non-enumerable',
+      }])
+      expect(Object.isFrozen(result.diagnostics[0])).toBe(true)
+      expect(Object.isFrozen(operation)).toBe(false)
+    },
+  )
+
+  test.each([
+    { name: 'function', value: function callerOwnedType() {} },
+    { name: 'symbol', value: Symbol('caller-owned-type') },
+  ])('normalizes a caller-owned $name type without retaining it', ({ name, value }) => {
+    const operation = { type: value, optionId: 'pork' }
+
+    const result = updatePendingSelection(
+      makeQuestionState(),
+      ['pork'],
+      operation as unknown as PendingSelectionOperation<string>,
+    )
+
+    expect(result.optionIds).toEqual(['pork'])
+    expect(result.diagnostics).toMatchObject([{
+      code: 'STRUCTURE_INVALID',
+      path: '/operation/type',
+      expected: ['select', 'deselect'],
+      received: name,
+    }])
+    expect(result.diagnostics[0]?.received).not.toBe(value)
+    expect(Object.isFrozen(result.diagnostics[0])).toBe(true)
+    expect(Object.isFrozen(operation)).toBe(false)
+  })
+
+  test('rejects an array operation even when it provides usable-looking fields', () => {
+    const operation = Object.assign([], { type: 'select', optionId: 'none' })
+
+    const result = updatePendingSelection(
+      makeQuestionState(),
+      ['pork'],
+      operation as unknown as PendingSelectionOperation<string>,
+    )
+
+    expect(result.optionIds).toEqual(['pork'])
+    expect(result.diagnostics).toMatchObject([{
+      code: 'STRUCTURE_INVALID',
+      path: '/operation',
+      expected: 'non-array object',
+      received: 'array',
+    }])
+    expect(Object.isFrozen(result)).toBe(true)
+    expect(Object.isFrozen(operation)).toBe(false)
+  })
+
+  test('accepts structural extra fields without reading an extra accessor', () => {
+    let getterCalls = 0
+    const operation = { type: 'select', optionId: 'none' } as const
+    Object.defineProperty(operation, 'metadata', {
+      enumerable: true,
+      configurable: true,
+      get() {
+        getterCalls += 1
+        throw new Error('executed metadata getter')
+      },
+    })
+    const callerObjects = captureCallerObjects([operation])
+
+    const result = updatePendingSelection(makeQuestionState(), ['pork'], operation)
+
+    expect(getterCalls).toBe(0)
+    expect(result).toEqual({ optionIds: ['none'], diagnostics: [] })
+    expectCallerObjectsUnchanged(callerObjects)
+  })
+
   test.each([
     {
       name: 'canonical no-op',

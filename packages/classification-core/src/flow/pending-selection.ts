@@ -56,6 +56,35 @@ function operationDiagnostic(
   })
 }
 
+type OperationField = 'type' | 'optionId'
+
+type OperationFieldResult =
+  | { readonly ok: true; readonly value: unknown }
+  | {
+      readonly ok: false
+      readonly received: 'accessor' | 'missing' | 'non-enumerable'
+    }
+
+function describeReceived(value: unknown) {
+  if (typeof value === 'string') return value
+  if (value === null) return 'null'
+  if (Array.isArray(value)) return 'array'
+  return typeof value
+}
+
+function readOperationField(
+  descriptors: PropertyDescriptorMap,
+  field: OperationField,
+): OperationFieldResult {
+  const descriptor = descriptors[field]
+  if (!descriptor) return { ok: false, received: 'missing' }
+  if (!descriptor.enumerable) return { ok: false, received: 'non-enumerable' }
+  if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+    return { ok: false, received: 'accessor' }
+  }
+  return { ok: true, value: descriptor.value }
+}
+
 export function updatePendingSelection<
   Question extends string,
   Option extends string,
@@ -66,18 +95,31 @@ export function updatePendingSelection<
 ): PendingSelectionResult<Option> {
   const current = canonicalPending(state, pendingOptionIds)
   const candidate = operation as unknown
-  if (!candidate || typeof candidate !== 'object') {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
     return makeResult(current, [operationDiagnostic(
       state,
       'STRUCTURE_INVALID',
       '/operation',
-      'Pending selection operation must be an object',
-      { expected: 'object', received: candidate === null ? null : typeof candidate },
+      'Pending selection operation must be a non-array object',
+      { expected: 'non-array object', received: describeReceived(candidate) },
     )])
   }
 
-  const runtimeOperation = candidate as { readonly type?: unknown; readonly optionId?: unknown }
-  if (runtimeOperation.type !== 'select' && runtimeOperation.type !== 'deselect') {
+  const descriptors = Object.getOwnPropertyDescriptors(candidate)
+  const typeField = readOperationField(descriptors, 'type')
+  if (!typeField.ok) {
+    return makeResult(current, [operationDiagnostic(
+      state,
+      'STRUCTURE_INVALID',
+      '/operation/type',
+      'Pending selection type must be an own enumerable data property',
+      {
+        expected: 'own enumerable data property',
+        received: typeField.received,
+      },
+    )])
+  }
+  if (typeField.value !== 'select' && typeField.value !== 'deselect') {
     return makeResult(current, [operationDiagnostic(
       state,
       'STRUCTURE_INVALID',
@@ -85,13 +127,25 @@ export function updatePendingSelection<
       'Pending selection operation type must be select or deselect',
       {
         expected: ['select', 'deselect'],
-        received: typeof runtimeOperation.type === 'object'
-          ? typeof runtimeOperation.type
-          : runtimeOperation.type,
+        received: describeReceived(typeField.value),
       },
     )])
   }
-  if (typeof runtimeOperation.optionId !== 'string') {
+
+  const optionIdField = readOperationField(descriptors, 'optionId')
+  if (!optionIdField.ok) {
+    return makeResult(current, [operationDiagnostic(
+      state,
+      'STRUCTURE_INVALID',
+      '/operation/optionId',
+      'Pending selection optionId must be an own enumerable data property',
+      {
+        expected: 'own enumerable data property',
+        received: optionIdField.received,
+      },
+    )])
+  }
+  if (typeof optionIdField.value !== 'string') {
     return makeResult(current, [operationDiagnostic(
       state,
       'STRUCTURE_INVALID',
@@ -99,14 +153,13 @@ export function updatePendingSelection<
       'Pending selection optionId must be a string',
       {
         expected: 'string',
-        received: runtimeOperation.optionId === null
-          ? null
-          : typeof runtimeOperation.optionId,
+        received: describeReceived(optionIdField.value),
       },
     )])
   }
 
-  const optionId = runtimeOperation.optionId as Option
+  const operationType = typeField.value
+  const optionId = optionIdField.value as Option
   if (!state.optionOrder.includes(optionId)) {
     return makeResult(current, [operationDiagnostic(
       state,
@@ -134,7 +187,7 @@ export function updatePendingSelection<
     )])
   }
 
-  if (runtimeOperation.type === 'deselect') {
+  if (operationType === 'deselect') {
     if (!current.includes(optionId)) return makeResult(current)
     const deselected = current.filter((candidateId) => candidateId !== optionId)
     if (deselected.length > 0 || state.emptyBehavior.type === 'allow-empty') {
