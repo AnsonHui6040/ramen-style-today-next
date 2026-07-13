@@ -1,7 +1,8 @@
 # Batch 2A Questions and Flow Design
 
-- **Status:** Direction approved; written specification review required
+- **Status:** Final — Approved for implementation
 - **Direction approval:** Approved by the user on 2026-07-13
+- **Written specification approval:** Approved by the user on 2026-07-13 after the required review corrections
 - **Repository:** `AnsonHui6040/ramen-style-today-next`
 - **Legacy oracle:** `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`
 - **Legacy tree:** `3e527de876cfeccfd3154ddc492830d71c4cfd9a`
@@ -49,6 +50,8 @@ Batch 2A does not own:
 - production cutover or changes to the legacy repository
 
 `weight` metadata may be preserved on the correct domain node for later migration, but no Batch 2A runtime function may read it or produce a score.
+
+The reports “簡潔而細緻的拉麵分類問卷設計報告” and “台日拉麵精簡分類與短問卷設計報告” provide product and domain rationale for the eight-question adaptive inventory, observable source fields, dynamic branching, and separation of derived style labels from raw taxonomy fields. They are research inputs, not behavioral oracles. Where their proposed taxonomy differs from verified legacy behavior, the frozen legacy oracle and this approved specification govern Batch 2A parity.
 
 ## 3. Package and dependency boundaries
 
@@ -112,6 +115,8 @@ interface QuestionDefinitionSource {
   allowedOptions?: AllowedOptionDecisionTable
   autoAnswer?: AutoAnswerRuleSource
   initialUiOptionIds?: readonly OptionId[]
+  pendingSelection?: PendingSelectionPolicySource
+  weight?: number
 }
 
 interface OptionDefinitionSource {
@@ -123,7 +128,14 @@ interface OptionDefinitionSource {
   }
   availableWhen?: SerializableCondition
   exclusive?: boolean
-  weight?: number
+}
+
+type EmptyPendingSelectionBehavior =
+  | { type: 'allow-empty' }
+  | { type: 'restore-initial-ui-options' }
+
+interface PendingSelectionPolicySource {
+  emptyBehavior: EmptyPendingSelectionBehavior
 }
 ```
 
@@ -141,6 +153,7 @@ Selection constraints must obey these local invariants:
 - every exclusive option belongs to its question and is valid by itself
 - the production model supports at most one exclusive option per question unless a later approved contract defines multi-exclusive behavior
 - `initialUiOptionIds` belong to the question and form a legal displayable selection in every reachable interactive state where they may be shown, but they are never answers
+- `restore-initial-ui-options` requires a non-empty, legal `initialUiOptionIds` selection
 - every referenced question and option exists and belongs to the expected owner
 
 ## 5. Compiler pipeline and deterministic canonicalization
@@ -329,9 +342,9 @@ The helper preserves legacy interaction semantics:
 - selecting an ordinary option clears the exclusive option
 - selecting a new ordinary option at `maxSelections` is a no-op
 - deselecting an ordinary option preserves the remaining canonical order
-- for `exclusions`, deselecting the last selection restores the configured initial UI option `none`
+- when compiled `emptyBehavior` is `restore-initial-ui-options`, deselecting the last selection restores the compiled `initialUiOptionIds`
 
-The returned pending selection is still unsubmitted. A future adapter must call `applyAnswer` when the user explicitly confirms the displayed selection.
+The `exclusions` source definition selects `restore-initial-ui-options` and configures `none` as its initial UI option. The generic helper does not branch on `QuestionId`. The returned pending selection is still unsubmitted. A future adapter must call `applyAnswer` when the user explicitly confirms the displayed selection.
 
 ## 12. Flow evaluation, repairs, and invalid data
 
@@ -358,7 +371,7 @@ Safe repairs are limited to deterministic stale-state handling:
 - remove known options that became disallowed under current upstream answers
 - replace an answer on a now-forced question with its unique legal forced value
 
-If removing stale disallowed options leaves fewer than the effective minimum, the canonical view omits that question's answer entirely and returns it as incomplete with a repair. It does not preserve an under-minimum partial answer or invent replacement options.
+An under-minimum result is repairable only when the compiler can prove that the submitted selection is legal in at least one reachable upstream semantic state and that the current invalidity is explained solely by dependency conditions making one or more known options stale. Because `AnswerDraft` contains no history, this proof establishes a deterministic stale-state explanation rather than asserting when the answer was actually submitted. After removing those stale options, if the remainder is below the effective minimum, the canonical view omits the whole question answer and returns `incomplete` with a repair. It does not preserve an under-minimum partial answer or invent replacement options.
 
 Repairs affect only the canonical view and are always reported; they never modify the input draft. A state containing repairs may still be complete. Batch 2B will decide how and when a persisted draft is rewritten.
 
@@ -368,7 +381,7 @@ The following are invalid rather than repairable:
 - an option belonging to another question
 - duplicate selections
 - exclusive-option conflicts
-- submitted selection counts that remain outside the effective bounds after all applicable stale-option repairs
+- submitted selection counts that were intrinsically outside the effective bounds and cannot be explained solely by deterministic stale-option removal caused by an upstream semantic change
 - illegal input shape or primitive type
 - an ambiguous or internally inconsistent model state
 
@@ -485,11 +498,15 @@ The expected legacy identity is:
 
 ```ts
 const legacySourceIdentity = {
-  repository: 'https://github.com/AnsonHui6040/ramen-style-today.git',
+  host: 'github.com',
+  owner: 'AnsonHui6040',
+  repository: 'ramen-style-today',
   commit: 'eebf00b7ddfbbe6f01ff598e57f1e17197068a37',
   treeHash: '3e527de876cfeccfd3154ddc492830d71c4cfd9a',
 } as const
 ```
+
+Repository comparison uses this normalized host, owner, and repository identity rather than literal remote text. Equivalent HTTPS, SSH, and GitHub CLI checkouts are accepted after normalization. The full commit, root tree, relevant tracked source hashes, and lockfile hash remain mandatory content checks; the remote is supporting identity evidence, not the sole trust boundary.
 
 Extraction must:
 
@@ -533,13 +550,14 @@ tools/parity/fixtures/questions/expected-divergences.json
 The manifest records:
 
 - fixture and case schema versions
-- canonical repository URL, full commit, and tree hash
+- normalized repository identity, full commit, and tree hash
 - relevant legacy source and lockfile hashes
 - extractor and instrumentation identities
 - runtime environment contract
 - ordered case IDs and case count
-- parity suite version
-- the compiled `semanticHash` verified by the last successful parity run
+- deterministic fixture content hash
+
+The fixture content hash is calculated from the canonical `cases.json` payload; it does not recursively include the manifest that stores it. The frozen manifest never records the latest implementation's semantic hash, parity result, implementation SHA, or current parity-suite version. Those values are mutable verification evidence and belong to classification provenance and the migration ledger.
 
 `cases.json` is a versioned discriminated union rather than one object with many inapplicable fields:
 
@@ -605,7 +623,25 @@ Parity compares semantics rather than legacy and new internal serialization. On 
 
 Large complete diffs are written to an untracked temporary artifact rather than flooding CI logs.
 
-Frozen `legacy-v1` fixtures always remain the historical legacy truth. An approved intentional behavior change must not rewrite them or turn off mismatch checking. It requires an ADR, user approval, implementation evidence, a reviewed semantic diff, and an explicit per-case entry in `tools/parity/fixtures/questions/expected-divergences.json`. Each entry records the legacy expected snapshot, approved new expectation, affected semantic hash, ADR, approval identity, and rationale. Divergences are explicit data consumed by the parity gate; broad ignore rules are forbidden.
+Frozen `legacy-v1` fixtures always remain the historical legacy truth. An approved intentional behavior change must not rewrite them or turn off mismatch checking. It requires an ADR, user approval, implementation evidence, a reviewed semantic diff, and an explicit per-case entry in `tools/parity/fixtures/questions/expected-divergences.json`.
+
+Each divergence stores only the reviewed delta rather than duplicating a complete snapshot:
+
+```ts
+interface ExpectedDivergence {
+  caseId: ParityCaseId
+  jsonPointer: string
+  operation: 'add' | 'replace' | 'remove'
+  legacyValueHash: string
+  approvedValue?: JsonValue
+  semanticHash: string
+  adr: string
+  approvalIdentity: string
+  rationale: string
+}
+```
+
+The parity gate verifies `legacyValueHash` against the frozen value, or against a stable missing-value sentinel for `add`, before applying the versioned JSON-Patch-style operation. `approvedValue` is required for `add` and `replace` and forbidden for `remove`. Multiple changed locations use multiple deterministically ordered entries. Broad ignore rules and unscoped whole-snapshot replacement are forbidden.
 
 ## 19. Provenance and readiness
 
@@ -622,28 +658,37 @@ type Assurance =
 
 Batch 2A provenance is:
 
-| Domain | Origin | Maximum Batch 2A assurance |
+| Domain | Origin | Batch 2A assurance effect |
 | --- | --- | --- |
-| Questions and flow | `legacy-production` | `parity-verified` when all gates pass |
-| Styles | `synthetic` | `structurally-validated` |
-| Scoring policy | `synthetic` | `structurally-validated` |
+| Questions and flow | `legacy-production` | Raised to `parity-verified` when all gates pass |
+| Styles | `synthetic` | Not raised; remains independently established and capped at `structurally-validated` in this batch |
+| Scoring policy | `synthetic` | Not raised; remains independently established and capped at `structurally-validated` in this batch |
 
-Styles and scoring are not `compiler-validated` merely because the question compiler succeeds. Each domain receives that assurance only from its corresponding semantic compiler.
+Batch 2A does not create assurance evidence for styles or scoring. They are not `compiler-validated` merely because the question compiler succeeds; each domain receives that assurance only from its corresponding semantic compiler.
 
-The semantic artifact does not directly claim parity assurance. The parity fixture manifest and classification provenance manifest record:
+The semantic artifact and frozen fixture manifest do not directly claim current parity assurance. The classification provenance manifest records immutable origin identity separately from current verification evidence:
 
 ```ts
 interface QuestionParityProvenance {
   origin: 'legacy-production'
-  assurance: 'parity-verified'
-  sourceRepository: string
+  sourceRepository: {
+    host: string
+    owner: string
+    repository: string
+  }
   sourceCommit: string
   sourceTreeHash: string
   fixtureSchemaVersion: string
   extractorVersion: string
   instrumentationHash: string
+}
+
+interface QuestionParityVerification {
+  assurance: 'parity-verified'
+  fixtureManifestHash: string
   paritySuiteVersion: string
   verifiedSemanticHash: string
+  implementationSha: string
 }
 ```
 
@@ -684,7 +729,22 @@ It never writes tracked outputs, regenerates fixtures, contacts GitHub, or execu
 
 CI uses the offline `verify` command for pull requests. Candidate-branch or acceptance workflows run `verify:acceptance` after the implementation SHA has completed CI.
 
-The migration ledger records the verified implementation SHA, not the SHA of the later metadata commit that records its evidence. A subsequent acceptance commit is valid when the implementation SHA is an ancestor of its HEAD and no semantic files changed after that implementation SHA. This avoids self-referential commit evidence.
+The migration ledger records the verified implementation SHA, not the SHA of the later metadata commit that records its evidence. A subsequent acceptance commit is valid when the implementation SHA is an ancestor of its HEAD and no owned semantic path changed after that implementation SHA. This avoids self-referential commit evidence.
+
+The classification manifest or migration ledger declares the checked path patterns as machine-readable data:
+
+```ts
+const semanticPaths = [
+  'packages/classification-core/src/definitions/questions.ts',
+  'packages/classification-core/src/compiler/questions/**',
+  'packages/classification-core/src/generated/question-model.ts',
+  'packages/classification-core/src/flow/**',
+  'tools/parity/questions/**',
+  'tools/parity/fixtures/questions/**',
+] as const
+```
+
+Acceptance resolves these repository-relative POSIX glob patterns and compares their Git object changes between the implementation SHA and candidate HEAD. It does not infer semantic ownership from filenames, commit messages, or human review.
 
 Test counts are recorded as run evidence, not permanent architecture thresholds. Acceptance requires all required test projects and categories to be discovered and pass; merging parameterized tests does not by itself fail a numeric gate.
 
