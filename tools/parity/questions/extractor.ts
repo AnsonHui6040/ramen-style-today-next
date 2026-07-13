@@ -7,6 +7,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -226,6 +227,7 @@ export type PublicationResult =
     }
 
 type SuccessfulPublicationResult = Extract<PublicationResult, { readonly published: true }>
+type FailedPublicationResult = Extract<PublicationResult, { readonly status: 'failed' }>
 
 export type LegacyExtractorResult = LegacyExtractorEvidence & (
   | {
@@ -236,11 +238,38 @@ export type LegacyExtractorResult = LegacyExtractorEvidence & (
   | SuccessfulPublicationResult
 )
 
+export type LegacyExtractorCommandResult = LegacyExtractorResult | FailedPublicationResult
+
 type LockReleaseState = 'held' | 'released' | 'indeterminate'
 
 interface LockReleaseResult {
   readonly state: LockReleaseState
   readonly error?: unknown
+}
+
+class PublicationFailureException extends Error {
+  constructor(
+    readonly publicationCode: PublicationError['code'],
+    message: string,
+  ) {
+    super(message)
+  }
+}
+
+type RecoveryArchiveEntry =
+  | {
+      readonly path: string
+      readonly type: 'directory'
+    }
+  | {
+      readonly path: string
+      readonly type: 'file'
+      readonly contentBase64: string
+    }
+
+interface RecoveryArchiveIdentity {
+  readonly file: FileIdentity
+  readonly sha256: string
 }
 
 interface FileIdentity {
@@ -271,6 +300,7 @@ const publicationCleanupWarningMessage =
   'Published fixtures; retained a verified recovery backup after backup cleanup failed.'
 const indeterminateLockReleaseMessage =
   'publication lock release is indeterminate; recovery required'
+const publicationFailedMessage = 'legacy extraction or publication failed'
 const defaultAuthoringSources = extractorAuthoringSourcePaths.map((relativePath) => ({
   relativePath,
   path: fileURLToPath(new URL(`./${basename(relativePath)}`, import.meta.url)),
@@ -1004,36 +1034,116 @@ function regularFileIdentityMatches(path: string, expected: FileIdentity) {
   )
 }
 
+function recoveryEntryPath(root: string, path: string) {
+  const relation = relative(resolve(root), resolve(path))
+  const segments = relation.split(sep)
+  if (
+    !relation
+    || isAbsolute(relation)
+    || relation === '..'
+    || relation.startsWith(`..${sep}`)
+    || segments.some((segment) => !segment || segment === '.' || segment === '..')
+  ) throw new Error('recovery backup contains an unsafe relative path')
+  return segments.join('/')
+}
+
+function collectRecoveryArchiveEntries(
+  root: string,
+  directory: string,
+): readonly RecoveryArchiveEntry[] {
+  const directoryIdentity = snapshotRegularDirectory(directory, 'recovery source directory')
+  const entries: RecoveryArchiveEntry[] = []
+  const names = readdirSync(directory).sort(codePointCompare)
+  for (const name of names) {
+    const path = join(directory, name)
+    const relativePath = recoveryEntryPath(root, path)
+    const stats = lstatSync(path)
+    if (stats.isSymbolicLink()) {
+      throw new Error('recovery backup contains a symbolic link')
+    }
+    if (stats.isDirectory()) {
+      entries.push({ path: relativePath, type: 'directory' })
+      entries.push(...collectRecoveryArchiveEntries(root, path))
+      continue
+    }
+    if (stats.isFile()) {
+      entries.push({
+        path: relativePath,
+        type: 'file',
+        contentBase64: readNoFollowFile(path, `recovery file ${relativePath}`).toString('base64'),
+      })
+      continue
+    }
+    throw new Error('recovery backup contains an unsupported file type')
+  }
+  revalidateRegularDirectory(directory, directoryIdentity, 'recovery source directory')
+  return entries
+}
+
 // This authoring transaction assumes cooperative non-privileged local authors on the
 // declared macOS host; it does not claim safety against a hostile same-user race
 // between the final no-follow revalidation and the operating-system filesystem call.
-function verifyRecoveryBackupPath(
+function verifyRecoveryArchivePath(
   path: string,
   expected: FileIdentity,
+  expectedHash: string,
   recoveryParent: string,
 ) {
   if (dirname(resolve(path)) !== resolve(recoveryParent)) {
-    throw new Error('recovery backup escaped the approved same-parent boundary')
+    throw new Error('recovery archive escaped the approved same-parent boundary')
   }
   assertNoFollowPath(recoveryParent, { kind: 'directory', allowMissingLeaf: false })
-  revalidateRegularDirectory(path, expected, 'recovery backup')
+  revalidateRegularFile(path, expected, 'recovery archive')
   const canonicalParent = realpathSync(recoveryParent)
   const canonicalPath = realpathSync(path)
   if (dirname(canonicalPath) !== canonicalParent) {
-    throw new Error('recovery backup canonical path escaped the approved boundary')
+    throw new Error('recovery archive canonical path escaped the approved boundary')
   }
-  revalidateRegularDirectory(path, expected, 'recovery backup')
+  const bytes = readNoFollowFile(path, 'recovery archive')
+  if (sha256Bytes(bytes) !== expectedHash) throw new Error('recovery archive hash changed')
+  revalidateRegularFile(path, expected, 'recovery archive')
   return canonicalPath
+}
+
+function createVerifiedRecoveryArchive(
+  backupPath: string,
+  backupIdentity: FileIdentity,
+  archivePath: string,
+  recoveryParent: string,
+): RecoveryArchiveIdentity {
+  revalidateRegularDirectory(backupPath, backupIdentity, 'backup output')
+  const bytes = stableJson({
+    schemaVersion: 1,
+    entries: collectRecoveryArchiveEntries(backupPath, backupPath),
+  })
+  revalidateRegularDirectory(backupPath, backupIdentity, 'backup output')
+  let archiveCreated = false
+  try {
+    writeExclusive(archivePath, bytes)
+    archiveCreated = true
+    const file = snapshotRegularFile(archivePath, 'recovery archive')
+    const sha256 = sha256Bytes(bytes)
+    verifyRecoveryArchivePath(archivePath, file, sha256, recoveryParent)
+    return { file, sha256 }
+  } catch (error) {
+    const stats = archiveCreated ? lstatIfPresent(archivePath) : undefined
+    if (stats?.isFile() && !stats.isSymbolicLink()) unlinkSync(archivePath)
+    throw error
+  }
 }
 
 function combineErrors(primary: unknown, secondary: readonly unknown[]) {
   const primaryMessage = sanitizeExternalError(primary, maximumExternalMessageLength)
-  if (secondary.length === 0) return new Error(primaryMessage)
-  const detail = secondary.map((error) => sanitizeExternalError(error, 80)).join('; ')
-  return new Error(sanitizeExternalError(
-    `${primaryMessage} [cleanup: ${detail}]`,
-    maximumExternalMessageLength,
-  ))
+  const message = secondary.length === 0
+    ? primaryMessage
+    : sanitizeExternalError(
+        `${primaryMessage} [cleanup: ${secondary
+          .map((error) => sanitizeExternalError(error, 80)).join('; ')}]`,
+        maximumExternalMessageLength,
+      )
+  return primary instanceof PublicationFailureException
+    ? new PublicationFailureException(primary.publicationCode, message)
+    : new Error(message)
 }
 
 export async function runLegacyExtractor(
@@ -1047,6 +1157,7 @@ export async function runLegacyExtractor(
   const paths = {
     staging: join(outputParent, `.${outputName}.staging-${token}`),
     backup: join(outputParent, `.${outputName}.backup-${token}`),
+    recoveryArchive: join(outputParent, `.${outputName}.recovery-${token}.json`),
     extractionRoot: join(outputParent, `.${outputName}.extract-${token}`),
   }
   const worktree = join(paths.extractionRoot, 'worktree')
@@ -1069,6 +1180,7 @@ export async function runLegacyExtractor(
   let stagingIdentity: FileIdentity | undefined
   let worktreeAttempted = false
   let backupIdentity: FileIdentity | undefined
+  let recoveryArchiveIdentity: RecoveryArchiveIdentity | undefined
   let installedOutputIdentity: FileIdentity | undefined
   let publicationTargetMutated = false
   let preCommitRecoveryComplete = true
@@ -1552,9 +1664,26 @@ export async function runLegacyExtractor(
         'installed output',
       )
       environment.hooks.afterPublishStaging?.(environment.destination)
+      if (backupIdentity) {
+        recoveryArchiveIdentity = createVerifiedRecoveryArchive(
+          paths.backup,
+          backupIdentity,
+          paths.recoveryArchive,
+          outputParent,
+        )
+      }
     } catch (error) {
       primaryError = error
     }
+  }
+
+  if (
+    !primaryError
+    && installedOutputIdentity
+    && backupIdentity
+    && !recoveryArchiveIdentity
+  ) {
+    primaryError = new Error('recovery archive is missing before publication commit')
   }
 
   if (!primaryError && installedOutputIdentity) {
@@ -1565,36 +1694,67 @@ export async function runLegacyExtractor(
       primaryError = releaseResult.error ?? new Error('publication lock release failed while held')
     } else {
       indeterminateRelease = true
-      primaryError = new Error(indeterminateLockReleaseMessage)
+      primaryError = new PublicationFailureException(
+        'recovery-required',
+        indeterminateLockReleaseMessage,
+      )
     }
   }
 
-  if (publicationCommitted && backupIdentity) {
+  if (publicationCommitted && backupIdentity && recoveryArchiveIdentity) {
     const retainedBackupIdentity = backupIdentity
+    const retainedRecoveryArchive = recoveryArchiveIdentity
+    let backupRemoved = false
     for (let attempt = 1; attempt <= publicationCleanupAttemptLimit; attempt += 1) {
       try {
         environment.hooks.beforeRemoveBackup?.(paths.backup)
         removeOwnedPath(paths.backup, retainedBackupIdentity)
         backupIdentity = undefined
+        backupRemoved = true
         break
       } catch {
-        if (attempt !== publicationCleanupAttemptLimit) continue
+        if (attempt === publicationCleanupAttemptLimit) {
+          try {
+            const recoveryBackupPath = verifyRecoveryArchivePath(
+              paths.recoveryArchive,
+              retainedRecoveryArchive.file,
+              retainedRecoveryArchive.sha256,
+              outputParent,
+            )
+            publicationWarning = {
+              code: 'backup-cleanup-failed',
+              recoveryBackupPath,
+              cleanupAttempts: attempt,
+              message: publicationCleanupWarningMessage,
+            }
+          } catch {
+            publicationWarning = undefined
+          }
+        }
+      }
+    }
+    if (backupRemoved) {
+      for (let attempt = 1; attempt <= publicationCleanupAttemptLimit; attempt += 1) {
+        let recoveryBackupPath: string | undefined
         try {
-          const recoveryBackupPath = verifyRecoveryBackupPath(
-            paths.backup,
-            retainedBackupIdentity,
+          recoveryBackupPath = verifyRecoveryArchivePath(
+            paths.recoveryArchive,
+            retainedRecoveryArchive.file,
+            retainedRecoveryArchive.sha256,
             outputParent,
           )
-          publicationWarning = {
-            code: 'backup-cleanup-failed',
-            recoveryBackupPath,
-            cleanupAttempts: attempt,
-            message: publicationCleanupWarningMessage,
-          }
+          unlinkSync(paths.recoveryArchive)
+          recoveryArchiveIdentity = undefined
+          break
         } catch {
-          primaryError = new Error(
-            'published target committed but recovery backup verification failed; recovery required',
-          )
+          if (attempt === publicationCleanupAttemptLimit && recoveryBackupPath) {
+            publicationWarning = {
+              code: 'backup-cleanup-failed',
+              recoveryBackupPath,
+              cleanupAttempts: attempt,
+              message: publicationCleanupWarningMessage,
+            }
+          }
         }
       }
     }
@@ -1632,6 +1792,17 @@ export async function runLegacyExtractor(
         throw new Error('rollback failed to restore the original absent destination')
       }
       assertPublicationLockHeld()
+      if (recoveryArchiveIdentity) {
+        verifyRecoveryArchivePath(
+          paths.recoveryArchive,
+          recoveryArchiveIdentity.file,
+          recoveryArchiveIdentity.sha256,
+          outputParent,
+        )
+        unlinkSync(paths.recoveryArchive)
+        recoveryArchiveIdentity = undefined
+      }
+      assertPublicationLockHeld()
       environment.hooks.afterRollbackVerified?.(environment.destination)
       preCommitRecoveryComplete = true
     } catch (error) {
@@ -1658,27 +1829,46 @@ export async function runLegacyExtractor(
     }
   }
 
-  if (primaryError) throw combineErrors(primaryError, cleanupErrors)
-  if (cleanupErrors.length > 0) throw combineErrors('extractor cleanup failed', cleanupErrors)
   const evidence: LegacyExtractorEvidence = {
     cases,
     manifest,
     ignoredFingerprintsBefore: ignoredBefore,
     ignoredFingerprintsAfter: ignoredAfter,
   }
-  if (options.verifyOnly) {
-    return { ...evidence, status: 'verified', published: false }
+  if (publicationCommitted) {
+    if (publicationWarning) {
+      return {
+        ...evidence,
+        status: 'published-with-cleanup-warning',
+        published: true,
+        warning: publicationWarning,
+      }
+    }
+    return { ...evidence, status: 'published', published: true }
   }
-  if (!publicationCommitted) throw new Error('publication did not reach its commit point')
-  if (publicationWarning) {
+  if (primaryError) throw combineErrors(primaryError, cleanupErrors)
+  if (cleanupErrors.length > 0) throw combineErrors('extractor cleanup failed', cleanupErrors)
+  if (options.verifyOnly) return { ...evidence, status: 'verified', published: false }
+  throw new Error('publication did not reach its commit point')
+}
+
+export async function runLegacyExtractorCommand(
+  environment: ExtractorEnvironment,
+  options: RunLegacyExtractorOptions,
+): Promise<LegacyExtractorCommandResult> {
+  try {
+    return await runLegacyExtractor(environment, options)
+  } catch (error) {
+    const recoveryRequired = error instanceof PublicationFailureException
+      && error.publicationCode === 'recovery-required'
     return {
-      ...evidence,
-      status: 'published-with-cleanup-warning',
-      published: true,
-      warning: publicationWarning,
+      status: 'failed',
+      published: false,
+      error: recoveryRequired
+        ? { code: 'recovery-required', message: indeterminateLockReleaseMessage }
+        : { code: 'publication-failed', message: publicationFailedMessage },
     }
   }
-  return { ...evidence, status: 'published', published: true }
 }
 
 function snapshotRegularDirectory(path: string, label: string) {

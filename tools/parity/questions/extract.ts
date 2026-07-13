@@ -5,9 +5,11 @@ import { extractorAuthoringSourcePaths } from './contracts.js'
 import {
   createExtractorEnvironment,
   legacySourceIdentity,
-  runLegacyExtractor,
+  runLegacyExtractorCommand,
   sanitizeExternalError,
-  type LegacyExtractorResult,
+  type ExtractorEnvironment,
+  type LegacyExtractorCommandResult,
+  type RunLegacyExtractorOptions,
 } from './extractor.js'
 
 interface ExtractArguments {
@@ -21,9 +23,17 @@ const usage = 'Usage: extract.ts --legacy <absolute-path> [--replace|--verify-on
 export type ExtractMode = 'create' | 'replace' | 'verify-only'
 
 export function projectExtractorResultForCli(
-  result: LegacyExtractorResult,
+  result: LegacyExtractorCommandResult,
   mode: ExtractMode,
 ) {
+  if (result.status === 'failed') {
+    return {
+      mode,
+      status: result.status,
+      published: result.published,
+      error: result.error,
+    }
+  }
   const projection = {
     mode,
     caseCount: result.cases.length,
@@ -76,7 +86,27 @@ const trackedSourceHashes = {
   'vite.config.ts': '0ebe1b813bdeb70dcfea7673d502bb30fb2928936d3bca5d2dcae9c2b8a23065',
 } as const
 
-export async function main(arguments_: readonly string[]) {
+export interface ExtractCommandDependencies {
+  readonly run: (
+    environment: ExtractorEnvironment,
+    options: RunLegacyExtractorOptions,
+  ) => Promise<LegacyExtractorCommandResult>
+  readonly writeStdout: (value: string) => void
+  readonly setExitCode: (code: number) => void
+}
+
+const defaultExtractCommandDependencies: ExtractCommandDependencies = {
+  run: runLegacyExtractorCommand,
+  writeStdout: (value) => process.stdout.write(value),
+  setExitCode: (code) => {
+    process.exitCode = code
+  },
+}
+
+export async function runExtractCommand(
+  arguments_: readonly string[],
+  dependencies: ExtractCommandDependencies = defaultExtractCommandDependencies,
+) {
   const parsed = parseExtractArguments(arguments_)
   const environment = createExtractorEnvironment({
     inheritedEnvironment: process.env,
@@ -106,16 +136,22 @@ export async function main(arguments_: readonly string[]) {
       npmVersion: '11.12.1',
     },
   })
-  const result = await runLegacyExtractor(environment, {
+  const result = await dependencies.run(environment, {
     replace: parsed.replace,
     verifyOnly: parsed.verifyOnly,
   })
   const mode = parsed.verifyOnly ? 'verify-only' : parsed.replace ? 'replace' : 'create'
-  process.stdout.write(`${JSON.stringify(
+  dependencies.writeStdout(`${JSON.stringify(
     projectExtractorResultForCli(result, mode),
     null,
     2,
   )}\n`)
+  if (result.status === 'failed') dependencies.setExitCode(1)
+  return result
+}
+
+export async function main(arguments_: readonly string[]) {
+  return runExtractCommand(arguments_)
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

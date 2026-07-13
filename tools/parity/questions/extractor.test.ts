@@ -32,6 +32,8 @@ import {
   type ExtractorEnvironment,
   type SpawnRequest,
 } from './extractor.js'
+import * as extractorModule from './extractor.js'
+import * as extractModule from './extract.js'
 import { parseExtractArguments, projectExtractorResultForCli } from './extract.js'
 
 const roots: string[] = []
@@ -203,6 +205,30 @@ function expectCooperativePublicationLockHeld(destination: string) {
     return
   }
   throw new Error('second cooperative author acquired the publication lock')
+}
+
+interface FailedPublicationResult {
+  readonly status: 'failed'
+  readonly published: false
+  readonly error: {
+    readonly code: 'publication-failed' | 'recovery-required'
+    readonly message: string
+  }
+}
+
+type PublicExtractorResult = Awaited<ReturnType<typeof runLegacyExtractor>>
+  | FailedPublicationResult
+
+function getPublicRunBoundary() {
+  const runBoundary = (extractorModule as unknown as {
+    runLegacyExtractorCommand?: (
+      environment: ExtractorEnvironment,
+      options: { readonly replace?: boolean; readonly verifyOnly: boolean },
+    ) => Promise<PublicExtractorResult>
+  }).runLegacyExtractorCommand
+  expect(runBoundary).toBeTypeOf('function')
+  if (!runBoundary) throw new Error('missing public extractor run boundary')
+  return runBoundary
 }
 
 async function createExtractorFixture(
@@ -971,7 +997,7 @@ describe('no-follow and transactional publication', () => {
     expect(result.warning.cleanupAttempts).toBe(publicationCleanupAttempts)
   })
 
-  test('retains one verified recovery backup after the fixed cleanup retry budget', async () => {
+  test('retains one verified recovery artifact after the fixed cleanup retry budget', async () => {
     const fixture = await createExtractorFixture()
     mkdirSync(fixture.destination, { recursive: true })
     writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
@@ -1005,17 +1031,119 @@ describe('no-follow and transactional publication', () => {
       .filter((name) => name.includes('.backup-'))
     expect(retainedBackups).toHaveLength(1)
     expect(realpathSync(result.warning.recoveryBackupPath)).toBe(result.warning.recoveryBackupPath)
-    expect(readFileSync(join(
-      result.warning.recoveryBackupPath,
-      'manifest.json',
-    ), 'utf8')).toBe('old')
-    expect(lstatSync(result.warning.recoveryBackupPath).isDirectory()).toBe(true)
-    expect(lstatSync(result.warning.recoveryBackupPath).isSymbolicLink()).toBe(false)
+    const recoveryStats = lstatSync(result.warning.recoveryBackupPath)
+    expect(recoveryStats.isFile()).toBe(true)
+    expect(recoveryStats.isSymbolicLink()).toBe(false)
+    const recovery = JSON.parse(
+      readFileSync(result.warning.recoveryBackupPath, 'utf8'),
+    ) as {
+      entries: Array<{ path: string; type: string; contentBase64?: string }>
+    }
+    expect(recovery.entries).toContainEqual({
+      path: 'manifest.json',
+      type: 'file',
+      contentBase64: Buffer.from('old').toString('base64'),
+    })
     expect(lstatSync(publicationLockPath(fixture.destination), {
       throwIfNoEntry: false,
     })).toBeUndefined()
     const secondAuthorLock = acquireCooperativePublicationLock(fixture.destination)
     unlinkSync(secondAuthorLock)
+  })
+
+  test('returns an intact recovery snapshot when cleanup partially replaces the directory backup', async () => {
+    const fixture = await createExtractorFixture()
+    const nested = join(fixture.destination, 'nested')
+    const empty = join(fixture.destination, 'empty')
+    const originalBytes = Buffer.from([0, 1, 2, 127, 128, 255])
+    mkdirSync(nested, { recursive: true })
+    mkdirSync(empty)
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old-manifest')
+    writeFileSync(join(nested, 'payload.bin'), originalBytes)
+    let cleanupAttempts = 0
+    let unsafeReplacementPath: string | undefined
+    let displacedBackupPath: string | undefined
+    fixture.environment.hooks.beforeRemoveBackup = (backupPath) => {
+      cleanupAttempts += 1
+      if (cleanupAttempts === 1) {
+        displacedBackupPath = `${backupPath}.partially-removed`
+        renameSync(backupPath, displacedBackupPath)
+        rmSync(join(displacedBackupPath, 'nested/payload.bin'))
+        mkdirSync(backupPath)
+        writeFileSync(join(backupPath, 'manifest.json'), 'unsafe-mutated-backup')
+        unsafeReplacementPath = backupPath
+      }
+      throw new Error('partial recursive cleanup failure')
+    }
+
+    const result = await runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })
+
+    expect(result.status).toBe('published-with-cleanup-warning')
+    if (result.status !== 'published-with-cleanup-warning') {
+      throw new Error('missing publication cleanup warning')
+    }
+    expect(result.published).toBe(true)
+    expect(cleanupAttempts).toBe(publicationCleanupAttempts)
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8'))
+      .not.toBe('old-manifest')
+    expect(result.warning.cleanupAttempts).toBe(publicationCleanupAttempts)
+    expect(result.warning.recoveryBackupPath).not.toBe(unsafeReplacementPath)
+    expect(result.warning.recoveryBackupPath).not.toBe(displacedBackupPath)
+    expect(dirname(result.warning.recoveryBackupPath)).toBe(dirname(fixture.destination))
+    expect(realpathSync(result.warning.recoveryBackupPath))
+      .toBe(result.warning.recoveryBackupPath)
+    const recoveryStats = lstatSync(result.warning.recoveryBackupPath)
+    expect(recoveryStats.isFile()).toBe(true)
+    expect(recoveryStats.isSymbolicLink()).toBe(false)
+    const recovery = JSON.parse(
+      readFileSync(result.warning.recoveryBackupPath, 'utf8'),
+    ) as {
+      schemaVersion: number
+      entries: Array<{
+        path: string
+        type: 'directory' | 'file'
+        contentBase64?: string
+      }>
+    }
+    expect(recovery).toEqual({
+      schemaVersion: 1,
+      entries: [
+        { path: 'empty', type: 'directory' },
+        {
+          path: 'manifest.json',
+          type: 'file',
+          contentBase64: Buffer.from('old-manifest').toString('base64'),
+        },
+        { path: 'nested', type: 'directory' },
+        {
+          path: 'nested/payload.bin',
+          type: 'file',
+          contentBase64: originalBytes.toString('base64'),
+        },
+      ],
+    })
+    const secondAuthorLock = acquireCooperativePublicationLock(fixture.destination)
+    unlinkSync(secondAuthorLock)
+  })
+
+  test('rejects a symbolic link before serializing a recovery snapshot', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    const outside = join(fixture.root, 'outside-secret')
+    writeFileSync(outside, 'must-not-enter-recovery')
+    symlinkSync(outside, join(fixture.destination, 'unsafe-link'))
+
+    await expect(runLegacyExtractor(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })).rejects.toThrow('recovery backup contains a symbolic link')
+
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
+    expect(lstatSync(join(fixture.destination, 'unsafe-link')).isSymbolicLink()).toBe(true)
   })
 
   test('restores and verifies the original before a second author can enter', async () => {
@@ -1142,7 +1270,10 @@ describe('no-follow and transactional publication', () => {
     expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).not.toBe('old')
     expect(events).toEqual(['installed', 'release-lock', 'remove-backup'])
     expect(readdirSync(dirname(fixture.destination)).some((name) => (
-      name.includes('.backup-') || name.includes('.staging-') || name.endsWith('.lock')
+      name.includes('.backup-')
+      || name.includes('.recovery-')
+      || name.includes('.staging-')
+      || name.endsWith('.lock')
     ))).toBe(false)
   })
 
@@ -1157,6 +1288,68 @@ describe('no-follow and transactional publication', () => {
     expect(result.manifest).toBeDefined()
     expect(result.ignoredFingerprintsAfter).toEqual(result.ignoredFingerprintsBefore)
     expect(lstatSync(fixture.destination, { throwIfNoEntry: false })).toBeUndefined()
+  })
+
+  test('returns a bounded public failed result for an ordinary pre-commit failure', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    fixture.environment.hooks.afterPublishStaging = () => {
+      throw new Error(`SECRET_PRECOMMIT=${'x'.repeat(600)}`)
+    }
+
+    const result = await getPublicRunBoundary()(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      published: false,
+      error: {
+        code: 'publication-failed',
+        message: 'legacy extraction or publication failed',
+      },
+    })
+    if (result.status !== 'failed') throw new Error('missing failed publication result')
+    expect(result.error.message.length).toBeLessThanOrEqual(300)
+    expect(result.error.message).not.toContain('SECRET_PRECOMMIT')
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).toBe('old')
+  })
+
+  test('returns recovery-required from the public boundary for indeterminate release', async () => {
+    const fixture = await createExtractorFixture()
+    mkdirSync(fixture.destination, { recursive: true })
+    writeFileSync(join(fixture.destination, 'manifest.json'), 'old')
+    fixture.environment.hooks.beforeReleaseLock = (lockPath) => unlinkSync(lockPath)
+
+    const result = await getPublicRunBoundary()(fixture.environment, {
+      replace: true,
+      verifyOnly: false,
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      published: false,
+      error: {
+        code: 'recovery-required',
+        message: 'publication lock release is indeterminate; recovery required',
+      },
+    })
+    expect(readFileSync(join(fixture.destination, 'manifest.json'), 'utf8')).not.toBe('old')
+  })
+
+  test('public verify-only boundary preserves trace manifest and fingerprint evidence', async () => {
+    const fixture = await createExtractorFixture()
+
+    const result = await getPublicRunBoundary()(fixture.environment, { verifyOnly: true })
+
+    expect(result.status).toBe('verified')
+    if (result.status !== 'verified') throw new Error('missing verified result')
+    expect(result.published).toBe(false)
+    expect(result.cases).toHaveLength(1)
+    expect(result.manifest).toBeDefined()
+    expect(result.ignoredFingerprintsAfter).toEqual(result.ignoredFingerprintsBefore)
   })
 
   test('revalidates a sensitive path immediately before raw read', async () => {
@@ -1429,5 +1622,64 @@ describe('extract CLI arguments', () => {
       ignoredFingerprintsBefore: result.ignoredFingerprintsBefore,
       ignoredFingerprintsAfter: result.ignoredFingerprintsAfter,
     })
+  })
+
+  test('projects exact failed publication JSON without success evidence fields', () => {
+    const failed = {
+      status: 'failed',
+      published: false,
+      error: {
+        code: 'publication-failed',
+        message: 'legacy extraction or publication failed',
+      },
+    } as const
+    const projectFailed = projectExtractorResultForCli as unknown as (
+      result: FailedPublicationResult,
+      mode: 'replace',
+    ) => unknown
+
+    expect(projectFailed(failed, 'replace')).toEqual({
+      mode: 'replace',
+      ...failed,
+    })
+  })
+
+  test('real CLI command boundary writes failed JSON and sets nonzero process semantics', async () => {
+    const failed = {
+      status: 'failed',
+      published: false,
+      error: {
+        code: 'recovery-required',
+        message: 'publication lock release is indeterminate; recovery required',
+      },
+    } as const
+    const runExtractCommand = (extractModule as unknown as {
+      runExtractCommand?: (
+        arguments_: readonly string[],
+        dependencies: {
+          run: () => Promise<FailedPublicationResult>
+          writeStdout: (value: string) => void
+          setExitCode: (code: number) => void
+        },
+      ) => Promise<PublicExtractorResult>
+    }).runExtractCommand
+    expect(runExtractCommand).toBeTypeOf('function')
+    if (!runExtractCommand) throw new Error('missing real CLI command boundary')
+    const stdout: string[] = []
+    const exitCodes: number[] = []
+
+    const result = await runExtractCommand([
+      '--legacy',
+      '/tmp/non-live-legacy-fixture',
+      '--replace',
+    ], {
+      run: async () => failed,
+      writeStdout: (value) => stdout.push(value),
+      setExitCode: (code) => exitCodes.push(code),
+    })
+
+    expect(result).toEqual(failed)
+    expect(JSON.parse(stdout.join(''))).toEqual({ mode: 'replace', ...failed })
+    expect(exitCodes).toEqual([1])
   })
 })
