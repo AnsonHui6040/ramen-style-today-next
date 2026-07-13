@@ -1482,7 +1482,20 @@ type TraceCoverageTag =
 
 `deriveObservableCoverage({ actions, frames })` derives tags only after the trace passes strict action/frame validation. Frozen `coverageTags` must equal that deduplicated code-point-sorted result. Seed schemas strictly reject `coverageTags`; visible-option, navigation-target, forced-skip, completion, and named behavior tags are therefore results of observation, never seed expectations. Reject `semantic-class:*`, repair, diagnostic, invalid-input, global reachability, dependency, fixed-point, and application-result coverage.
 
-Keep the immutable manifest fields from the approved design: schema versions; normalized repository, commit, and tree; exact source and lock hashes; extractor/instrumentation identities; isolated runtime contract; ordered case IDs/count; and fixture content hash. Strictly reject current semantic hash, parity-suite version, implementation SHA, assurance, and all excluded runtime metadata. Keep reviewed JSON-Patch-style divergence validation, but require every pointer to start `/frames/` and reject pointers naming a forbidden field.
+Keep the immutable manifest fields from the approved design: schema versions; normalized repository, commit, and tree; exact source and lock hashes; extractor/instrumentation identities; isolated runtime contract; ordered case IDs/count; and fixture content hash. The environment policy stores only this stable contract:
+
+```json
+{
+  "npmConfigPolicy": {
+    "userConfig": "isolated-empty-file",
+    "globalConfig": "isolated-empty-file",
+    "distinctFiles": true,
+    "npmArgvModified": false
+  }
+}
+```
+
+Machine-specific random temporary absolute paths must not enter the frozen fixture identity, fixture content hash, semantic hash, or provenance identity. Strictly reject current semantic hash, parity-suite version, implementation SHA, assurance, and all excluded runtime metadata. Keep reviewed JSON-Patch-style divergence validation, but require every pointer to start `/frames/` and reject pointers naming a forbidden field.
 
 - [ ] **Step 4: Replace the instrumentation patch with observation-only component driving**
 
@@ -1563,13 +1576,54 @@ test('passes only the allowlisted child environment', async () => {
     Object.keys(environment).sort().join('\0') === allowedKeys.join('\0'),
   )).toBe(true)
   expect(fixture.spawnRecords.every(({ environment }) =>
-    environment.NPM_CONFIG_USERCONFIG === '/dev/null'
-      && environment.NPM_CONFIG_GLOBALCONFIG === '/dev/null'
+    environment.NPM_CONFIG_USERCONFIG === fixture.npmUserConfig
+      && environment.NPM_CONFIG_GLOBALCONFIG === fixture.npmGlobalConfig
       && environment.GIT_CONFIG_NOSYSTEM === '1',
   )).toBe(true)
   expect(fixture.spawnRecords.every(({ environment }) =>
     !environment.PATH?.includes('/tmp/hostile-bin'),
   )).toBe(true)
+})
+
+test('uses distinct run-owned empty npm configs without modifying npm argv', async () => {
+  const fixture = await createExtractorFixture()
+  await runExtractor(fixture.environment)
+  const npmInstall = fixture.spawnRecords.find(({ role }) => role === 'npm-ci')
+  if (!npmInstall) throw new Error('missing npm install record')
+
+  expect(fixture.npmUserConfig).not.toBe(fixture.npmGlobalConfig)
+  expect(fixture.pathIsWithinValidatedExtractionRoot(fixture.npmUserConfig)).toBe(true)
+  expect(fixture.pathIsWithinValidatedExtractionRoot(fixture.npmGlobalConfig)).toBe(true)
+  expect(npmInstall.npmConfigIdentity).toEqual({
+    userConfig: {
+      path: fixture.npmUserConfig,
+      type: 'regular-file',
+      symbolicLink: false,
+      validatedParentsContainSymbolicLink: false,
+      size: 0,
+    },
+    globalConfig: {
+      path: fixture.npmGlobalConfig,
+      type: 'regular-file',
+      symbolicLink: false,
+      validatedParentsContainSymbolicLink: false,
+      size: 0,
+    },
+  })
+  expect([npmInstall.executable, ...npmInstall.args]).toEqual([
+    trustedTools.node,
+    trustedTools.npmCli,
+    'ci',
+    '--ignore-scripts',
+  ])
+  expect(fixture.pathRefersToOriginalCheckout(fixture.npmUserConfig)).toBe(false)
+  expect(fixture.pathRefersToOriginalCheckout(fixture.npmGlobalConfig)).toBe(false)
+  expect(fixture.pathRefersToInheritedHome(fixture.npmUserConfig)).toBe(false)
+  expect(fixture.pathRefersToInheritedHome(fixture.npmGlobalConfig)).toBe(false)
+  expect(fixture.pathRefersToSystemNpmConfig(fixture.npmUserConfig)).toBe(false)
+  expect(fixture.pathRefersToSystemNpmConfig(fixture.npmGlobalConfig)).toBe(false)
+  expect(fixture.cleanup.removedRunOwnedPaths).toContain(fixture.npmUserConfig)
+  expect(fixture.cleanup.removedRunOwnedPaths).toContain(fixture.npmGlobalConfig)
 })
 
 test.each(['count', 'order', 'id', 'actions'])(
@@ -1581,7 +1635,7 @@ test.each(['count', 'order', 'id', 'actions'])(
 )
 ```
 
-Also test atomic lock contention; unique same-parent staging/backup names; no-follow rejection for the legacy root, patch, seeds, raw output, destination, and every parent; path replacement immediately before read/publish/rollback; rollback after old-output rename; partial worktree-add cleanup plus prune; cleanup failure preserving the primary error; and external-error sanitization to one control-free line no longer than 300 characters.
+Also test atomic lock contention; unique same-parent staging/backup names; no-follow rejection for the legacy root, patch, seeds, raw output, destination, both npm config files, and every validated parent; path replacement immediately before npm invocation/read/publish/rollback; rollback after old-output rename; partial worktree-add cleanup plus prune; cleanup failure preserving the primary error; and external-error sanitization to one control-free line no longer than 300 characters.
 
 - [ ] **Step 6: Implement isolated execution, exact binding, and transactional publication**
 
@@ -1596,7 +1650,18 @@ const trustedTools = {
 } as const
 ```
 
-Invoke npm as `[trustedTools.node, trustedTools.npmCli, 'ci', '--ignore-scripts']`. The temporary worktree gets unique physical `node_modules`, `.npm-cache`, `.home`, and `.tmp` paths beneath its validated extraction root; its build cache is the physical temporary `node_modules/.tmp`. No path may be a symlink or resolve into the original checkout. Construct child environments from this exact allowlist: `TZ`, `LANG`, `LC_ALL`, `RAMEN_PARITY_SEED`, `CI`, `GIT_CONFIG_NOSYSTEM=1`, generated `HOME`, `TMPDIR`, `NPM_CONFIG_CACHE`, `NPM_CONFIG_USERCONFIG=/dev/null`, `NPM_CONFIG_GLOBALCONFIG=/dev/null`, and a generated trusted `PATH`. Never spread `process.env`.
+Invoke npm as `[trustedTools.node, trustedTools.npmCli, 'ci', '--ignore-scripts']`. Do not add `--userconfig`, `--globalconfig`, or any other temporary override. The temporary worktree gets unique physical `node_modules`, `.npm-cache`, `.home`, and `.tmp` paths beneath its validated extraction root; its build cache is the physical temporary `node_modules/.tmp`. No path may be a symlink or resolve into the original checkout.
+
+Before npm runs, create two distinct physical empty regular files owned by the current isolated extraction run:
+
+```text
+NPM_CONFIG_USERCONFIG=<isolated-temp-root>/npm-user-config
+NPM_CONFIG_GLOBALCONFIG=<isolated-temp-root>/npm-global-config
+```
+
+Both paths must be within the validated isolated temporary root for this run. Neither file nor any validated parent may be a symbolic link, and neither path may refer to the original checkout, inherited user home, or system npm configuration. Revalidate path inequality, root containment, regular-file/no-symlink identity, validated-parent identity, and empty content immediately before npm invocation. Both files are empty for the first lineage; any future fixed contents require a versioned contract change. Remove both files with the run-owned temporary environment on success and every failure path.
+
+Construct child environments from this exact allowlist: `TZ`, `LANG`, `LC_ALL`, `RAMEN_PARITY_SEED`, `CI`, `GIT_CONFIG_NOSYSTEM=1`, generated `HOME`, `TMPDIR`, `NPM_CONFIG_CACHE`, the exact run-owned `NPM_CONFIG_USERCONFIG` and `NPM_CONFIG_GLOBALCONFIG` paths above, and a generated trusted `PATH`. Never spread `process.env` or inherit user/system npm settings. `HOME`, npm cache, `TMPDIR`, TypeScript/build cache, and `node_modules` remain physically isolated as already specified. The original legacy tracked state and declared ignored-path fingerprints must remain unchanged before and after the live gate.
 
 After `npm ci --ignore-scripts`, invoke the complete patched suite with the trusted Node executable and the temporary worktree's physical `node_modules/vitest/vitest.mjs`. Only after it passes, invoke the extraction test separately through:
 
@@ -1640,7 +1705,7 @@ npm run lint
 git diff --check
 ```
 
-Expected: all commands PASS; the live run executes the full patched legacy suite before the separate network-denied extraction test, discards validated raw output, publishes no fixture, and reports matching original ignored-path fingerprints.
+Expected: all commands PASS; the live run executes the full patched legacy suite before the separate network-denied extraction test, discards validated raw output, and publishes no fixture. Immediately before npm invocation, the live gate verifies that `NPM_CONFIG_USERCONFIG` and `NPM_CONFIG_GLOBALCONFIG` are different paths within the validated run root; both are run-owned physical regular files with no symbolic-link identity in either the file or any validated parent; both are empty; every child receives the exact allowlisted environment values; and npm still receives exactly `[trustedTools.node, trustedTools.npmCli, 'ci', '--ignore-scripts']`. The gate verifies cleanup ownership by removing both npm config files with the isolated temporary environment, then reports that the original tracked state and declared ignored-path fingerprints match their pre-run values.
 
 - [ ] **Step 9: Commit only replacement Task 9 files**
 

@@ -553,7 +553,18 @@ interface IgnoredPathFingerprint {
 
 `sha256` is required for a regular file and `null` otherwise. A type change, appearance, disappearance, byte change, size change, or modification-time change is a checkout mutation and rejects extraction even if `git status` is clean. The before/after check runs after best-effort cleanup on both success and failure.
 
-The extractor invokes Git, Node, and npm only through configured trusted absolute executable paths. npm is invoked as the trusted absolute Node executable plus npm's trusted absolute `npm-cli.js`, not through an inherited shell lookup. Child environments are constructed from an allowlist instead of spreading `process.env`: fixed `TZ`, locale, seed, and `CI`; a generated minimal `PATH`; isolated `HOME`, `TMPDIR`, npm cache, and build-cache paths; explicit `GIT_CONFIG_NOSYSTEM=1`; and explicit npm user/global config suppression. Any inherited `GIT_*`, `NODE_OPTIONS`, `NPM_CONFIG_*`, `npm_config_*`, or unrelated environment entry is absent. The full legacy suite completes before a distinct extraction-only command is launched under the supported macOS network-denial boundary.
+The extractor invokes Git, Node, and npm only through configured trusted absolute executable paths. npm is invoked with the exact argv `[trustedTools.node, trustedTools.npmCli, 'ci', '--ignore-scripts']`, not through an inherited shell lookup. No `--userconfig`, `--globalconfig`, or other temporary override is added to that argv.
+
+Before npm runs, the extractor creates two distinct physical empty regular files owned by the current isolated extraction run:
+
+```text
+NPM_CONFIG_USERCONFIG=<isolated-temp-root>/npm-user-config
+NPM_CONFIG_GLOBALCONFIG=<isolated-temp-root>/npm-global-config
+```
+
+The two paths must be different and contained by the validated isolated temporary root for this run. Neither file nor any validated parent may be a symbolic link, and neither path may refer to the original checkout, inherited user home, or system npm configuration. The extractor revalidates path inequality, root containment, regular-file/no-symlink identity, and empty content immediately before npm invocation. Both files are empty for the first lineage; any future fixed contents require a versioned contract change. Both files are removed with the run-owned temporary environment on every exit path.
+
+Child environments are constructed from an allowlist instead of spreading `process.env`: fixed `TZ`, locale, seed, and `CI`; a generated minimal `PATH`; isolated physical `HOME`, `TMPDIR`, npm cache, TypeScript/build cache, and `node_modules` paths; explicit `GIT_CONFIG_NOSYSTEM=1`; and the exact run-owned npm config paths above. Any inherited `GIT_*`, `NODE_OPTIONS`, `NPM_CONFIG_*`, `npm_config_*`, user npm setting, system npm setting, or unrelated environment entry is absent. The full legacy suite completes before a distinct extraction-only command is launched under the supported macOS network-denial boundary. The live gate proves that the original legacy tracked state and every declared ignored-path fingerprint are unchanged before and after the run, including after best-effort cleanup.
 
 Instrumentation is observational only. The temporary patched `App` may expose a test-only, read-only observer hook that receives already-computed component/render state after React actions settle. It may extract an existing pure calculation into a helper only when the component itself is changed to call that exact helper. The patch and extractor must not implement, duplicate, infer, or call test-only substitutes for branch rules, repairs, validation, answer application, navigation, forced resolution, or completion. It must not call exported legacy helpers to manufacture expected trace values. Every frozen frame comes from the actual rendered component and its actual state after an actual public action has settled; a single public action may produce multiple observed frames when the existing component performs a forced skip or completion transition.
 
@@ -602,6 +613,21 @@ The manifest records:
 - runtime environment contract
 - ordered case IDs and case count
 - deterministic fixture content hash
+
+The runtime environment contract records only this stable npm config policy:
+
+```json
+{
+  "npmConfigPolicy": {
+    "userConfig": "isolated-empty-file",
+    "globalConfig": "isolated-empty-file",
+    "distinctFiles": true,
+    "npmArgvModified": false
+  }
+}
+```
+
+Machine-specific random temporary absolute paths are execution details. They must not enter the frozen fixture identity, fixture content hash, semantic hash, or provenance identity.
 
 The fixture content hash is calculated from the canonical `cases.json` payload; it does not recursively include the manifest that stores it. The frozen manifest never records the latest implementation's semantic hash, parity result, implementation SHA, or current parity-suite version. Those values are mutable verification evidence and belong to classification provenance and the migration ledger.
 
