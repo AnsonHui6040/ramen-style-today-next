@@ -6,6 +6,7 @@
 - **Parity-contract correction:** Approved by the user on 2026-07-13 after the rejected Task 9 review
 - **Max-selection observable-contract revision:** Approved by the user on 2026-07-14
 - **Max-selection independent-review corrections:** Applied on 2026-07-14
+- **Publication commit-point revision:** Lock release is the publication commit point; approved on 2026-07-14
 - **Repository:** `AnsonHui6040/ramen-style-today-next`
 - **Legacy oracle:** `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`
 - **Legacy tree:** `3e527de876cfeccfd3154ddc492830d71c4cfd9a`
@@ -584,13 +585,94 @@ Output replacement is explicit:
 - an atomic same-parent lock excludes concurrent authors
 - replacement is built and validated in a uniquely named sibling staging directory
 - backup and staging names are unique per run and never reused
-- rename performs the final atomic swap
-- failure performs best-effort rollback and preserves the previous fixtures unchanged
-- cleanup attempts partial `git worktree remove --force` followed by `git worktree prune --expire now` without masking the primary failure
+- rename atomically replaces the publication target but does not commit publication while the lock remains held
+- final published-content validation completes before lock release
+- successful lock release is the publication commit point
+- any pre-commit failure rolls back and verifies the original publication while the lock is still held
+- post-commit backup cleanup is bounded best-effort maintenance and never rolls back or mutates the published target
+- pre-publication extraction cleanup attempts partial `git worktree remove --force` followed by `git worktree prune --expire now` without masking the primary failure
 - output roots, parent paths, and fixture paths may not escape through symlinks
 - path traversal, illegal case IDs, duplicate case IDs, and unsafe filename mappings are rejected
 - every external error is reduced to one control-character-free line of at most 300 characters before it reaches logs or diagnostics
 - all security-sensitive reads are no-follow, and source, parent, lock, staging, backup, and destination identity is revalidated immediately before every read, rename, rollback, or publish seam
+
+The binding publication state machine is:
+
+```text
+acquire publication lock
+        ↓
+create and verify backup
+        ↓
+write and verify new fixtures
+        ↓
+atomically replace publication target
+        ↓
+final pre-commit validation
+        ↓
+release lock  ← publication commit point
+        ↓
+bounded best-effort backup cleanup
+```
+
+Before lock release, every error is a publication failure. The publisher keeps
+the cooperative lock held while it removes an installed replacement when
+necessary, restores the original publication, and verifies the restored
+identity. Only after rollback and restoration verification does it attempt
+safe lock release. This pre-commit rule covers temporary-output validation,
+atomic rename, installed-content validation, rollback, and abnormal lock-state
+failures.
+
+Publication commits only after the replacement is installed and verified and
+the lock is proven released. A successful release makes the new publication
+available to another cooperative author. From that point onward, the first
+publisher must never roll back, replace, or otherwise mutate the publication
+target because of its own later cleanup error.
+
+The lock primitive distinguishes `held`, `released`, and `indeterminate`
+unless it proves the simpler contract that success always means released and
+every failure means the publisher still owns the lock. A `held` failure is
+pre-commit and rolls back under the lock. `released` is the commit point. An
+`indeterminate` result must not trigger an unlocked rollback or another
+destructive target operation; it returns a bounded recovery-required failure
+or status and stops.
+
+After the commit point, backup removal uses a finite retry budget. Exhausting
+that budget is a successful publication with a bounded cleanup warning and a
+retained recovery backup, not a publication failure:
+
+```ts
+type PublicationResult =
+  | {
+      status: 'published'
+      published: true
+    }
+  | {
+      status: 'published-with-cleanup-warning'
+      published: true
+      warning: PublicationCleanupWarning
+    }
+  | {
+      status: 'failed'
+      published: false
+      error: PublicationError
+    }
+
+interface PublicationCleanupWarning {
+  code: 'backup-cleanup-failed'
+  recoveryBackupPath: string
+  cleanupAttempts: number
+  message: string
+}
+```
+
+The warning message is a stable bounded summary without an unbounded stack,
+full environment, or arbitrary subprocess output. The returned recovery path
+is allowed only after verifying that it is a regular non-symlink path within a
+pre-approved recovery root inside the safe output boundary, that its
+canonical identity remains within that root, and that no parent escapes
+through a symbolic link. It contains no sensitive environment data.
+Machine-specific recovery paths are local authoring results and never enter
+frozen fixture metadata.
 
 The supported threat boundary is a non-privileged local authoring run on the declared macOS host. The extractor rejects symlinks, path replacement it detects during immediate revalidation, inherited process configuration, concurrent cooperative extractor runs, and network access in extraction. It does not claim protection from a privileged process or a hostile same-user process that can win a race between the final no-follow/revalidation check and the operating-system filesystem call; fixture authoring must run without such an adversary.
 

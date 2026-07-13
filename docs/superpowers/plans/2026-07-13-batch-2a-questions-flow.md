@@ -18,6 +18,8 @@
 
 **Independent-review corrections (2026-07-14):** Coverage derives the blocked behavior from one exact observable enabled-to-disabled transition predicate shared by frozen and received traces. Task 10 projects disabled IDs with the exact compiled-policy predicate recorded below and never consults expected fixture data for exceptions.
 
+**Approved publication commit-point revision (2026-07-14):** Task 9 holds the publication lock through final target validation and every pre-commit rollback. Successful lock release is the publication commit point. Later backup cleanup failure returns a successful bounded warning and never rolls back the committed target.
+
 ## Global Constraints
 
 - Preserve legacy question behavior from `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`, tree `3e527de876cfeccfd3154ddc492830d71c4cfd9a`.
@@ -1713,6 +1715,15 @@ test.each(['count', 'order', 'id', 'actions'])(
 
 Also test atomic lock contention; unique same-parent staging/backup names; no-follow rejection for the legacy root, patch, seeds, raw output, destination, both npm config files, and every validated parent; path replacement immediately before npm invocation/read/publish/rollback; rollback after old-output rename; partial worktree-add cleanup plus prune; cleanup failure preserving the primary error; and external-error sanitization to one control-free line no longer than 300 characters.
 
+Publication commit-point tests are mandatory and use deterministic seams:
+
+1. **Concurrent author:** Author A installs and verifies a replacement, releases the lock, and Author B immediately acquires it. A's persistent backup-cleanup failure must not roll back or mutate the target visible to B. A returns `status: 'published-with-cleanup-warning'` and `published: true`.
+2. **Persistent backup-cleanup failure:** a finite retry budget is exhausted; the new target remains installed; the lock is released; one verified recovery backup remains under the approved recovery root; the bounded warning returns its verified safe path and attempt count; and another author can acquire the lock. The test must prove there is no infinite retry.
+3. **Pre-commit failure:** temporary-output, atomic-replace, installed-content-validation, or `held` lock-release failure rolls back while the lock remains held. A second author cannot enter until restoration is complete, the original publication identity is verified, and lock release is attempted. No success result is returned.
+4. **Indeterminate lock release:** an `indeterminate` result performs no unlocked rollback or destructive target operation and returns a bounded recovery-required failure/status.
+
+Any prior post-release cleanup expectation is superseded. Tests must assert the successful cleanup-warning result and an unchanged committed target.
+
 - [ ] **Step 6: Implement isolated execution, exact binding, and transactional publication**
 
 Use these trusted tool identities for the first lineage and verify their type/version before use:
@@ -1747,7 +1758,13 @@ After `npm ci --ignore-scripts`, invoke the complete patched suite with the trus
 
 Fingerprint the two declared original ignored paths by no-follow `lstat`, size, `mtimeMs`, and streamed SHA-256 for regular files before the first child and after all cleanup. Bind raw count/order/IDs/actions exactly to seeds before trace-schema normalization; reject any seed or raw seed-identity object containing `coverageTags`. After strict action/frame validation, derive the frozen case's coverage tags mechanically and code-point-sort them. Sanitize every Git/npm/test/filesystem error with `sanitizeExternalError(error, 300)` before reporting it.
 
-Acquire a same-parent lock with exclusive create. Use cryptographically unique same-parent `.staging-<token>` and `.backup-<token>` names. Revalidate no-follow identity immediately before every sensitive read, rename, rollback, and publish call. On failure, restore an old output if it was renamed, remove only validated run-owned paths, attempt absolute Git `worktree remove --force`, then absolute Git `worktree prune --expire now`; cleanup errors are attached as bounded secondary details and never replace the primary error. Document the non-privileged, non-hostile-same-user macOS threat boundary in code comments and the incident record.
+Acquire a same-parent lock with exclusive create. Use cryptographically unique same-parent `.staging-<token>` and `.backup-<token>` names. Revalidate no-follow identity immediately before every sensitive read, rename, rollback, and publish call. The publication sequence is fixed: acquire lock; create and verify the backup; write and verify staging; atomically replace the target; validate the installed target; release the lock as the commit point; then perform bounded best-effort backup cleanup.
+
+The lock primitive must report `held`, `released`, or `indeterminate` unless it proves that every successful return means released and every failure means the publisher still owns the lock. Before the commit point, restore an old output if it was renamed, remove only validated run-owned paths, verify the restored publication identity while the lock is still held, and only then attempt safe lock release. A `held` release failure remains pre-commit. A proven `released` result commits publication. An `indeterminate` release result must stop destructive operations and return a bounded recovery-required failure/status rather than attempting an unlocked rollback.
+
+After proven lock release, never roll back or otherwise mutate the publication target because backup cleanup failed. Retry backup cleanup only to a fixed bound. If retries are exhausted, retain the recovery backup and return `status: 'published-with-cleanup-warning'`, `published: true`, and a `PublicationCleanupWarning` with code `backup-cleanup-failed`, the verified safe recovery path, the exact attempt count, and a bounded stable message. Validate that the retained path is a regular non-symlink descendant of a pre-approved recovery root inside the safe output boundary, including canonical identity and every parent; never place that machine-specific path in frozen fixture metadata.
+
+Pre-publication worktree removal/prune and other cleanup errors continue to attach bounded secondary details without replacing the primary error and must prevent entry into publication. Document the non-privileged, non-hostile-same-user macOS threat boundary in code comments and the incident record.
 
 - [ ] **Step 7: Record the cache-isolation incident without changing the ledger**
 
@@ -1781,7 +1798,7 @@ npm run lint
 git diff --check
 ```
 
-Expected: all commands PASS; the live run executes the full patched legacy suite before the separate network-denied extraction test, discards validated raw output, and publishes no fixture. Immediately before npm invocation, the live gate verifies that `NPM_CONFIG_USERCONFIG` and `NPM_CONFIG_GLOBALCONFIG` are different paths within the validated run root; both are run-owned physical regular files with no symbolic-link identity in either the file or any validated parent; both are empty; every child receives the exact allowlisted environment values; and npm still receives exactly `[trustedTools.node, trustedTools.npmCli, 'ci', '--ignore-scripts']`. The gate verifies cleanup ownership by removing both npm config files with the isolated temporary environment, then reports that the original tracked state and declared ignored-path fingerprints match their pre-run values.
+Expected: all commands PASS. Before the live gate, focused tests prove the concurrent-author, persistent-backup-cleanup, pre-commit rollback-under-lock, and indeterminate-lock cases plus the exact `PublicationResult` warning semantics. The live `--verify-only` run executes the full patched legacy suite before the separate network-denied extraction test, discards validated raw output, does not enter the publication state machine, and publishes no fixture. Immediately before npm invocation, the live gate verifies that `NPM_CONFIG_USERCONFIG` and `NPM_CONFIG_GLOBALCONFIG` are different paths within the validated run root; both are run-owned physical regular files with no symbolic-link identity in either the file or any validated parent; both are empty; every child receives the exact allowlisted environment values; and npm still receives exactly `[trustedTools.node, trustedTools.npmCli, 'ci', '--ignore-scripts']`. The gate verifies cleanup ownership by removing both npm config files with the isolated temporary environment, then reports that the original tracked state and declared ignored-path fingerprints match their pre-run values.
 
 - [ ] **Step 9: Commit only replacement Task 9 files**
 
@@ -1802,7 +1819,7 @@ TASK9_SHA="$(git rev-parse HEAD)"
   "$TASK8_BASE" "$TASK9_SHA"
 ```
 
-The new reviewer must inspect the full range against corrected design Sections 16–18, run the focused tests and live `--verify-only` command, and write `.superpowers/sdd/task-9-high-risk-review.md` containing exact lines `Task-9-commit: <40-character TASK9_SHA>` and `Verdict: PASS`. Any fix creates a new commit, a new review package, and a new review. Task 10 may start only when:
+The new reviewer must inspect the full range against corrected design Sections 16–18, run the focused tests and live `--verify-only` command, and write `.superpowers/sdd/task-9-high-risk-review.md` containing exact lines `Task-9-commit: <40-character TASK9_SHA>` and `Verdict: PASS`. The review must verify that lock release is the only publication commit point; all pre-commit failures restore and verify the original publication while excluding a second author; persistent post-commit backup cleanup returns the bounded successful warning with a verified safe recovery path; a concurrent second author's target is never mutated by the first author; and indeterminate release performs no unlocked rollback. Any fix creates a new commit, a new review package, and a new review. Task 10 remains blocked until the revised implementation, exact tests, live gate, and independent review all pass. It may start only when:
 
 ```bash
 TASK9_SHA="$(git rev-parse HEAD)"
