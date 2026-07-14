@@ -10,7 +10,11 @@ import {
 } from 'node:fs'
 import { basename, dirname, relative, resolve } from 'node:path'
 
-import { checkLedger, checkLedgerOffline } from './ledger-check.js'
+import {
+  checkLedger,
+  checkLedgerOffline,
+  collectGitChangedPaths,
+} from './ledger-check.js'
 import { migrationLedgerSchema } from './ledger-schema.js'
 import { recordSuccessfulCiFile } from './record-ci.js'
 
@@ -40,16 +44,6 @@ function isCommitAncestor(evidenceSha: string, currentHeadSha: string) {
     { cwd: repoRoot, encoding: 'utf8' },
   )
   return ancestor.status === 0
-}
-
-function changedPathsBetween(ancestorSha: string, currentHeadSha: string) {
-  void currentHeadSha
-  const output = execFileSync(
-    'git',
-    ['diff', '--name-only', '--no-renames', '-z', ancestorSha, '--'],
-    { cwd: repoRoot, encoding: 'utf8' },
-  )
-  return output.split('\0').filter(Boolean)
 }
 
 function readBatch2AIdentities() {
@@ -260,7 +254,11 @@ async function run() {
       currentMarkdown,
       currentHeadSha,
       isCommitAncestor,
-      changedPathsBetween,
+      changedPathsBetween: (implementationSha, headSha) => collectGitChangedPaths(
+        repoRoot,
+        implementationSha,
+        headSha,
+      ),
       ...batch2AIdentities,
     })
   }

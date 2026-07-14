@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+
 import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
 import type { MigrationLedger } from './ledger-schema.js'
@@ -44,6 +46,53 @@ export interface SemanticAncestryInput {
   candidateSha: string
   semanticPaths: readonly string[]
   changedPaths: readonly string[]
+}
+
+function nulSeparatedGitPaths(repoRoot: string, args: readonly string[]) {
+  const output = execFileSync('git', args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  })
+  return output.split('\0').filter(Boolean)
+}
+
+export function collectGitChangedPaths(
+  repoRoot: string,
+  implementationSha: string,
+  currentHeadSha: string,
+) {
+  const changedPaths = new Set<string>()
+  const commands = [
+    [
+      'diff',
+      '--name-only',
+      '--no-renames',
+      '-z',
+      implementationSha,
+      currentHeadSha,
+      '--',
+    ],
+    [
+      'diff',
+      '--cached',
+      '--name-only',
+      '--no-renames',
+      '-z',
+      currentHeadSha,
+      '--',
+    ],
+    [
+      'diff',
+      '--name-only',
+      '--no-renames',
+      '-z',
+      '--',
+    ],
+  ] as const
+  for (const command of commands) {
+    for (const file of nulSeparatedGitPaths(repoRoot, command)) changedPaths.add(file)
+  }
+  return [...changedPaths].sort(compareCodePoints)
 }
 
 function matchesSemanticPath(file: string, semanticPath: string) {

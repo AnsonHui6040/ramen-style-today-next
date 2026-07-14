@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import {
   cpSync,
   lstatSync,
@@ -10,13 +11,14 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import {
   checkLedger,
   checkLedgerOffline,
+  collectGitChangedPaths,
   verifySemanticAncestry,
 } from './ledger-check.js'
 import { verifySuccessfulCiProof as verifySuccessfulCiProofOnline } from '../acceptance/verify-acceptance.js'
@@ -301,6 +303,118 @@ function createCliFixture(options: CliFixtureOptions = {}) {
       rmSync(outsideRoot, { recursive: true, force: true })
     },
   }
+}
+
+const semanticFlowPath = 'packages/classification-core/src/flow/evaluate.ts'
+
+function writeFixtureFile(repoRoot: string, file: string, content: string) {
+  const absolute = join(repoRoot, file)
+  mkdirSync(dirname(absolute), { recursive: true })
+  writeFileSync(absolute, content)
+}
+
+function configureTemporaryGitRepository(repoRoot: string) {
+  execFileSync('git', ['config', 'user.email', 'tests@example.invalid'], { cwd: repoRoot })
+  execFileSync('git', ['config', 'user.name', 'Migration ledger tests'], { cwd: repoRoot })
+}
+
+function createSemanticIndexCliFixture() {
+  const fixture = createCliFixture()
+  const semanticHash = 'd'.repeat(64)
+  const fixtureManifestPath = 'tools/parity/fixtures/questions/legacy-v1/manifest.json'
+  const fixtureManifestBytes = '{"fixture":"semantic-index-regression"}\n'
+  const fixtureManifestHash = createHash('sha256')
+    .update(fixtureManifestBytes)
+    .digest('hex')
+  const generatedModelPath = 'packages/classification-core/src/generated/question-model.ts'
+  const classificationManifestPath = 'docs/classification/manifest.json'
+  const additionalOwners = [
+    batch2AIncidentPath,
+    classificationManifestPath,
+    generatedModelPath,
+    semanticFlowPath,
+    fixtureManifestPath,
+  ]
+
+  writeFixtureFile(fixture.repoRoot, batch2AIncidentPath, '# Incident fixture\n')
+  writeFixtureFile(
+    fixture.repoRoot,
+    classificationManifestPath,
+    `${JSON.stringify({
+      provenance: {
+        questions: {
+          fixtureManifestHash,
+          semanticHash,
+        },
+      },
+    }, null, 2)}\n`,
+  )
+  writeFixtureFile(
+    fixture.repoRoot,
+    generatedModelPath,
+    `const model = {\n  "semanticHash": "${semanticHash}"\n}\n`,
+  )
+  writeFixtureFile(fixture.repoRoot, semanticFlowPath, 'export const value = 1\n')
+  writeFixtureFile(fixture.repoRoot, fixtureManifestPath, fixtureManifestBytes)
+
+  const original = migrationLedgerSchema.parse(JSON.parse(readFileSync(
+    fixture.ledgerPath,
+    'utf8',
+  )) as unknown)
+  const inReview = migrationLedgerSchema.parse({
+    ...original,
+    entries: [{
+      ...original.entries[0]!,
+      batch: '2A',
+      status: 'in-review',
+      semanticPaths: batch2ASemanticPaths,
+      incidents: [],
+      ownedScopes: [],
+      newOwners: [...original.entries[0]!.newOwners, ...additionalOwners],
+      verification: [],
+    }],
+  })
+  writeFileSync(fixture.ledgerPath, `${JSON.stringify(inReview, null, 2)}\n`)
+  writeFileSync(fixture.outputPath, renderLedger(inReview))
+
+  configureTemporaryGitRepository(fixture.repoRoot)
+  execFileSync('git', ['add', '--all'], { cwd: fixture.repoRoot })
+  execFileSync('git', ['commit', '--quiet', '-m', 'implementation'], {
+    cwd: fixture.repoRoot,
+  })
+  const implementationSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: fixture.repoRoot,
+    encoding: 'utf8',
+  }).trim()
+  const complete = migrationLedgerSchema.parse({
+    ...inReview,
+    entries: [{
+      ...inReview.entries[0]!,
+      status: 'complete',
+      implementationSha,
+      incidents: [batch2AIncidentPath],
+      verification: [
+        {
+          gate: 'batch2a-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'offline fixture passed',
+        },
+        {
+          gate: 'batch2a-remote-ci',
+          command: 'GitHub Actions CI / verify',
+          outcome: 'passed',
+          evidence: 'remote fixture passed',
+          commitSha: implementationSha,
+          runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+        },
+      ],
+    }],
+  })
+  writeFileSync(fixture.ledgerPath, `${JSON.stringify(complete, null, 2)}\n`)
+  writeFileSync(fixture.outputPath, renderLedger(complete))
+
+  return { ...fixture, implementationSha }
 }
 
 describe('migration ledger repository checks', () => {
@@ -673,6 +787,118 @@ describe('Batch 2A offline acceptance invariants', () => {
     expect(result.errors).toContain(
       'classification manifest observable-trace fixture manifest hash is inconsistent',
     )
+  })
+})
+
+describe('local Git semantic changed-path collection', () => {
+  test('offline CLI rejects a staged semantic blob hidden by a HEAD-equal working file', () => {
+    const fixture = createSemanticIndexCliFixture()
+    try {
+      writeFixtureFile(fixture.repoRoot, semanticFlowPath, 'export const value = 2\n')
+      execFileSync('git', ['add', '--', semanticFlowPath], { cwd: fixture.repoRoot })
+      writeFixtureFile(fixture.repoRoot, semanticFlowPath, 'export const value = 1\n')
+
+      const productionStylePaths = execFileSync(
+        'git',
+        ['diff', '--name-only', '--no-renames', '-z', fixture.implementationSha, '--'],
+        { cwd: fixture.repoRoot, encoding: 'utf8' },
+      ).split('\0').filter(Boolean)
+      const stagedPaths = execFileSync(
+        'git',
+        [
+          'diff',
+          '--cached',
+          '--name-only',
+          '--no-renames',
+          '-z',
+          fixture.implementationSha,
+          '--',
+        ],
+        { cwd: fixture.repoRoot, encoding: 'utf8' },
+      ).split('\0').filter(Boolean)
+      expect(productionStylePaths).not.toContain(semanticFlowPath)
+      expect(stagedPaths).toContain(semanticFlowPath)
+
+      const result = fixture.run('--check')
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(
+        `semantic path changed after implementation SHA: ${semanticFlowPath}`,
+      )
+    } finally {
+      fixture.cleanup()
+    }
+  })
+
+  test('unions committed, staged, deleted, renamed, unstaged, and newline paths', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-git-paths-'))
+    const hiddenPath = 'packages/classification-core/src/flow/hidden.ts'
+    const deletedPath = 'packages/classification-core/src/flow/deleted.ts'
+    const renamedPath = 'packages/classification-core/src/flow/renamed.ts'
+    const renamedTarget = 'docs/renamed.ts'
+    const newlinePath = 'packages/classification-core/src/flow/line\nbreak.ts'
+    const unstagedPath = 'packages/classification-core/src/flow/unstaged.ts'
+    const committedPath = 'docs/committed.md'
+    const baseContents = new Map([
+      [hiddenPath, 'hidden base\n'],
+      [deletedPath, 'deleted base\n'],
+      [renamedPath, 'renamed base\n'],
+      [newlinePath, 'newline base\n'],
+      [unstagedPath, 'unstaged base\n'],
+      [committedPath, 'committed base\n'],
+    ])
+    try {
+      execFileSync('git', ['init', '--quiet'], { cwd: repoRoot })
+      configureTemporaryGitRepository(repoRoot)
+      for (const [file, content] of baseContents) {
+        writeFixtureFile(repoRoot, file, content)
+      }
+      execFileSync('git', ['add', '--all'], { cwd: repoRoot })
+      execFileSync('git', ['commit', '--quiet', '-m', 'implementation'], { cwd: repoRoot })
+      const implementationSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      }).trim()
+
+      writeFixtureFile(repoRoot, committedPath, 'committed metadata\n')
+      execFileSync('git', ['add', '--', committedPath], { cwd: repoRoot })
+      execFileSync('git', ['commit', '--quiet', '-m', 'metadata'], { cwd: repoRoot })
+      const currentHeadSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      }).trim()
+
+      writeFixtureFile(repoRoot, hiddenPath, 'hidden staged\n')
+      execFileSync('git', ['add', '--', hiddenPath], { cwd: repoRoot })
+      writeFixtureFile(repoRoot, hiddenPath, baseContents.get(hiddenPath)!)
+
+      rmSync(join(repoRoot, deletedPath))
+      execFileSync('git', ['add', '-u', '--', deletedPath], { cwd: repoRoot })
+      execFileSync('git', ['mv', '--', renamedPath, renamedTarget], { cwd: repoRoot })
+
+      writeFixtureFile(repoRoot, newlinePath, 'newline staged\n')
+      execFileSync('git', ['add', '--', newlinePath], { cwd: repoRoot })
+      writeFixtureFile(repoRoot, newlinePath, baseContents.get(newlinePath)!)
+      writeFixtureFile(repoRoot, unstagedPath, 'unstaged working tree\n')
+
+      const changedPaths = collectGitChangedPaths(
+        repoRoot,
+        implementationSha,
+        currentHeadSha,
+      )
+      expect(new Set(changedPaths)).toEqual(new Set([
+        committedPath,
+        hiddenPath,
+        deletedPath,
+        renamedPath,
+        renamedTarget,
+        newlinePath,
+        unstagedPath,
+      ]))
+      expect(changedPaths).toHaveLength(7)
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
   })
 })
 
