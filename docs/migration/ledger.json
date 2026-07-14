@@ -169,7 +169,8 @@
     },
     {
       "batch": "2A",
-      "status": "in-review",
+      "status": "complete",
+      "implementationSha": "ecf9f5b4791862471d0898da7283ba4a40d3fbf9",
       "semanticPaths": [
         "packages/classification-core/src/definitions/questions.ts",
         "packages/classification-core/src/compiler/questions/**",
@@ -178,7 +179,9 @@
         "tools/parity/questions/**",
         "tools/parity/fixtures/questions/**"
       ],
-      "incidents": [],
+      "incidents": [
+        "docs/migration/incidents/2026-07-13-legacy-cache-isolation.md"
+      ],
       "legacySources": [
         "src/data/questions.json",
         "src/domain/questionRules.ts"
@@ -255,6 +258,14 @@
           "command": "npm run verify",
           "outcome": "passed",
           "evidence": "all Batch 2A offline compiler, artifact, runtime, observable trace projection parity, documentation, and ledger gates passed"
+        },
+        {
+          "gate": "batch2a-remote-ci",
+          "command": "GitHub Actions CI / verify",
+          "outcome": "passed",
+          "evidence": "the pushed acceptance candidate completed the Node 24 verify job successfully",
+          "commitSha": "ecf9f5b4791862471d0898da7283ba4a40d3fbf9",
+          "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29311063386"
         }
       ]
     }

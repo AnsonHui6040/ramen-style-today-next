@@ -117,10 +117,11 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `3cd7ac638f650d783b33f27feb993fbadf35493f`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883
 
-## Batch 2A — in-review
+## Batch 2A — complete
 
 - Behavior: `no-production-runtime-change`
 - Transformation: Added closed serializable question contracts, transcribed the frozen eight-question legacy inventory into declarative production definitions, derived deterministic canonical question and semantic dependency graph data, proved finite question-flow semantics, compiled the proof output into a deterministic tracked question artifact with distinct source and semantic hashes, and added browser-neutral draft decoding, canonical fixed-point flow evaluation, atomic submitted-answer transitions, generic pending-selection interactions, and stable-ID navigation; application runtime behavior remains unchanged.
+- Implementation SHA: `ecf9f5b4791862471d0898da7283ba4a40d3fbf9`
 
 ### Legacy sources
 
@@ -202,8 +203,11 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Incidents
 
-- None recorded.
+- `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`
 
 ### Verification
 
 - `batch2a-local-verify`: `npm run verify` — passed; all Batch 2A offline compiler, artifact, runtime, observable trace projection parity, documentation, and ledger gates passed
+- `batch2a-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed acceptance candidate completed the Node 24 verify job successfully
+  - Commit: `ecf9f5b4791862471d0898da7283ba4a40d3fbf9`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29311063386
