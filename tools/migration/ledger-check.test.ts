@@ -54,6 +54,11 @@ const declaredDirectories = parentDirectories(declaredFiles)
 const candidateSha = 'a'.repeat(40)
 const historicalBatch2AImplementationSha =
   'ecf9f5b4791862471d0898da7283ba4a40d3fbf9'
+const approvedSharedMaintenanceFiles = [
+  'tools/parity/shared/contracts.ts',
+  'tools/parity/shared/authoring.ts',
+  'tools/parity/shared/authoring.test.ts',
+] as const
 
 function verifySuccessfulCiProof(
   proofInput: unknown,
@@ -477,6 +482,57 @@ describe('migration ledger repository checks', () => {
       currentMarkdown: renderLedger(ledger),
     })
     expect(result).toMatchObject({ ok: true, errors: [] })
+  })
+
+  test('treats approved new maintenance files as canonical owners', () => {
+    const repoFiles = new Set([
+      ...declaredFiles,
+      ...approvedSharedMaintenanceFiles,
+    ])
+    const result = checkLedger({
+      input: ledger,
+      repoFiles,
+      existingFiles: repoFiles,
+      repoDirectories: parentDirectories(repoFiles),
+      currentMarkdown: renderLedger(ledger),
+    })
+
+    expect(result).toMatchObject({ ok: true, errors: [] })
+  })
+
+  test('requires an approved maintenance owner to be an existing regular file', () => {
+    const maintenanceOwner = approvedSharedMaintenanceFiles[0]
+    const repoFiles = new Set([...declaredFiles, maintenanceOwner])
+    const result = checkLedger({
+      input: ledger,
+      repoFiles,
+      existingFiles: declaredFiles,
+      repoDirectories: parentDirectories(repoFiles),
+      currentMarkdown: renderLedger(ledger),
+    })
+
+    expect(result.errors).toContain(
+      `Batch 2A maintenance owner is not an existing repository file: ${maintenanceOwner}`,
+    )
+  })
+
+  test('does not grant ownership outside the exact maintenance allowlist', () => {
+    const outsideAllowlist = 'tools/parity/shared-escape/authoring.ts'
+    const repoFiles = new Set([...declaredFiles, outsideAllowlist])
+    const result = checkLedger({
+      input: ledger,
+      repoFiles,
+      existingFiles: repoFiles,
+      repoDirectories: parentDirectories(repoFiles),
+      currentMarkdown: renderLedger(ledger),
+    })
+
+    expect(result.errors).toContain(
+      `Repository file has no migration-ledger owner: ${outsideAllowlist}`,
+    )
+    expect(result.errors).toContain(
+      `Repository file is not registered in owned scope tools: ${outsideAllowlist}`,
+    )
   })
 
   test('rejects a missing owner and an unregistered file inside an owned scope', () => {

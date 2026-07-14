@@ -244,7 +244,26 @@ export function checkLedger(input: LedgerCheckInput): LedgerCheckResult {
   }
 
   const errors: string[] = []
-  const allOwners = new Set(parsed.data.entries.flatMap((entry) => entry.newOwners))
+  const maintenanceOwners = parsed.data.entries.flatMap((entry) => {
+    const maintenancePaths = entry.maintenance?.paths
+    if (!maintenancePaths) return []
+    return [...input.repoFiles]
+      .filter((file) => maintenancePaths.some(
+        (path) => matchesSemanticPath(file, path),
+      ))
+      .map((file) => ({ batch: entry.batch, file }))
+  })
+  const allOwners = new Set([
+    ...parsed.data.entries.flatMap((entry) => entry.newOwners),
+    ...maintenanceOwners.map(({ file }) => file),
+  ])
+  for (const owner of maintenanceOwners) {
+    if (!input.existingFiles.has(owner.file)) {
+      errors.push(
+        `Batch ${owner.batch} maintenance owner is not an existing repository file: ${owner.file}`,
+      )
+    }
+  }
   for (const entry of parsed.data.entries) {
     for (const owner of entry.newOwners) {
       if (!input.repoFiles.has(owner) || !input.existingFiles.has(owner)) {
