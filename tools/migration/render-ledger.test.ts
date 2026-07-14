@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, test } from 'vitest'
 
-import { migrationLedgerSchema } from './ledger-schema.js'
+import {
+  batch2AMaintenancePaths,
+  migrationLedgerSchema,
+  protectedQuestionBaseline,
+} from './ledger-schema.js'
 import { renderLedger } from './render-ledger.js'
 
 const ledger = migrationLedgerSchema.parse(JSON.parse(readFileSync(
@@ -16,6 +20,28 @@ describe('migration ledger', () => {
     expect(rendered).toContain('## Batch 0 — complete')
     expect(rendered).toContain('`docs/migration/ledger.json`')
     expect(rendered.endsWith('\n')).toBe(true)
+  })
+
+  test('renders in-progress maintenance without claiming semantic completion', () => {
+    const input = structuredClone(ledger)
+    const batch2A = input.entries[2] as typeof input.entries[number] & {
+      maintenance?: unknown
+    }
+    batch2A.maintenance = {
+      status: 'in-progress',
+      paths: [...batch2AMaintenancePaths],
+      baseline: protectedQuestionBaseline,
+      verification: [],
+    }
+
+    const rendered = renderLedger(migrationLedgerSchema.parse(input))
+
+    expect(rendered).toContain('### Controlled maintenance')
+    expect(rendered).toContain('- Status: `in-progress`')
+    expect(rendered).toContain(
+      '- Historical Batch 2A semantic implementation remains unchanged.',
+    )
+    expect(rendered).not.toContain('- Maintenance SHA:')
   })
 
   test('rejects a duplicate batch independently', () => {

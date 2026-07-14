@@ -205,6 +205,36 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 - `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`
 
+### Controlled maintenance
+
+- Status: `in-progress`
+- Historical Batch 2A semantic implementation remains unchanged.
+
+#### Approved maintenance paths
+
+- `tools/parity/shared/**`
+- `tools/parity/questions/contracts.ts`
+- `tools/parity/questions/contracts.test.ts`
+- `tools/parity/questions/extractor.ts`
+- `tools/parity/questions/extractor.test.ts`
+- `tools/parity/fixtures/questions/legacy-v1/manifest.json`
+
+#### Protected question baseline
+
+- modelVersion: `batch2a.1.0`
+- semanticHash: `d1bd2fcecabcfde8a7512b530d9cbec7f2fc0bb1d62ad65cbece2799be753c0d`
+- generatedArtifactHash: `48386ff2d6b3e9de7944169a2c3edb9992187257dd8573a107e2b15f7d80bd43`
+- casesHash: `89d7f7588c27f6c243eb28bb606c711d881d1223c34c62216d1df39a098419f3`
+- fixtureContentHash: `89d7f7588c27f6c243eb28bb606c711d881d1223c34c62216d1df39a098419f3`
+- seedsHash: `f7a37a15c9b9fbdbd3b10311d3f11f1efdea548d6ba835605d1a987ca694173b`
+- instrumentationHash: `cbf5018a0d890fcb3d5915cd2c8e9abde3d93178ebcaa4082823d0f5a21809ba`
+- sourceCommit: `eebf00b7ddfbbe6f01ff598e57f1e17197068a37`
+- sourceTreeHash: `3e527de876cfeccfd3154ddc492830d71c4cfd9a`
+
+#### Maintenance verification
+
+- Pending.
+
 ### Verification
 
 - `batch2a-local-verify`: `npm run verify` — passed; all Batch 2A offline compiler, artifact, runtime, observable trace projection parity, documentation, and ledger gates passed

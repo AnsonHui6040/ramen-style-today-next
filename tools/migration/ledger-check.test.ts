@@ -25,8 +25,10 @@ import { verifySuccessfulCiProof as verifySuccessfulCiProofOnline } from '../acc
 import { recordSuccessfulCi } from './record-ci.js'
 import {
   batch2AIncidentPath,
+  batch2AMaintenancePaths,
   batch2ASemanticPaths,
   migrationLedgerSchema,
+  protectedQuestionBaseline,
 } from './ledger-schema.js'
 import { renderLedger } from './render-ledger.js'
 
@@ -50,6 +52,8 @@ function parentDirectories(files: ReadonlySet<string>) {
 
 const declaredDirectories = parentDirectories(declaredFiles)
 const candidateSha = 'a'.repeat(40)
+const historicalBatch2AImplementationSha =
+  'ecf9f5b4791862471d0898da7283ba4a40d3fbf9'
 
 function verifySuccessfulCiProof(
   proofInput: unknown,
@@ -108,6 +112,52 @@ function batch2ALedger(entry: Record<string, unknown>) {
       commit: 'b'.repeat(40),
     },
     entries: [entry],
+  }
+}
+
+function inProgressMaintenanceLedger(
+  maintenanceOverrides: Record<string, unknown> = {},
+) {
+  return batch2ALedger(completeBatch2A({
+    implementationSha: historicalBatch2AImplementationSha,
+    verification: [
+      completeBatch2A().verification[0],
+      {
+        ...completeBatch2A().verification[1],
+        commitSha: historicalBatch2AImplementationSha,
+      },
+    ],
+    maintenance: {
+      status: 'in-progress',
+      paths: [...batch2AMaintenancePaths],
+      baseline: protectedQuestionBaseline,
+      verification: [],
+      ...maintenanceOverrides,
+    },
+  }))
+}
+
+function maintenanceRepositoryState(
+  overrides: {
+    changedPaths?: readonly string[]
+    questionBaseline?: {
+      [Key in keyof typeof protectedQuestionBaseline]: string
+    }
+  } = {},
+) {
+  return {
+    repoFiles: new Set([batch2AIncidentPath]),
+    existingFiles: new Set([batch2AIncidentPath]),
+    repoDirectories: new Set(['docs', 'docs/migration', 'docs/migration/incidents']),
+    currentMarkdown: undefined,
+    currentHeadSha: 'b'.repeat(40),
+    isCommitAncestor: async () => true,
+    changedPathsBetween: async () => overrides.changedPaths ?? [],
+    questionSemanticHash: protectedQuestionBaseline.semanticHash,
+    classificationSemanticHash: protectedQuestionBaseline.semanticHash,
+    fixtureManifestHash: 'e'.repeat(64),
+    classificationFixtureManifestHash: 'e'.repeat(64),
+    questionBaseline: overrides.questionBaseline ?? protectedQuestionBaseline,
   }
 }
 
@@ -661,6 +711,138 @@ describe('migration ledger repository checks', () => {
 })
 
 describe('Batch 2A offline acceptance invariants', () => {
+  test('allows only approved in-progress maintenance paths', async () => {
+    const input = inProgressMaintenanceLedger()
+    const result = await checkLedgerOffline(input, maintenanceRepositoryState({
+      changedPaths: [
+        'tools/parity/shared/authoring.ts',
+        'tools/parity/questions/extractor.ts',
+      ],
+    }))
+
+    expect(result.errors).toEqual([])
+    expect(input.entries[0]!.implementationSha).toBe(
+      historicalBatch2AImplementationSha,
+    )
+  })
+
+  test('rejects corpus and artifact changes during maintenance', async () => {
+    const result = await checkLedgerOffline(
+      inProgressMaintenanceLedger(),
+      maintenanceRepositoryState({
+        changedPaths: ['tools/parity/fixtures/questions/legacy-v1/cases.json'],
+      }),
+    )
+
+    expect(result.errors[0]).toBe(
+      'Batch 2A maintenance changed a protected question path',
+    )
+  })
+
+  test('requires exact maintenance paths, baseline, and state evidence', () => {
+    const invalidPaths = inProgressMaintenanceLedger({
+      paths: batch2AMaintenancePaths.slice(1),
+    })
+    expect(migrationLedgerSchema.safeParse(invalidPaths).success).toBe(false)
+
+    const invalidBaseline = inProgressMaintenanceLedger({
+      baseline: {
+        ...protectedQuestionBaseline,
+        semanticHash: '0'.repeat(64),
+      },
+    })
+    expect(migrationLedgerSchema.safeParse(invalidBaseline).success).toBe(false)
+
+    const prematureEvidence = inProgressMaintenanceLedger({
+      maintenanceSha: candidateSha,
+      verification: [{
+        gate: 'batch2a-maintenance-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'local verification passed',
+      }],
+    })
+    expect(migrationLedgerSchema.safeParse(prematureEvidence).success).toBe(false)
+  })
+
+  test('requires exact completed maintenance evidence bound to its SHA', () => {
+    const completeMaintenance = inProgressMaintenanceLedger({
+      status: 'complete',
+      maintenanceSha: candidateSha,
+      verification: [
+        {
+          gate: 'batch2a-maintenance-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'local verification passed',
+        },
+        {
+          gate: 'batch2a-maintenance-remote-ci',
+          command: 'GitHub Actions CI / verify',
+          outcome: 'passed',
+          evidence: 'authenticated remote verification passed',
+          commitSha: candidateSha,
+          runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+        },
+      ],
+    })
+    expect(migrationLedgerSchema.safeParse(completeMaintenance).success).toBe(true)
+
+    const mismatchedRemote = structuredClone(completeMaintenance)
+    const maintenance = mismatchedRemote.entries[0]!.maintenance as {
+      verification: Array<{ commitSha?: string }>
+    }
+    maintenance.verification[1]!.commitSha = 'f'.repeat(40)
+    expect(migrationLedgerSchema.safeParse(mismatchedRemote).success).toBe(false)
+  })
+
+  test('validates completed maintenance remote CI ancestry', async () => {
+    const input = inProgressMaintenanceLedger({
+      status: 'complete',
+      maintenanceSha: candidateSha,
+      verification: [
+        {
+          gate: 'batch2a-maintenance-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'local verification passed',
+        },
+        {
+          gate: 'batch2a-maintenance-remote-ci',
+          command: 'GitHub Actions CI / verify',
+          outcome: 'passed',
+          evidence: 'authenticated remote verification passed',
+          commitSha: candidateSha,
+          runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+        },
+      ],
+    })
+    const result = await checkLedgerOffline(input, {
+      ...maintenanceRepositoryState(),
+      isCommitAncestor: async (sha) => sha !== candidateSha,
+    })
+
+    expect(result.errors).toContain(
+      `Recorded remote CI commit ${candidateSha} is not an ancestor of current HEAD ${'b'.repeat(40)}`,
+    )
+  })
+
+  test('rejects drift from the protected maintenance baseline', async () => {
+    const result = await checkLedgerOffline(
+      inProgressMaintenanceLedger(),
+      maintenanceRepositoryState({
+        questionBaseline: {
+          ...protectedQuestionBaseline,
+          generatedArtifactHash: '0'.repeat(64),
+        },
+      }),
+    )
+
+    expect(result.errors).toContain(
+      'Batch 2A maintenance protected baseline mismatch: generatedArtifactHash',
+    )
+  })
+
   test('offline ledger check never calls fetch', async () => {
     const owner = 'docs/migration/ledger.json'
     const input = batch2ALedger({

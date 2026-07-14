@@ -3,7 +3,10 @@ import { execFileSync } from 'node:child_process'
 import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
 import type { MigrationLedger } from './ledger-schema.js'
-import { migrationLedgerSchema } from './ledger-schema.js'
+import {
+  migrationLedgerSchema,
+  protectedQuestionBaseline,
+} from './ledger-schema.js'
 import { renderLedger } from './render-ledger.js'
 
 export interface LedgerCheckInput {
@@ -39,6 +42,9 @@ export interface LedgerRepositoryState extends Omit<LedgerCheckInput, 'input'> {
   classificationSemanticHash: string
   fixtureManifestHash: string
   classificationFixtureManifestHash: string
+  questionBaseline?: {
+    readonly [Key in keyof typeof protectedQuestionBaseline]: string
+  }
 }
 
 export interface SemanticAncestryInput {
@@ -103,6 +109,17 @@ function matchesSemanticPath(file: string, semanticPath: string) {
   return file === semanticPath
 }
 
+function changedProtectedMaintenancePath(
+  changedPaths: readonly string[],
+  semanticPaths: readonly string[],
+  maintenancePaths: readonly string[],
+) {
+  return changedPaths.find((file) => (
+    semanticPaths.some((semanticPath) => matchesSemanticPath(file, semanticPath))
+    && !maintenancePaths.some((maintenancePath) => matchesSemanticPath(file, maintenancePath))
+  ))
+}
+
 export async function verifySemanticAncestry(
   input: SemanticAncestryInput,
 ): Promise<void> {
@@ -148,12 +165,29 @@ export async function checkLedgerOffline(
         )
       }
     }
-    for (const evidence of entry.verification) {
+    const verificationEvidence = [
+      ...entry.verification,
+      ...(entry.maintenance?.verification ?? []),
+    ]
+    for (const evidence of verificationEvidence) {
       if (!evidence.gate.endsWith('-remote-ci') || !evidence.commitSha) continue
       if (!await state.isCommitAncestor(evidence.commitSha, state.currentHeadSha)) {
         errors.push(
           `Recorded remote CI commit ${evidence.commitSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
         )
+      }
+    }
+    if (entry.maintenance) {
+      if (!state.questionBaseline) {
+        errors.push('Batch 2A maintenance protected baseline is unavailable')
+      } else {
+        for (const key of Object.keys(protectedQuestionBaseline) as Array<
+          keyof typeof protectedQuestionBaseline
+        >) {
+          if (state.questionBaseline[key] !== entry.maintenance.baseline[key]) {
+            errors.push(`Batch 2A maintenance protected baseline mismatch: ${key}`)
+          }
+        }
       }
     }
     if (entry.batch !== '2A' || entry.status !== 'complete' || !entry.implementationSha) {
@@ -169,6 +203,16 @@ export async function checkLedgerOffline(
       entry.implementationSha,
       state.currentHeadSha,
     )
+    if (entry.maintenance) {
+      if (changedProtectedMaintenancePath(
+        changedPaths,
+        entry.semanticPaths ?? [],
+        entry.maintenance.paths,
+      )) {
+        errors.push('Batch 2A maintenance changed a protected question path')
+      }
+      continue
+    }
     try {
       await verifySemanticAncestry({
         implementationSha: entry.implementationSha,

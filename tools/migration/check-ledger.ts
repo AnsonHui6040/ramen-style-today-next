@@ -46,7 +46,24 @@ function isCommitAncestor(evidenceSha: string, currentHeadSha: string) {
   return ancestor.status === 0
 }
 
-function readBatch2AIdentities() {
+function sha256File(file: string) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex')
+}
+
+function readGeneratedQuestionIdentity(
+  generatedQuestionModel: string,
+  key: 'modelVersion' | 'semanticHash',
+) {
+  const matches = [...generatedQuestionModel.matchAll(
+    new RegExp(`"${key}": "([^"]+)"`, 'g'),
+  )]
+  if (matches.length !== 1) {
+    throw new Error(`generated question model must contain exactly one ${key}`)
+  }
+  return matches[0]![1]!
+}
+
+function readBatch2AIdentities(includeProtectedBaseline: boolean) {
   const manifest = JSON.parse(readFileSync(
     resolve(repoRoot, 'docs/classification/manifest.json'),
     'utf8',
@@ -63,24 +80,68 @@ function readBatch2AIdentities() {
     || typeof questions.fixtureManifestHash !== 'string') {
     throw new Error('classification manifest is missing question identity hashes')
   }
-  const fixtureManifestHash = createHash('sha256').update(readFileSync(
-    resolve(repoRoot, 'tools/parity/fixtures/questions/legacy-v1/manifest.json'),
-  )).digest('hex')
+  const fixtureManifestPath = resolve(
+    repoRoot,
+    'tools/parity/fixtures/questions/legacy-v1/manifest.json',
+  )
+  const generatedQuestionModelPath = resolve(
+    repoRoot,
+    'packages/classification-core/src/generated/question-model.ts',
+  )
   const generatedQuestionModel = readFileSync(
-    resolve(repoRoot, 'packages/classification-core/src/generated/question-model.ts'),
+    generatedQuestionModelPath,
     'utf8',
   )
-  const semanticHashMatches = [...generatedQuestionModel.matchAll(
-    /"semanticHash": "([0-9a-f]{64})"/g,
-  )]
-  if (semanticHashMatches.length !== 1) {
-    throw new Error('generated question model must contain exactly one semantic hash')
+  const semanticHash = readGeneratedQuestionIdentity(generatedQuestionModel, 'semanticHash')
+  const base = {
+    questionSemanticHash: semanticHash,
+    classificationSemanticHash: questions.semanticHash,
+    fixtureManifestHash: sha256File(fixtureManifestPath),
+    classificationFixtureManifestHash: questions.fixtureManifestHash,
+  }
+  if (!includeProtectedBaseline) return base
+
+  const fixtureManifest = JSON.parse(readFileSync(
+    fixtureManifestPath,
+    'utf8',
+  )) as {
+    fixtureContentHash?: unknown
+    instrumentation?: { hash?: unknown }
+    source?: { commit?: unknown; treeHash?: unknown }
+  }
+  if (typeof fixtureManifest.fixtureContentHash !== 'string'
+    || typeof fixtureManifest.instrumentation?.hash !== 'string'
+    || typeof fixtureManifest.source?.commit !== 'string'
+    || typeof fixtureManifest.source.treeHash !== 'string') {
+    throw new Error('question fixture manifest is missing protected identity fields')
+  }
+  const casesHash = sha256File(resolve(
+    repoRoot,
+    'tools/parity/fixtures/questions/legacy-v1/cases.json',
+  ))
+  const instrumentationHash = sha256File(resolve(
+    repoRoot,
+    'tools/parity/questions/legacy-instrumentation.patch',
+  ))
+  if (fixtureManifest.fixtureContentHash !== casesHash) {
+    throw new Error('question fixture content hash is inconsistent with cases bytes')
+  }
+  if (fixtureManifest.instrumentation.hash !== instrumentationHash) {
+    throw new Error('question fixture instrumentation hash is inconsistent')
   }
   return {
-    questionSemanticHash: semanticHashMatches[0]![1]!,
-    classificationSemanticHash: questions.semanticHash,
-    fixtureManifestHash,
-    classificationFixtureManifestHash: questions.fixtureManifestHash,
+    ...base,
+    questionBaseline: {
+      modelVersion: readGeneratedQuestionIdentity(generatedQuestionModel, 'modelVersion'),
+      semanticHash,
+      generatedArtifactHash: sha256File(generatedQuestionModelPath),
+      casesHash,
+      fixtureContentHash: fixtureManifest.fixtureContentHash,
+      seedsHash: sha256File(resolve(repoRoot, 'tools/parity/questions/seeds.json')),
+      instrumentationHash,
+      sourceCommit: fixtureManifest.source.commit,
+      sourceTreeHash: fixtureManifest.source.treeHash,
+    },
   }
 }
 
@@ -234,8 +295,9 @@ async function run() {
   let result = baseResult
   if (mode === '--check' && baseResult.ok) {
     const parsedLedger = migrationLedgerSchema.parse(input)
-    const batch2AIdentities = parsedLedger.entries.some(({ batch }) => batch === '2A')
-      ? readBatch2AIdentities()
+    const batch2AEntry = parsedLedger.entries.find(({ batch }) => batch === '2A')
+    const batch2AIdentities = batch2AEntry
+      ? readBatch2AIdentities(batch2AEntry.maintenance !== undefined)
       : {
           questionSemanticHash: '',
           classificationSemanticHash: '',

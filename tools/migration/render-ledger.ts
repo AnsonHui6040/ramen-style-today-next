@@ -37,6 +37,38 @@ export function renderLedger(ledger: MigrationLedger) {
           : ['- None recorded.']),
         '',
       ] : []),
+      ...(entry.maintenance ? [
+        '### Controlled maintenance',
+        '',
+        `- Status: \`${entry.maintenance.status}\``,
+        '- Historical Batch 2A semantic implementation remains unchanged.',
+        ...(entry.maintenance.status === 'complete'
+          ? [`- Maintenance SHA: \`${entry.maintenance.maintenanceSha}\``]
+          : []),
+        '',
+        '#### Approved maintenance paths',
+        '',
+        ...entry.maintenance.paths.map((path) => `- \`${path}\``),
+        '',
+        '#### Protected question baseline',
+        '',
+        ...Object.entries(entry.maintenance.baseline).map(
+          ([key, value]) => `- ${key}: \`${value}\``,
+        ),
+        '',
+        '#### Maintenance verification',
+        '',
+        ...(entry.maintenance.verification.length
+          ? [...entry.maintenance.verification]
+              .sort((left, right) => compareCodePoints(left.gate, right.gate))
+              .flatMap((item) => [
+                `- \`${item.gate}\`: \`${item.command}\` — ${item.outcome}; ${item.evidence}`,
+                ...(item.commitSha ? [`  - Commit: \`${item.commitSha}\``] : []),
+                ...(item.runUrl ? [`  - Run: ${item.runUrl}`] : []),
+              ])
+          : ['- Pending.']),
+        '',
+      ] : []),
       '### Verification',
       '',
       ...(entry.verification.length

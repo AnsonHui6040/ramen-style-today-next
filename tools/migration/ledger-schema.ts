@@ -13,6 +13,30 @@ export const batch2ASemanticPaths = [
 export const batch2AIncidentPath =
   'docs/migration/incidents/2026-07-13-legacy-cache-isolation.md' as const
 
+export const batch2AMaintenancePaths = [
+  'tools/parity/shared/**',
+  'tools/parity/questions/contracts.ts',
+  'tools/parity/questions/contracts.test.ts',
+  'tools/parity/questions/extractor.ts',
+  'tools/parity/questions/extractor.test.ts',
+  'tools/parity/fixtures/questions/legacy-v1/manifest.json',
+] as const
+
+export const protectedQuestionBaseline = {
+  modelVersion: 'batch2a.1.0',
+  semanticHash: 'd1bd2fcecabcfde8a7512b530d9cbec7f2fc0bb1d62ad65cbece2799be753c0d',
+  generatedArtifactHash: '48386ff2d6b3e9de7944169a2c3edb9992187257dd8573a107e2b15f7d80bd43',
+  casesHash: '89d7f7588c27f6c243eb28bb606c711d881d1223c34c62216d1df39a098419f3',
+  fixtureContentHash: '89d7f7588c27f6c243eb28bb606c711d881d1223c34c62216d1df39a098419f3',
+  seedsHash: 'f7a37a15c9b9fbdbd3b10311d3f11f1efdea548d6ba835605d1a987ca694173b',
+  instrumentationHash: 'cbf5018a0d890fcb3d5915cd2c8e9abde3d93178ebcaa4082823d0f5a21809ba',
+  sourceCommit: 'eebf00b7ddfbbe6f01ff598e57f1e17197068a37',
+  sourceTreeHash: '3e527de876cfeccfd3154ddc492830d71c4cfd9a',
+} as const
+
+const historicalBatch2AImplementationSha =
+  'ecf9f5b4791862471d0898da7283ba4a40d3fbf9'
+
 export const repoPathSchema = z.string().min(1).refine(
   (value) => !value.startsWith('/')
     && !value.includes('\\')
@@ -43,6 +67,69 @@ const verificationSchema = z.strictObject({
   }
 })
 
+const maintenancePathsSchema = z.array(repoPathSchema).superRefine((paths, context) => {
+  if (JSON.stringify(paths) !== JSON.stringify(batch2AMaintenancePaths)) {
+    context.addIssue({
+      code: 'custom',
+      message: `Batch 2A maintenance requires exact paths: ${batch2AMaintenancePaths.join(', ')}`,
+    })
+  }
+})
+
+const protectedQuestionBaselineSchema = z.strictObject({
+  modelVersion: z.literal(protectedQuestionBaseline.modelVersion),
+  semanticHash: z.literal(protectedQuestionBaseline.semanticHash),
+  generatedArtifactHash: z.literal(protectedQuestionBaseline.generatedArtifactHash),
+  casesHash: z.literal(protectedQuestionBaseline.casesHash),
+  fixtureContentHash: z.literal(protectedQuestionBaseline.fixtureContentHash),
+  seedsHash: z.literal(protectedQuestionBaseline.seedsHash),
+  instrumentationHash: z.literal(protectedQuestionBaseline.instrumentationHash),
+  sourceCommit: z.literal(protectedQuestionBaseline.sourceCommit),
+  sourceTreeHash: z.literal(protectedQuestionBaseline.sourceTreeHash),
+})
+
+const inProgressMaintenanceSchema = z.strictObject({
+  status: z.literal('in-progress'),
+  paths: maintenancePathsSchema,
+  baseline: protectedQuestionBaselineSchema,
+  verification: z.array(verificationSchema).length(0),
+})
+
+const completeMaintenanceSchema = z.strictObject({
+  status: z.literal('complete'),
+  maintenanceSha: z.string().regex(/^[0-9a-f]{40}$/),
+  paths: maintenancePathsSchema,
+  baseline: protectedQuestionBaselineSchema,
+  verification: z.array(verificationSchema),
+}).superRefine((maintenance, context) => {
+  const requiredGates = new Set([
+    'batch2a-maintenance-local-verify',
+    'batch2a-maintenance-remote-ci',
+  ])
+  const gates = new Set(maintenance.verification.map(({ gate }) => gate))
+  const exact = gates.size === requiredGates.size
+    && maintenance.verification.length === requiredGates.size
+    && [...requiredGates].every((gate) => gates.has(gate))
+  if (!exact) context.addIssue({
+    code: 'custom',
+    path: ['verification'],
+    message: 'complete Batch 2A maintenance requires exact verification gates: batch2a-maintenance-local-verify, batch2a-maintenance-remote-ci',
+  })
+  const remoteGate = maintenance.verification.find(
+    ({ gate }) => gate === 'batch2a-maintenance-remote-ci',
+  )
+  if (remoteGate?.commitSha !== maintenance.maintenanceSha) context.addIssue({
+    code: 'custom',
+    path: ['verification'],
+    message: 'complete Batch 2A maintenance remote CI commit must match maintenanceSha',
+  })
+})
+
+const batch2AMaintenanceSchema = z.union([
+  inProgressMaintenanceSchema,
+  completeMaintenanceSchema,
+])
+
 const completionGatePolicies = new Map<string, ReadonlySet<string>>([
   ['0', new Set([
     'architecture-review',
@@ -70,6 +157,7 @@ const entrySchema = z.strictObject({
   implementationSha: z.string().regex(/^[0-9a-f]{40}$/).optional(),
   semanticPaths: z.array(z.string().min(1)).optional(),
   incidents: z.array(repoPathSchema).optional(),
+  maintenance: batch2AMaintenanceSchema.optional(),
   legacySources: z.array(z.string().min(1)),
   ownedScopes: z.array(repoPathSchema).default([]),
   newOwners: z.array(repoPathSchema).min(1),
@@ -104,6 +192,18 @@ const entrySchema = z.strictObject({
         code: 'custom',
         path: ['semanticPaths'],
         message: `Batch 2A requires exact semantic paths: ${batch2ASemanticPaths.join(', ')}`,
+      })
+    }
+    if (entry.maintenance) {
+      if (entry.status !== 'complete') context.addIssue({
+        code: 'custom',
+        path: ['maintenance'],
+        message: 'Batch 2A maintenance requires the historical batch to remain complete',
+      })
+      if (entry.implementationSha !== historicalBatch2AImplementationSha) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: `Batch 2A maintenance preserves historical implementationSha ${historicalBatch2AImplementationSha}`,
       })
     }
     if (entry.status !== 'complete') {
@@ -164,6 +264,11 @@ const entrySchema = z.strictObject({
       code: 'custom',
       path: ['incidents'],
       message: 'incidents are currently reserved for Batch 2A',
+    })
+    if (entry.maintenance !== undefined) context.addIssue({
+      code: 'custom',
+      path: ['maintenance'],
+      message: 'maintenance is currently reserved for Batch 2A',
     })
   }
   if (entry.status === 'complete') {

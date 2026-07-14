@@ -33,6 +33,40 @@ export function recordSuccessfulCi(
 ) {
   const ledger = migrationLedgerSchema.parse(input)
   assertAuthenticatedSuccessfulCiRun(verifiedRun)
+  if (batch === '2A-maintenance') {
+    const target = ledger.entries.find((entry) => entry.batch === '2A')
+    if (!target?.maintenance) throw new Error('Unknown ledger target 2A-maintenance')
+    if (target.maintenance.status !== 'in-progress') {
+      throw new Error('Batch 2A maintenance is not in progress')
+    }
+    return migrationLedgerSchema.parse({
+      ...ledger,
+      entries: ledger.entries.map((entry) => entry.batch === '2A' ? {
+        ...entry,
+        maintenance: {
+          ...entry.maintenance,
+          status: 'complete',
+          maintenanceSha: verifiedRun.sha,
+          verification: [
+            {
+              gate: 'batch2a-maintenance-local-verify',
+              command: 'npm run verify',
+              outcome: 'passed',
+              evidence: 'all approved Batch 2A maintenance invariant and verification gates passed',
+            },
+            {
+              gate: 'batch2a-maintenance-remote-ci',
+              command: 'GitHub Actions CI / verify',
+              outcome: 'passed',
+              evidence: 'the pushed maintenance candidate completed the Node 24 verify job successfully',
+              commitSha: verifiedRun.sha,
+              runUrl: verifiedRun.runUrl,
+            },
+          ],
+        },
+      } : entry),
+    })
+  }
   const target = ledger.entries.find((entry) => entry.batch === batch)
   if (!target) throw new Error(`Unknown ledger batch ${batch}`)
   if (target.status !== 'in-review') throw new Error(`Batch ${batch} is not in review`)
