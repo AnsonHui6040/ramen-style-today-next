@@ -25,9 +25,8 @@ import type {
   AuthoringSource as SharedAuthoringSource,
   CreateAuthoringEnvironmentInput,
   FixtureAuthoringAdapter,
-  FixtureAuthoringCommandResult,
-  FixtureAuthoringResult,
   IgnoredPathFingerprint as SharedIgnoredPathFingerprint,
+  PublicationResult as SharedPublicationResult,
   RunFixtureAuthoringOptions,
 } from '../shared/contracts.js'
 
@@ -68,20 +67,46 @@ export type IgnoredPathFingerprint =
   SharedIgnoredPathFingerprint<IgnoredExtractorSensitivePath>
 
 export type ExtractorHooks = AuthoringHooks
-export type ExtractorEnvironment = AuthoringEnvironment
 export type RunLegacyExtractorOptions = RunFixtureAuthoringOptions
-export type LegacyExtractorResult = FixtureAuthoringResult<
-  LegacyObservableTraceCase,
-  FixtureManifest
->
-export type LegacyExtractorCommandResult = FixtureAuthoringCommandResult<
-  LegacyObservableTraceCase,
-  FixtureManifest
->
 
 export interface AuthoringSource extends SharedAuthoringSource {
   readonly relativePath: (typeof extractorAuthoringSourcePaths)[number]
 }
+
+export interface ExtractorEnvironment extends Omit<
+  AuthoringEnvironment,
+  'authoringSources'
+> {
+  readonly authoringSources: readonly AuthoringSource[]
+}
+
+interface LegacyExtractorEvidence {
+  readonly cases: readonly LegacyObservableTraceCase[]
+  readonly manifest: FixtureManifest
+  readonly ignoredFingerprintsBefore: readonly IgnoredPathFingerprint[]
+  readonly ignoredFingerprintsAfter: readonly IgnoredPathFingerprint[]
+}
+
+type SuccessfulPublicationResult = Extract<
+  SharedPublicationResult,
+  { readonly published: true }
+>
+type FailedPublicationResult = Extract<
+  SharedPublicationResult,
+  { readonly status: 'failed' }
+>
+
+export type LegacyExtractorResult = LegacyExtractorEvidence & (
+  | {
+      readonly status: 'verified'
+      readonly published: false
+      readonly warning?: never
+    }
+  | SuccessfulPublicationResult
+)
+export type LegacyExtractorCommandResult =
+  | LegacyExtractorResult
+  | FailedPublicationResult
 
 export interface CreateExtractorEnvironmentInput extends Omit<
   CreateAuthoringEnvironmentInput,
@@ -283,19 +308,23 @@ export function createExtractorEnvironment(
   return createAuthoringEnvironment({
     ...input,
     authoringSources: requestedAuthoringSources,
-  })
+  }) as ExtractorEnvironment
 }
 
 export function runLegacyExtractor(
   environment: ExtractorEnvironment,
   options: RunLegacyExtractorOptions,
 ): Promise<LegacyExtractorResult> {
-  return runFixtureAuthoring(environment, questionAdapter, options)
+  return runFixtureAuthoring(environment, questionAdapter, options) as Promise<
+    LegacyExtractorResult
+  >
 }
 
 export function runLegacyExtractorCommand(
   environment: ExtractorEnvironment,
   options: RunLegacyExtractorOptions,
 ): Promise<LegacyExtractorCommandResult> {
-  return runFixtureAuthoringCommand(environment, questionAdapter, options)
+  return runFixtureAuthoringCommand(environment, questionAdapter, options) as Promise<
+    LegacyExtractorCommandResult
+  >
 }

@@ -188,14 +188,17 @@ function fakeEnvironment(input: {
     },
     spawn,
     hooks: {
-      afterPublishStaging: () => input.events.push('target-verified'),
-      beforeReleaseLock: () => input.events.push('lock-released'),
+      afterPublishStaging: () => input.events.push('target-installed'),
+      beforeReleaseLock: () => input.events.push('release-commit'),
       beforeRemoveBackup: () => input.events.push('backup-cleanup'),
     },
   })
 }
 
-function fakeAdapter(cases: readonly FakeCase[]): FixtureAuthoringAdapter<
+function fakeAdapter(
+  cases: readonly FakeCase[],
+  onValidate?: () => void,
+): FixtureAuthoringAdapter<
   FakeSeed,
   FakeCase,
   FakeManifest
@@ -204,6 +207,7 @@ function fakeAdapter(cases: readonly FakeCase[]): FixtureAuthoringAdapter<
     parseSeeds: (input) => (input as { seeds: readonly FakeSeed[] }).seeds,
     parseRawCases: () => cases,
     validateCases: (received, seeds) => {
+      onValidate?.()
       expect(received.map(({ id }) => id)).toEqual(seeds.map(({ id }) => id))
       return received
     },
@@ -220,16 +224,24 @@ afterEach(() => {
   while (roots.length > 0) rmSync(roots.pop()!, { recursive: true, force: true })
 })
 
-test('uses domain parsers without changing transaction order', async () => {
+test('validates the installed target before releasing the publication lock', async () => {
   const events: string[] = []
   const result = await runFixtureAuthoring(
     fakeEnvironment({ events }),
-    fakeAdapter([{ id: 'case-a', observed: true }]),
+    fakeAdapter([{ id: 'case-a', observed: true }], () => {
+      if (events.at(-1) === 'target-installed') {
+        events.push('installed-target-validated')
+      }
+    }),
     { replace: true, verifyOnly: false },
   )
   expect(result.published).toBe(true)
-  expect(events.indexOf('target-verified')).toBeLessThan(events.indexOf('lock-released'))
-  expect(events.indexOf('lock-released')).toBeLessThan(events.indexOf('backup-cleanup'))
+  expect(events).toEqual([
+    'target-installed',
+    'installed-target-validated',
+    'release-commit',
+    'backup-cleanup',
+  ])
 })
 
 test('rejects a concurrent author before extraction starts', async () => {

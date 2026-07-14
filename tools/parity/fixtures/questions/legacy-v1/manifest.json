@@ -15,7 +15,7 @@
   ],
   "caseSchemaVersion": 1,
   "extractor": {
-    "hash": "6dcb09353b8ba62092a597534778ad4a5da12c465e0803eecd838ba255ace110",
+    "hash": "be10a9386225d61aca9e8ac8efd9797df373e67d86034322b9c3c0e590ef3c15",
     "sources": [
       {
         "hash": "1612c7966838b280332d94f3fcec29b75949c0a38bf7b77702a0c15100925c3e",
@@ -30,7 +30,7 @@
         "path": "tools/parity/questions/contracts.ts"
       },
       {
-        "hash": "17aad78172191e07fc60dafd3f605ae51e159e1de92d73dd887ceba0d276aa97",
+        "hash": "765f85fe7dc3bb25d7cdf8808c6b15fdb812bce340233b024c13fe09f430447e",
         "path": "tools/parity/questions/extractor.ts"
       },
       {

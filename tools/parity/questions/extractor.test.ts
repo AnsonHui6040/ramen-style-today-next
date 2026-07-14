@@ -20,7 +20,7 @@ import { createHash } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, expectTypeOf, test } from 'vitest'
 
 import {
   assertNoFollowPath,
@@ -32,6 +32,8 @@ import {
   trustedTools,
   type CreateExtractorEnvironmentInput,
   type ExtractorEnvironment,
+  type IgnoredPathFingerprint,
+  type LegacyExtractorResult,
   type SpawnRequest,
 } from './extractor.js'
 import * as extractorModule from './extractor.js'
@@ -46,6 +48,37 @@ const fixtureOriginalApp = 'export default function App() { return null }\n'
 const fixturePatchedApp = 'export default function App() { return "instrumented" }\n'
 const fixturePatchedTest = 'export const observer = true\n'
 const publicationCleanupAttempts = 3
+
+type PublicAuthoringSourcePath =
+  ExtractorEnvironment['authoringSources'][number]['relativePath']
+type PublicIgnoredFingerprint =
+  LegacyExtractorResult['ignoredFingerprintsBefore'][number]
+
+test('preserves the question-specific public extractor facade types', () => {
+  expectTypeOf<PublicAuthoringSourcePath>().toEqualTypeOf<
+    | 'tools/parity/shared/contracts.ts'
+    | 'tools/parity/shared/authoring.ts'
+    | 'tools/parity/questions/contracts.ts'
+    | 'tools/parity/questions/extractor.ts'
+    | 'tools/parity/questions/extract.ts'
+  >()
+  expectTypeOf<PublicIgnoredFingerprint>().toEqualTypeOf<IgnoredPathFingerprint>()
+
+  // @ts-expect-error Public authoring source paths reject strings outside the five bound files.
+  const invalidAuthoringPath: PublicAuthoringSourcePath = 'tools/parity/questions/other.ts'
+  const invalidIgnoredFingerprint: PublicIgnoredFingerprint = {
+    // @ts-expect-error Public ignored evidence rejects paths outside the two protected caches.
+    path: 'node_modules/.tmp/other.tsbuildinfo',
+    exists: false,
+    type: 'missing',
+    size: null,
+    mtimeMs: null,
+    sha256: null,
+  }
+
+  expect(invalidAuthoringPath).toBe('tools/parity/questions/other.ts')
+  expect(invalidIgnoredFingerprint.path).toBe('node_modules/.tmp/other.tsbuildinfo')
+})
 
 function gitBlobHash(content: string) {
   return createHash('sha1')
