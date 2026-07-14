@@ -29,6 +29,7 @@ import {
   normalizeGithubRepository,
   runLegacyExtractor,
   sanitizeExternalError,
+  trustedTools,
   type CreateExtractorEnvironmentInput,
   type ExtractorEnvironment,
   type SpawnRequest,
@@ -282,6 +283,19 @@ async function createExtractorFixture(
 ): Promise<ExtractorFixture> {
   const root = mkdtempSync(join(process.cwd(), '.task9-extractor-test-'))
   roots.push(root)
+  const fixtureToolRoot = join(root, 'trusted-tools')
+  const fixtureTools = {
+    git: join(fixtureToolRoot, 'git'),
+    node: join(fixtureToolRoot, 'node'),
+    npmCli: join(fixtureToolRoot, 'npm-cli.js'),
+    sandboxExec: join(fixtureToolRoot, 'sandbox-exec'),
+  }
+  mkdirSync(fixtureToolRoot, { recursive: true })
+  for (const [name, path] of Object.entries(fixtureTools)) {
+    writeFileSync(path, `#!/bin/sh\n# physical fixture for ${name}\nexit 1\n`, {
+      mode: 0o700,
+    })
+  }
   const legacyRoot = join(root, 'legacy')
   const toolRoot = join(root, 'authoring')
   const destination = join(toolRoot, 'tools/parity/fixtures/questions/legacy-v1')
@@ -430,6 +444,7 @@ async function createExtractorFixture(
       relativePath,
       path: authoringSourcePaths[relativePath],
     })),
+    tools: fixtureTools,
     expected: {
       identity: {
         host: 'github.com',
@@ -534,6 +549,21 @@ describe('identity and transport normalization', () => {
 })
 
 describe('isolated execution and exact seed binding', () => {
+  test('creates run-owned physical fixture tools without host-specific paths', async () => {
+    const fixture = await createExtractorFixture()
+    const toolPaths = Object.values(fixture.environment.tools)
+
+    expect(toolPaths).toHaveLength(4)
+    expect(toolPaths).not.toEqual(Object.values(trustedTools))
+    for (const toolPath of toolPaths) {
+      expect(toolPath.startsWith(`${fixture.root}/`)).toBe(true)
+      expect(Object.values(trustedTools)).not.toContain(toolPath)
+      const stats = lstatSync(toolPath)
+      expect(stats.isFile()).toBe(true)
+      expect(stats.isSymbolicLink()).toBe(false)
+    }
+  })
+
   test.each([
     'tools/parity/questions/contracts.ts',
     'tools/parity/questions/extractor.ts',
@@ -718,7 +748,7 @@ describe('isolated execution and exact seed binding', () => {
       ({ role }) => role === 'legacy-network-denied-extraction',
     )
     if (!extraction) throw new Error('missing extraction record')
-    expect(extraction.executable).toBe('/usr/bin/sandbox-exec')
+    expect(extraction.executable).toBe(fixture.environment.tools.sandboxExec)
     expect(extraction.args.slice(0, 2)).toEqual([
       '-p',
       '(version 1)(allow default)(deny network*)',
@@ -787,8 +817,8 @@ describe('isolated execution and exact seed binding', () => {
       },
     })
     expect([npmInstall.executable, ...npmInstall.args]).toEqual([
-      '/Users/ansonhui/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node',
-      '/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js',
+      fixture.environment.tools.node,
+      fixture.environment.tools.npmCli,
       'ci',
       '--ignore-scripts',
     ])

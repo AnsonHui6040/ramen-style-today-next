@@ -38,6 +38,13 @@ export const trustedTools = {
   sandboxExec: '/usr/bin/sandbox-exec',
 } as const
 
+export interface ExtractorTools {
+  readonly git: string
+  readonly node: string
+  readonly npmCli: string
+  readonly sandboxExec: string
+}
+
 export const legacySourceIdentity = {
   host: 'github.com',
   owner: 'AnsonHui6040',
@@ -162,7 +169,7 @@ export interface ExtractorEnvironment {
   readonly patchPath: string
   readonly seedsPath: string
   readonly authoringSources: readonly AuthoringSource[]
-  readonly tools: typeof trustedTools
+  readonly tools: ExtractorTools
   readonly expected: ExpectedExtractorLineage
   readonly spawn: (request: SpawnRequest) => Promise<SpawnResult>
   readonly randomToken: () => string
@@ -178,7 +185,7 @@ export interface CreateExtractorEnvironmentInput {
   readonly patchPath: string
   readonly seedsPath: string
   readonly authoringSources?: readonly AuthoringSource[]
-  readonly tools?: typeof trustedTools
+  readonly tools?: ExtractorTools
   readonly expected: ExpectedExtractorLineage
   readonly spawn?: (request: SpawnRequest) => Promise<SpawnResult>
   readonly randomToken?: () => string
@@ -838,7 +845,7 @@ export function createExtractorEnvironment(
 function makeChildEnvironment(
   extractionRoot: string,
   seedCapability: string,
-  tools: typeof trustedTools,
+  tools: ExtractorTools,
   npmConfigs: { readonly userConfig: string; readonly globalConfig: string },
 ) {
   const home = join(extractionRoot, '.home')
