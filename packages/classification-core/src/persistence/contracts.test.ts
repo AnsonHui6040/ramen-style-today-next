@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, test } from 'vitest'
+import { describe, expect, expectTypeOf, test, vi } from 'vitest'
 import { questionModel } from '../generated/question-model.js'
 import { diagnosticCodes } from '../contracts/diagnostic-codes.js'
 import type {
@@ -24,6 +24,34 @@ import {
 import { PersistenceInvariantError } from './invariant-error.js'
 import { persistenceLimits } from './limits.js'
 
+function observeCodePointIteration<T>(operation: () => T): {
+  readonly result: T
+  readonly codePointsRead: number
+} {
+  const originalIterator = String.prototype[Symbol.iterator]
+  let codePointsRead = 0
+  const iteratorSpy = vi.spyOn(String.prototype, Symbol.iterator)
+
+  iteratorSpy.mockImplementation(function (this: string) {
+    const iterator = originalIterator.call(this)
+    const next = iterator.next.bind(iterator)
+
+    iterator.next = () => {
+      const step = next()
+      if (!step.done) codePointsRead += 1
+      return step
+    }
+
+    return iterator
+  })
+
+  try {
+    return { result: operation(), codePointsRead }
+  } finally {
+    iteratorSpy.mockRestore()
+  }
+}
+
 describe('persistence contracts', () => {
   test('defines the approved resource limits', () => {
     expect(persistenceLimits).toEqual({
@@ -42,6 +70,7 @@ describe('persistence contracts', () => {
       'PERSISTENCE_SOURCE_INVALID',
       'PERSISTENCE_SOURCE_UNSUPPORTED',
       'PERSISTENCE_RESOURCE_LIMIT',
+      'PERSISTENCE_ENVELOPE_INVALID',
       'PERSISTENCE_DATA_NOT_PLAIN',
       'PERSISTENCE_ACCESSOR_FORBIDDEN',
       'PERSISTENCE_DANGEROUS_KEY',
@@ -149,6 +178,10 @@ describe('persistence contracts', () => {
       codePointCount: 4,
       stableId: 'form',
     })
+    expect(summarizeReceived('Private payload', true)).toEqual({
+      kind: 'string',
+      codePointCount: 15,
+    })
     expect(summarizeReceived('🍜'.repeat(129), true)).toEqual({
       kind: 'string',
       codePointCount: 129,
@@ -161,6 +194,22 @@ describe('persistence contracts', () => {
     expect(summarizeReceived(null)).toEqual({ kind: 'null' })
     expect(summarizeReceived(Symbol('secret'))).toEqual({ kind: 'symbol' })
     expect(Object.isFrozen(stringSummary)).toBe(true)
+  })
+
+  test.each([
+    ['BMP', 'a'.repeat(100_000)],
+    ['astral', '🍜'.repeat(100_000)],
+  ])('bounds %s string summaries without traversing the complete input', (_kind, value) => {
+    const { result, codePointsRead } = observeCodePointIteration(() => (
+      summarizeReceived(value, true)
+    ))
+
+    expect(result).toEqual({
+      kind: 'string',
+      codePointCount: persistenceLimits.maxIdCodePoints + 1,
+    })
+    expect(result).not.toHaveProperty('stableId')
+    expect(codePointsRead).toBe(persistenceLimits.maxIdCodePoints + 1)
   })
 
   test('sorts diagnostics by the approved deterministic order', () => {
@@ -213,13 +262,16 @@ describe('persistence contracts', () => {
   })
 
   test('bounds internal invariant errors by Unicode code point', () => {
-    const error = new PersistenceInvariantError(
-      'PERSISTENCE_MODEL_ARTIFACT_INVALID',
-      '🍜'.repeat(301),
-    )
+    const { result: error, codePointsRead } = observeCodePointIteration(() => (
+      new PersistenceInvariantError(
+        'PERSISTENCE_MODEL_ARTIFACT_INVALID',
+        '🍜'.repeat(100_000),
+      )
+    ))
 
     expect(error.name).toBe('PersistenceInvariantError')
     expect(error.invariantCode).toBe('PERSISTENCE_MODEL_ARTIFACT_INVALID')
-    expect(Array.from(error.message)).toHaveLength(300)
+    expect(error.message).toBe('🍜'.repeat(300))
+    expect(codePointsRead).toBe(300)
   })
 })

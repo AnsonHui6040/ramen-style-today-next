@@ -1,4 +1,5 @@
 import { deepFreeze } from '../contracts/deep-freeze.js'
+import { stableIdSchema } from '../contracts/ids.js'
 import type { CompiledQuestionModel } from '../contracts/question-model.js'
 import type {
   BoundedReceivedSummary,
@@ -13,6 +14,7 @@ export const persistenceDiagnosticCodes = Object.freeze([
   'PERSISTENCE_SOURCE_INVALID',
   'PERSISTENCE_SOURCE_UNSUPPORTED',
   'PERSISTENCE_RESOURCE_LIMIT',
+  'PERSISTENCE_ENVELOPE_INVALID',
   'PERSISTENCE_DATA_NOT_PLAIN',
   'PERSISTENCE_ACCESSOR_FORBIDDEN',
   'PERSISTENCE_DANGEROUS_KEY',
@@ -58,26 +60,56 @@ export function appendJsonPointer(
   return `${pointer}/${escapeJsonPointerToken(String(token))}`
 }
 
+function countCodePointsUpTo(value: string, maximum: number): number {
+  let count = 0
+  const iterator = value[Symbol.iterator]()
+
+  while (count <= maximum) {
+    const step = iterator.next()
+    if (step.done) return count
+    count += 1
+  }
+
+  return maximum + 1
+}
+
 export function summarizeReceived(
   value: unknown,
   includeStableId = false,
 ): BoundedReceivedSummary | undefined {
   if (value === null) return deepFreeze({ kind: 'null' })
-  if (Array.isArray(value)) return deepFreeze({ kind: 'array', count: value.length })
 
   const type = typeof value
   if (type === 'undefined') return undefined
   if (type === 'string') {
-    const codePointCount = Array.from(value as string).length
+    const stringValue = value as string
+    const codePointCount = countCodePointsUpTo(
+      stringValue,
+      persistenceLimits.maxIdCodePoints,
+    )
     return deepFreeze({
       kind: 'string',
       codePointCount,
       ...(includeStableId && codePointCount <= persistenceLimits.maxIdCodePoints
-        ? { stableId: value as string }
+        && stableIdSchema.safeParse(stringValue).success
+        ? { stableId: stringValue }
         : {}),
     })
   }
   if (type === 'object') {
+    try {
+      if (Array.isArray(value)) {
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length')
+        const count = lengthDescriptor && 'value' in lengthDescriptor
+          && typeof lengthDescriptor.value === 'number'
+          ? lengthDescriptor.value
+          : 0
+        return deepFreeze({ kind: 'array', count })
+      }
+    } catch {
+      return deepFreeze({ kind: 'object', keyCount: 0 })
+    }
+
     let keyCount = 0
     try {
       keyCount = Object.keys(value as object).length

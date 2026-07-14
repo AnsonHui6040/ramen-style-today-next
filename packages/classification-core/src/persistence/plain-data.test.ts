@@ -1,6 +1,35 @@
 import { describe, expect, test } from 'vitest'
 import { scanPlainData } from './plain-data.js'
 
+const rawInput = 'raw-input-must-not-leak'
+const trapMessage = 'trap-message-must-not-leak'
+const trapStack = 'trap-stack-must-not-leak'
+
+function throwReflectionError(): never {
+  const error = new Error(trapMessage)
+  error.stack = trapStack
+  throw error
+}
+
+function expectEnvelopeInvalid(input: unknown): void {
+  const result = scanPlainData(input)
+
+  expect(result).toEqual({
+    ok: false,
+    diagnostics: [{
+      stage: 'source',
+      code: 'PERSISTENCE_ENVELOPE_INVALID',
+      path: '',
+    }],
+  })
+  expect(JSON.stringify(result)).not.toContain(rawInput)
+  expect(JSON.stringify(result)).not.toContain(trapMessage)
+  expect(JSON.stringify(result)).not.toContain(trapStack)
+  expect(Object.isFrozen(result)).toBe(true)
+  if (result.ok) return
+  expect(Reflect.ownKeys(result.diagnostics[0]!)).toEqual(['stage', 'code', 'path'])
+}
+
 describe('scanPlainData', () => {
   test('accepts bounded acyclic plain data and counts root depth as zero', () => {
     const shared = { value: null }
@@ -58,6 +87,41 @@ describe('scanPlainData', () => {
       diagnostics: [{ code: 'PERSISTENCE_ACCESSOR_FORBIDDEN', path: '/hidden' }],
     })
     expect(invoked).toBe(false)
+  })
+
+  test('contains a revoked Proxy as a bounded root envelope diagnostic', () => {
+    const revocable = Proxy.revocable({ payload: rawInput }, {})
+    revocable.revoke()
+
+    expectEnvelopeInvalid(revocable.proxy)
+  })
+
+  test('contains a self-revoking Proxy as a bounded root envelope diagnostic', () => {
+    let revoke: () => void = () => {}
+    const revocable = Proxy.revocable({ payload: rawInput }, {
+      getPrototypeOf(target) {
+        const prototype = Reflect.getPrototypeOf(target)
+        revoke()
+        return prototype
+      },
+    })
+    revoke = revocable.revoke
+
+    expectEnvelopeInvalid(revocable.proxy)
+  })
+
+  test.each([
+    ['getPrototypeOf', () => new Proxy({ payload: rawInput }, {
+      getPrototypeOf: throwReflectionError,
+    })],
+    ['ownKeys', () => new Proxy({ payload: rawInput }, {
+      ownKeys: throwReflectionError,
+    })],
+    ['getOwnPropertyDescriptor', () => new Proxy({ payload: rawInput }, {
+      getOwnPropertyDescriptor: throwReflectionError,
+    })],
+  ])('contains a throwing %s trap without exposing the exception or input', (_trap, create) => {
+    expectEnvelopeInvalid(create())
   })
 
   test('rejects cycles but permits repeated non-ancestor references', () => {

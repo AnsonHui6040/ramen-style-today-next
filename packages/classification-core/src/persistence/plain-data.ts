@@ -21,6 +21,15 @@ export type ScanPlainDataResult =
     }
 
 const dangerousKeys = new Set(['__proto__', 'prototype', 'constructor'])
+const reflectionFailure = Object.freeze({})
+
+function reflectSafely<T>(operation: () => T): T {
+  try {
+    return operation()
+  } catch {
+    throw reflectionFailure
+  }
+}
 
 function makeDiagnostic(
   code: PersistenceDiagnosticCode,
@@ -35,6 +44,18 @@ function makeDiagnostic(
   }
 }
 
+function summarizeScannedValue(
+  value: unknown,
+): PersistenceDiagnostic['received'] | undefined {
+  if (value !== null && typeof value === 'object') return undefined
+  return summarizeReceived(value)
+}
+
+/**
+ * Scans JSON-like inert data produced by a trusted parser. Synchronous reflection
+ * failures are contained, but this cannot guarantee termination or contain Proxy
+ * traps that loop indefinitely or actively exhaust resources.
+ */
 export function scanPlainData(input: unknown): ScanPlainDataResult {
   const diagnostics: PersistenceDiagnostic[] = []
   const ancestors = new Set<object>()
@@ -44,7 +65,7 @@ export function scanPlainData(input: unknown): ScanPlainDataResult {
       diagnostics.push(makeDiagnostic(
         'PERSISTENCE_RESOURCE_LIMIT',
         path,
-        summarizeReceived(value),
+        summarizeScannedValue(value),
       ))
       return
     }
@@ -56,7 +77,7 @@ export function scanPlainData(input: unknown): ScanPlainDataResult {
       diagnostics.push(makeDiagnostic(
         'PERSISTENCE_DATA_NOT_PLAIN',
         path,
-        summarizeReceived(value),
+        summarizeScannedValue(value),
       ))
       return
     }
@@ -66,45 +87,37 @@ export function scanPlainData(input: unknown): ScanPlainDataResult {
       diagnostics.push(makeDiagnostic(
         'PERSISTENCE_CIRCULAR_REFERENCE',
         path,
-        summarizeReceived(value),
+        summarizeScannedValue(value),
       ))
       return
     }
 
-    let prototype: object | null
-    let keys: readonly (string | symbol)[]
-    try {
-      prototype = Object.getPrototypeOf(object) as object | null
-      keys = Reflect.ownKeys(object)
-    } catch {
-      diagnostics.push(makeDiagnostic(
-        'PERSISTENCE_DATA_NOT_PLAIN',
-        path,
-        summarizeReceived(value),
-      ))
-      return
-    }
+    const isArray = reflectSafely(() => Array.isArray(object))
+    const prototype = reflectSafely(
+      () => Object.getPrototypeOf(object) as object | null,
+    )
+    const keys = reflectSafely(() => Reflect.ownKeys(object))
 
-    if (!Array.isArray(object) && prototype !== Object.prototype && prototype !== null) {
+    if (!isArray && prototype !== Object.prototype && prototype !== null) {
       diagnostics.push(makeDiagnostic(
         'PERSISTENCE_DATA_NOT_PLAIN',
         path,
-        summarizeReceived(value),
+        summarizeScannedValue(value),
       ))
       return
     }
-    if (Array.isArray(object) && prototype !== Array.prototype) {
+    if (isArray && prototype !== Array.prototype) {
       diagnostics.push(makeDiagnostic(
         'PERSISTENCE_DATA_NOT_PLAIN',
         path,
-        summarizeReceived(value),
+        summarizeScannedValue(value),
       ))
       return
     }
 
     ancestors.add(object)
     for (const key of keys) {
-      if (Array.isArray(object) && key === 'length') continue
+      if (isArray && key === 'length') continue
       if (typeof key === 'symbol') {
         diagnostics.push(makeDiagnostic(
           'PERSISTENCE_DATA_NOT_PLAIN',
@@ -120,13 +133,9 @@ export function scanPlainData(input: unknown): ScanPlainDataResult {
         continue
       }
 
-      let descriptor: PropertyDescriptor | undefined
-      try {
-        descriptor = Object.getOwnPropertyDescriptor(object, key)
-      } catch {
-        diagnostics.push(makeDiagnostic('PERSISTENCE_DATA_NOT_PLAIN', childPath))
-        continue
-      }
+      const descriptor = reflectSafely(
+        () => Object.getOwnPropertyDescriptor(object, key),
+      )
       if (!descriptor) {
         diagnostics.push(makeDiagnostic('PERSISTENCE_DATA_NOT_PLAIN', childPath))
         continue
@@ -140,7 +149,15 @@ export function scanPlainData(input: unknown): ScanPlainDataResult {
     ancestors.delete(object)
   }
 
-  visit(input, '', 0)
+  try {
+    visit(input, '', 0)
+  } catch (error) {
+    if (error !== reflectionFailure) throw error
+    return deepFreeze({
+      ok: false,
+      diagnostics: [makeDiagnostic('PERSISTENCE_ENVELOPE_INVALID', '')],
+    })
+  }
   if (diagnostics.length === 0) return deepFreeze({ ok: true })
   return deepFreeze({
     ok: false,
