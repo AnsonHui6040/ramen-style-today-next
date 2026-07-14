@@ -311,12 +311,11 @@ npm run build
 npm run classification:validate
 npm run questions:check
 npm run runtime:imports:check
-npm run migration:ledger:check
 ```
 
 Compare current manifest `caseIds`, `caseCount`, `fixtureContentHash`, `instrumentation`, and `source` to `.superpowers/batch-2b-baseline/question-manifest-invariants.json`; require exact equality. Only extractor authoring fields may differ.
 
-Run `npm run classification:index:check` once and record the expected sole failure `DOC_INDEX_DRIFT docs/classification/manifest.json`. This drift is not accepted as a remaining verification failure: it is the direct manifest-hash rebind handed to Task 3, which must regenerate and commit the classification metadata before defining or pushing the maintenance candidate. Any other failure stops Task 2.
+Run `npm run classification:index:check` once and record the expected sole failure `DOC_INDEX_DRIFT docs/classification/manifest.json`. Run `npm run migration:ledger:check` once and record the expected sole failure `classification manifest observable-trace fixture manifest hash is inconsistent`. Both checks consume the same stale classification metadata binding; neither drift is accepted as a remaining verification failure. Task 3 must regenerate and commit the classification metadata before defining or pushing the maintenance candidate. Any other failure stops Task 2.
 
 - [ ] **Step 6: Commit the maintenance implementation**
 
