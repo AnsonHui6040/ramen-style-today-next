@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   existsSync,
   lstatSync,
@@ -11,11 +11,18 @@ import {
 } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
 
-import { compileClassification } from '@ramen-style/classification-core/compiler'
+import {
+  compileClassification,
+  compileQuestions,
+  type CompiledQuestionModelMetadata,
+} from '@ramen-style/classification-core/compiler'
+import { fixtureManifestSchema } from '../parity/questions/contracts.js'
 import { buildDocumentation } from './build-index.js'
 import {
+  createDocumentationRelations,
   documentationDefinition,
-  documentationRelations,
+  documentationDetectedConsumers,
+  documentationSourceFile,
 } from './relations.js'
 import { scanCoreConsumers } from './scan-imports.js'
 
@@ -166,6 +173,31 @@ function repositoryFiles(repoRoot: string) {
   return new Set(output.split('\0').filter(Boolean))
 }
 
+function loadQuestionEvidence(
+  repoRoot: string,
+  questionMetadata: CompiledQuestionModelMetadata,
+) {
+  const fixtureManifestPath = 'tools/parity/fixtures/questions/legacy-v1/manifest.json'
+  const fixtureManifestBytes = readFileSync(resolve(repoRoot, fixtureManifestPath))
+  const fixtureManifest = fixtureManifestSchema.parse(
+    JSON.parse(fixtureManifestBytes.toString('utf8')) as unknown,
+  )
+
+  return {
+    sourceRepository: fixtureManifest.source.repository,
+    sourceCommit: fixtureManifest.source.commit,
+    sourceTreeHash: fixtureManifest.source.treeHash,
+    fixtureManifestPath,
+    fixtureManifestHash: createHash('sha256').update(fixtureManifestBytes).digest('hex'),
+    fixtureSchemaVersion: String(fixtureManifest.fixtureSchemaVersion),
+    fixtureContentHash: fixtureManifest.fixtureContentHash,
+    extractorVersion: String(fixtureManifest.extractor.version),
+    instrumentationHash: fixtureManifest.instrumentation.hash,
+    sourceHash: questionMetadata.sourceHash,
+    semanticHash: questionMetadata.semanticHash,
+  }
+}
+
 function run() {
   const repoRoot = resolve(import.meta.dirname, '../..')
   const mode = process.argv[2]
@@ -173,13 +205,21 @@ function run() {
 
   const compiled = compileClassification(
     documentationDefinition,
-    'tools/documentation/relations.ts',
+    documentationSourceFile,
   )
   if (!compiled.ok) {
     console.error(JSON.stringify(compiled.diagnostics, null, 2))
     process.exitCode = 1
     return
   }
+  const compiledQuestions = compileQuestions(documentationDefinition.questions)
+  if (!compiledQuestions.ok) {
+    console.error(JSON.stringify(compiledQuestions.diagnostics, null, 2))
+    process.exitCode = 1
+    return
+  }
+
+  const documentationRelations = createDocumentationRelations(compiled.model)
 
   const repoFiles = repositoryFiles(repoRoot)
   const existingPaths = new Set(documentationRelations.flatMap((item) => [
@@ -193,7 +233,16 @@ function run() {
     return repoFiles.has(file) && existsSync(absolute) && lstatSync(absolute).isFile()
   }))
   const detected = scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'], repoFiles)
-  const built = buildDocumentation(compiled.model, documentationRelations, detected, existingPaths)
+  const built = buildDocumentation(
+    compiled.model,
+    documentationRelations,
+    detected,
+    existingPaths,
+    {
+      questionEvidence: loadQuestionEvidence(repoRoot, compiledQuestions.model.metadata),
+      detectedConsumerRegistry: documentationDetectedConsumers,
+    },
+  )
   if (built.diagnostics.length) {
     console.error(JSON.stringify(built.diagnostics, null, 2))
     process.exitCode = 1

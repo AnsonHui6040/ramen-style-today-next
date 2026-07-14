@@ -130,6 +130,8 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 ### New owners
 
 - `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`
+- `docs/superpowers/plans/2026-07-13-batch-2a-questions-flow.md`
+- `docs/superpowers/specs/2026-07-13-batch-2a-questions-flow-design.md`
 - `packages/classification-core/src/compiler/questions/canonicalize.test.ts`
 - `packages/classification-core/src/compiler/questions/canonicalize.ts`
 - `packages/classification-core/src/compiler/questions/compile.test.ts`

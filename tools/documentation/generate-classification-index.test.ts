@@ -33,32 +33,52 @@ function writeRegisteredConsumers(repoRoot: string) {
   }
 }
 
+function writeDocumentationFixture(repoRoot: string) {
+  const documentationRoot = join(repoRoot, 'tools/documentation')
+  mkdirSync(documentationRoot, { recursive: true })
+  for (const file of [
+    'build-index.ts',
+    'generate-classification-index.ts',
+    'relations.ts',
+    'scan-imports.ts',
+  ]) {
+    cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
+  }
+
+  const contractsTarget = join(repoRoot, 'tools/parity/questions/contracts.ts')
+  mkdirSync(resolve(contractsTarget, '..'), { recursive: true })
+  cpSync(join(sourceRoot, 'tools/parity/questions/contracts.ts'), contractsTarget)
+  const fixtureManifest = 'tools/parity/fixtures/questions/legacy-v1/manifest.json'
+  const fixtureManifestTarget = join(repoRoot, fixtureManifest)
+  mkdirSync(resolve(fixtureManifestTarget, '..'), { recursive: true })
+  cpSync(join(sourceRoot, fixtureManifest), fixtureManifestTarget)
+
+  for (const file of [
+    'packages/classification-core/src/definitions/questions.ts',
+    'packages/classification-core/src/definitions/questions.test.ts',
+    'packages/classification-core/src/definitions/synthetic.ts',
+    'packages/classification-core/src/compiler/questions/source-schema.ts',
+    'packages/classification-core/src/compiler/questions/compile.ts',
+    'packages/classification-core/src/compiler/questions/proof.ts',
+    'packages/classification-core/src/compiler/questions/proof.test.ts',
+    'packages/classification-core/src/compiler/source-schema.ts',
+    'packages/classification-core/src/compiler/compile.ts',
+    'packages/classification-core/src/compiler/compile.test.ts',
+    'packages/classification-core/src/flow/evaluate.ts',
+    'tools/parity/questions/parity.test.ts',
+  ]) {
+    const target = join(repoRoot, file)
+    mkdirSync(resolve(target, '..'), { recursive: true })
+    writeFileSync(target, '')
+  }
+  writeRegisteredConsumers(repoRoot)
+}
+
 test('write mode rejects an owned output symlink before changing any output', () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
   const externalRoot = mkdtempSync(join(tmpdir(), 'ramen-index-outside-'))
   try {
-    const documentationRoot = join(repoRoot, 'tools/documentation')
-    mkdirSync(documentationRoot, { recursive: true })
-    for (const file of [
-      'build-index.ts',
-      'generate-classification-index.ts',
-      'relations.ts',
-      'scan-imports.ts',
-    ]) {
-      cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
-    }
-
-    for (const file of [
-      'packages/classification-core/src/definitions/synthetic.ts',
-      'packages/classification-core/src/compiler/source-schema.ts',
-      'packages/classification-core/src/compiler/compile.ts',
-      'packages/classification-core/src/compiler/compile.test.ts',
-    ]) {
-      const target = join(repoRoot, file)
-      mkdirSync(resolve(target, '..'), { recursive: true })
-      writeFileSync(target, '')
-    }
-    writeRegisteredConsumers(repoRoot)
+    writeDocumentationFixture(repoRoot)
 
     writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
     symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
@@ -77,7 +97,7 @@ test('write mode rejects an owned output symlink before changing any output', ()
       process.execPath,
       [
         join(sourceRoot, 'node_modules/tsx/dist/cli.mjs'),
-        join(documentationRoot, 'generate-classification-index.ts'),
+        join(repoRoot, 'tools/documentation/generate-classification-index.ts'),
         '--write',
       ],
       { cwd: repoRoot, encoding: 'utf8' },
@@ -99,28 +119,7 @@ test('write mode rejects a symlinked classification root without writing outside
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
   const externalRoot = mkdtempSync(join(tmpdir(), 'ramen-index-outside-'))
   try {
-    const documentationRoot = join(repoRoot, 'tools/documentation')
-    mkdirSync(documentationRoot, { recursive: true })
-    for (const file of [
-      'build-index.ts',
-      'generate-classification-index.ts',
-      'relations.ts',
-      'scan-imports.ts',
-    ]) {
-      cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
-    }
-
-    for (const file of [
-      'packages/classification-core/src/definitions/synthetic.ts',
-      'packages/classification-core/src/compiler/source-schema.ts',
-      'packages/classification-core/src/compiler/compile.ts',
-      'packages/classification-core/src/compiler/compile.test.ts',
-    ]) {
-      const target = join(repoRoot, file)
-      mkdirSync(resolve(target, '..'), { recursive: true })
-      writeFileSync(target, '')
-    }
-    writeRegisteredConsumers(repoRoot)
+    writeDocumentationFixture(repoRoot)
 
     writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
     symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
@@ -132,7 +131,7 @@ test('write mode rejects a symlinked classification root without writing outside
       process.execPath,
       [
         join(sourceRoot, 'node_modules/tsx/dist/cli.mjs'),
-        join(documentationRoot, 'generate-classification-index.ts'),
+        join(repoRoot, 'tools/documentation/generate-classification-index.ts'),
         '--write',
       ],
       { cwd: repoRoot, encoding: 'utf8' },
@@ -188,28 +187,7 @@ test('a second output install failure restores both originals and removes transa
 test('Git inventory preserves a newline-containing eligible consumer path', () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
   try {
-    const documentationRoot = join(repoRoot, 'tools/documentation')
-    mkdirSync(documentationRoot, { recursive: true })
-    for (const file of [
-      'build-index.ts',
-      'generate-classification-index.ts',
-      'relations.ts',
-      'scan-imports.ts',
-    ]) {
-      cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
-    }
-
-    for (const file of [
-      'packages/classification-core/src/definitions/synthetic.ts',
-      'packages/classification-core/src/compiler/source-schema.ts',
-      'packages/classification-core/src/compiler/compile.ts',
-      'packages/classification-core/src/compiler/compile.test.ts',
-    ]) {
-      const target = join(repoRoot, file)
-      mkdirSync(resolve(target, '..'), { recursive: true })
-      writeFileSync(target, '')
-    }
-    writeRegisteredConsumers(repoRoot)
+    writeDocumentationFixture(repoRoot)
     const newlineConsumer = join(repoRoot, 'apps/web/line\nbreak.ts')
     mkdirSync(resolve(newlineConsumer, '..'), { recursive: true })
     writeFileSync(newlineConsumer, "import '@ramen-style/classification-core'\n")
@@ -227,7 +205,7 @@ test('Git inventory preserves a newline-containing eligible consumer path', () =
       process.execPath,
       [
         join(sourceRoot, 'node_modules/tsx/dist/cli.mjs'),
-        join(documentationRoot, 'generate-classification-index.ts'),
+        join(repoRoot, 'tools/documentation/generate-classification-index.ts'),
         '--write',
       ],
       { cwd: repoRoot, encoding: 'utf8' },

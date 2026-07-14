@@ -13,6 +13,39 @@ export interface DocumentationBuild {
   diagnostics: readonly Diagnostic[]
 }
 
+export interface QuestionParityVerification {
+  assurance: 'parity-verified'
+  parityScope: 'legacy-observable-transition-projection'
+  fixtureManifestHash: string
+  paritySuiteVersion: string
+  verifiedSemanticHash: string
+  implementationSha: string
+}
+
+export interface QuestionDocumentationEvidence {
+  sourceRepository: {
+    host: string
+    owner: string
+    repository: string
+  }
+  sourceCommit: string
+  sourceTreeHash: string
+  fixtureManifestPath: string
+  fixtureManifestHash: string
+  fixtureSchemaVersion: string
+  fixtureContentHash: string
+  extractorVersion: string
+  instrumentationHash: string
+  sourceHash: string
+  semanticHash: string
+  verification?: QuestionParityVerification
+}
+
+export interface DocumentationBuildOptions {
+  questionEvidence?: QuestionDocumentationEvidence
+  detectedConsumerRegistry?: readonly string[]
+}
+
 function isRepositoryPath(value: string) {
   return !value.startsWith('/')
     && !value.includes('\\')
@@ -25,6 +58,7 @@ export function buildDocumentation(
   relations: readonly DocumentationRelation[],
   detectedConsumers: ReadonlySet<string>,
   existingPaths: ReadonlySet<string>,
+  options: DocumentationBuildOptions = {},
 ): DocumentationBuild {
   const collector = new DiagnosticCollector()
   const relationByKey = new Map<string, DocumentationRelation>()
@@ -110,7 +144,9 @@ export function buildDocumentation(
     }
   })
 
-  const registeredConsumers = new Set(relations.flatMap((item) => item.consumers))
+  const registeredConsumers = new Set(
+    options.detectedConsumerRegistry ?? relations.flatMap((item) => item.consumers),
+  )
   for (const consumer of detectedConsumers) {
     if (!registeredConsumers.has(consumer)) collector.error({
       code: 'DOC_RELATION_INVALID',
@@ -150,6 +186,59 @@ export function buildDocumentation(
     })
     .sort((left, right) => compareCodePoints(left.key, right.key))
 
+  const questionOrigin = model.provenance.questions.origin
+  const questionEvidence = options.questionEvidence
+  const matchingVerification = questionEvidence?.verification
+    && questionEvidence.verification.verifiedSemanticHash === questionEvidence.semanticHash
+    ? questionEvidence.verification
+    : undefined
+  const questionProvenance = {
+    origin: questionOrigin,
+    assurance: questionOrigin === 'legacy-production'
+      ? 'compiler-validated'
+      : 'structurally-validated',
+    ...(questionOrigin === 'legacy-production'
+      ? { parityScope: 'legacy-observable-transition-projection' }
+      : {}),
+    ...(questionEvidence
+      ? {
+          sourceRepository: questionEvidence.sourceRepository,
+          sourceCommit: questionEvidence.sourceCommit,
+          sourceTreeHash: questionEvidence.sourceTreeHash,
+          fixtureManifestPath: questionEvidence.fixtureManifestPath,
+          fixtureManifestHash: questionEvidence.fixtureManifestHash,
+          fixtureSchemaVersion: questionEvidence.fixtureSchemaVersion,
+          fixtureContentHash: questionEvidence.fixtureContentHash,
+          extractorVersion: questionEvidence.extractorVersion,
+          instrumentationHash: questionEvidence.instrumentationHash,
+          sourceHash: questionEvidence.sourceHash,
+          semanticHash: questionEvidence.semanticHash,
+          ...(matchingVerification ? { verification: matchingVerification } : {}),
+        }
+      : {}),
+  }
+  const provenance = {
+    questions: questionProvenance,
+    styles: {
+      origin: model.provenance.styles.origin,
+      assurance: 'structurally-validated',
+    },
+    scoringPolicy: {
+      origin: model.provenance.scoringPolicy.origin,
+      assurance: 'structurally-validated',
+    },
+  }
+  const readinessBlockers = [
+    ...(model.provenance.styles.origin === 'synthetic' ? ['styles-not-migrated'] : []),
+    ...(model.provenance.scoringPolicy.origin === 'synthetic' ? ['scoring-not-migrated'] : []),
+    'persistence-not-migrated',
+    'runtime-not-cut-over',
+  ]
+  const readiness = {
+    status: questionOrigin === 'legacy-production' ? 'migration-only' : 'development',
+    blockers: readinessBlockers,
+  }
+
   const cell = (values: readonly string[]) => values.length
     ? values.map((value) => `\`${value.replaceAll('|', '\\|')}\``).join('<br>')
     : '—'
@@ -166,7 +255,9 @@ export function buildDocumentation(
   const markdown = [
     '# Classification Index',
     '',
-    '> Synthetic inventory — not production classification data.',
+    model.provenance.questions.origin === 'legacy-production'
+      ? '> Production question ownership; style and scoring inventory remains synthetic.'
+      : '> Synthetic inventory — not production classification data.',
     '',
     `Model version: \`${model.modelVersion}\`<br>`,
     `Data version: \`${model.dataVersion}\``,
@@ -183,6 +274,8 @@ export function buildDocumentation(
       synthetic: Object.values(model.provenance).every(({ origin }) => origin === 'synthetic'),
       modelVersion: model.modelVersion,
       dataVersion: model.dataVersion,
+      provenance,
+      readiness,
       concepts,
     }),
     markdown,
