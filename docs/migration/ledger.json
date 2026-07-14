@@ -279,6 +279,7 @@
       ],
       "ownedScopes": [],
       "newOwners": [
+        "docs/superpowers/plans/2026-07-14-batch-2b-persistence-repair.md",
         "docs/superpowers/specs/2026-07-14-batch-2b-persistence-repair-design.md"
       ],
       "transformation": "Consolidated the approved Batch 2B pure persistence, explicit migration, deterministic repair, legacy observation, provenance, readiness, and exact-SHA acceptance contracts; implementation has not started.",

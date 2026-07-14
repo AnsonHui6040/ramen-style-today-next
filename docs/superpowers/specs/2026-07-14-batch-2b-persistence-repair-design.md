@@ -1,8 +1,9 @@
 # Batch 2B Persistence and Repair Design
 
-- **Status:** Review-ready — approved section decisions consolidated
+- **Status:** Final — Approved for implementation
 - **Section decisions:** Approved by the user on 2026-07-14
-- **Written specification approval:** Awaiting review of this consolidated document
+- **Written specification approval:** Approved by the user on 2026-07-14
+- **Shared extractor maintenance amendment:** Option A approved by the user on 2026-07-14
 - **Repository:** `AnsonHui6040/ramen-style-today-next`
 - **Branch:** `codex/batch-2b-persistence-repair`
 - **Batch 2A base commit:** `e8ec5c54e9b71844b883473f4eb8a730f5d89278`
@@ -83,7 +84,7 @@ legacy oracle: eebf00b7ddfbbe6f01ff598e57f1e17197068a37
 legacy tree: 3e527de876cfeccfd3154ddc492830d71c4cfd9a
 ```
 
-Any Batch 2B change to Batch 2A semantic paths, model version, or semantic hash reopens Batch 2A and requires renewed question-flow parity and provenance. Batch 2B cannot silently absorb such a change as a persistence migration.
+Any Batch 2B change to Batch 2A semantic paths, model version, or semantic hash normally reopens Batch 2A and requires renewed question-flow parity and provenance. The sole approved exception is the Section 22 shared-extractor maintenance refactor: it may change the exact extractor adapter, extractor authoring-source registry, extractor tests, and question fixture manifest authoring identity listed there, but it must preserve the historical Batch 2A implementation SHA, question model version, semantic hash, generated artifact bytes, observable case corpus bytes, case IDs, case count, cases/content hash, seeds, instrumentation, and legacy source identity. This maintenance receives separate exact-SHA evidence and cannot be described as a question or flow semantic change.
 
 ## 3. Package and dependency boundaries
 
@@ -886,7 +887,33 @@ The frozen manifest never records the current implementation SHA, current questi
 
 ## 22. Extractor isolation and publication
 
-The persistence extractor reuses the Batch 2A Task 9 isolation and publication implementation. Shared generic facilities may be extracted from `tools/parity/questions/extractor.ts` into an internal parity utility, provided question fixture semantics and accepted Batch 2A identities remain unchanged. A near-copy with independently drifting safety behavior is forbidden.
+The persistence extractor reuses the Batch 2A Task 9 isolation and publication implementation through one shared internal library under `tools/parity/shared/**`. The transaction, no-follow filesystem checks, isolated execution environment, original-checkout fingerprints, publication lock, rollback, commit point, recovery archive, and bounded cleanup-warning logic move into the shared library. `tools/parity/questions/extractor.ts` becomes a question-specific adapter that supplies question schemas, seeds, instrumentation, output validation, and manifest projection; `tools/parity/persistence/extractor.ts` supplies the persistence equivalents. A second near-copy of the transaction is forbidden.
+
+This refactor is controlled Batch 2A maintenance rather than Batch 2B question ownership. Because the frozen manifest truthfully binds extractor authoring sources, its bytes and manifest hash must change when the implementation moves. The maintenance gate requires all of the following:
+
+- preserve historical Batch 2A `implementationSha: ecf9f5b4791862471d0898da7283ba4a40d3fbf9`
+- record a separate full `maintenanceSha` and authenticated remote CI run
+- preserve `tools/parity/fixtures/questions/legacy-v1/cases.json` byte-for-byte
+- preserve ordered case IDs, case count, `fixtureContentHash`, instrumentation hash, seeds hash, legacy commit, tree, source hashes, and lockfile hash
+- preserve the generated question artifact byte-for-byte, model version, and semantic hash
+- update only the question manifest extractor authoring-source list/hash/version fields required by the shared implementation
+- rebind current question provenance to the new fixture manifest hash without replacing the historical semantic implementation identity
+- run the complete question parity, extractor isolation/publication, offline verification, and authenticated exact-SHA acceptance gates
+
+The maintenance paths are exactly:
+
+```ts
+batch2AMaintenancePaths: [
+  'tools/parity/shared/**',
+  'tools/parity/questions/contracts.ts',
+  'tools/parity/questions/contracts.test.ts',
+  'tools/parity/questions/extractor.ts',
+  'tools/parity/questions/extractor.test.ts',
+  'tools/parity/fixtures/questions/legacy-v1/manifest.json',
+]
+```
+
+The implementation plan may omit an exact listed test file only when its bytes do not need to change; it may not add another Batch 2A semantic path to this exception. Any change to question `cases.json`, seeds, instrumentation patch, observable comparison/projection, definitions, compiler, flow runtime, or generated model is outside this maintenance approval and stops Batch 2B.
 
 The inherited guarantees include:
 
@@ -1022,6 +1049,8 @@ implementationPaths: [
 
 Every additional shared contract or diagnostic file changed during implementation is appended to this array as a literal repository-relative path before the implementation commit. The ledger records concrete shared files rather than a wildcard outside the persistence-owned directories. These paths cannot change after the implementation SHA without invalidating acceptance evidence.
 
+The approved `batch2AMaintenancePaths` are recorded separately from Batch 2B implementation paths. The ledger keeps Batch 2A's historical `implementationSha` and adds a non-empty maintenance record with its own `maintenanceSha`, exact changed paths, invariant hashes, local gate, and authenticated remote gate. It does not rewrite history by replacing the semantic implementation SHA.
+
 ### 26.2 Verification paths
 
 These define gate behavior:
@@ -1059,13 +1088,15 @@ Acceptance follows this order:
 1. complete implementation and all tests in the isolated Batch 2B worktree
 2. run the full offline `npm run verify` without overrides
 3. confirm the worktree diff contains no protected Batch 2A semantic change
-4. create the implementation commit and push its exact SHA
-5. require GitHub Actions success for that exact implementation SHA
-6. authenticate the accepted implementation SHA and bind `contract-verified` to its fixture manifest hash
-7. update only registered acceptance metadata paths in a second commit
-8. run local verification and GitHub Actions for the metadata commit
-9. confirm the implementation SHA is an ancestor, implementation and verification paths are unchanged, and only acceptance metadata changed
-10. confirm the legacy checkout's HEAD, tree, tracked status, and monitored caches remain unchanged
+4. complete and verify the approved shared-extractor maintenance commit before any persistence fixture publication
+5. prove the protected question corpus and semantic identities are unchanged, then record authenticated Batch 2A maintenance evidence
+6. create the Batch 2B implementation commit and push its exact SHA
+7. require GitHub Actions success for that exact implementation SHA
+8. authenticate the accepted implementation SHA and bind `contract-verified` to its fixture manifest hash
+9. update only registered acceptance metadata paths in a second commit
+10. run local verification and GitHub Actions for the metadata commit
+11. confirm the implementation SHA is an ancestor, implementation and verification paths are unchanged, and only acceptance metadata changed
+12. confirm the legacy checkout's HEAD, tree, tracked status, and monitored caches remain unchanged
 
 Batch 2B is rejected if:
 
@@ -1076,6 +1107,10 @@ Batch 2B is rejected if:
 - implementation or verification paths change after the implementation SHA
 - the metadata commit changes a non-metadata-owned path
 - the Batch 2A question model version, semantic hash, definitions, compiler, artifact, flow, or question fixture semantics change
+- the shared-extractor maintenance changes a path outside `batch2AMaintenancePaths`
+- the maintenance changes question case corpus bytes, case IDs, case count, content hash, seeds, instrumentation, legacy identity, generated artifact bytes, model version, or semantic hash
+- the question fixture manifest changes anything other than the extractor authoring identity required by the shared refactor
+- Batch 2A maintenance evidence is missing its exact maintenance SHA or authenticated successful CI run
 - a normalized payload produces another migration, repair, or cursor change when restored again
 - a successful incomplete restore lacks a valid resume target
 - a successful restore contains an invalid `FlowState`

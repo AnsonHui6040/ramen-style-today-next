@@ -225,6 +225,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### New owners
 
+- `docs/superpowers/plans/2026-07-14-batch-2b-persistence-repair.md`
 - `docs/superpowers/specs/2026-07-14-batch-2b-persistence-repair-design.md`
 
 ### Verification
