@@ -183,7 +183,8 @@
         "docs/migration/incidents/2026-07-13-legacy-cache-isolation.md"
       ],
       "maintenance": {
-        "status": "in-progress",
+        "status": "complete",
+        "maintenanceSha": "b65012bddbb1f98681f907ba6d3dacb8fb1de430",
         "paths": [
           "tools/parity/shared/**",
           "tools/parity/questions/contracts.ts",
@@ -203,7 +204,22 @@
           "sourceCommit": "eebf00b7ddfbbe6f01ff598e57f1e17197068a37",
           "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a"
         },
-        "verification": []
+        "verification": [
+          {
+            "gate": "batch2a-maintenance-local-verify",
+            "command": "npm run verify",
+            "outcome": "passed",
+            "evidence": "all approved Batch 2A maintenance invariant and verification gates passed"
+          },
+          {
+            "gate": "batch2a-maintenance-remote-ci",
+            "command": "GitHub Actions CI / verify",
+            "outcome": "passed",
+            "evidence": "the pushed maintenance candidate completed the Node 24 verify job successfully",
+            "commitSha": "b65012bddbb1f98681f907ba6d3dacb8fb1de430",
+            "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29351472034"
+          }
+        ]
       },
       "legacySources": [
         "src/data/questions.json",

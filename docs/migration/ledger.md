@@ -207,8 +207,9 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Controlled maintenance
 
-- Status: `in-progress`
+- Status: `complete`
 - Historical Batch 2A semantic implementation remains unchanged.
+- Maintenance SHA: `b65012bddbb1f98681f907ba6d3dacb8fb1de430`
 
 #### Approved maintenance paths
 
@@ -233,7 +234,10 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 #### Maintenance verification
 
-- Pending.
+- `batch2a-maintenance-local-verify`: `npm run verify` — passed; all approved Batch 2A maintenance invariant and verification gates passed
+- `batch2a-maintenance-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed maintenance candidate completed the Node 24 verify job successfully
+  - Commit: `b65012bddbb1f98681f907ba6d3dacb8fb1de430`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29351472034
 
 ### Verification
 
