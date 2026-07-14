@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 
 export const extractorAuthoringSourcePaths = [
+  'tools/parity/shared/contracts.ts',
+  'tools/parity/shared/authoring.ts',
   'tools/parity/questions/contracts.ts',
   'tools/parity/questions/extractor.ts',
   'tools/parity/questions/extract.ts',
@@ -886,6 +888,8 @@ export const legacyObservableSeedCaseSchema = z.strictObject({
   actions: z.array(legacyObservableActionSchema).max(1024),
 })
 
+export type LegacyObservableSeedCase = z.infer<typeof legacyObservableSeedCaseSchema>
+
 export const legacyObservableSeedFileSchema = z.strictObject({
   schemaVersion: z.literal(1),
   cases: z.array(legacyObservableSeedCaseSchema).min(1).max(1024),
@@ -932,6 +936,14 @@ const extractorAuthoringSourcesSchema = z.tuple([
   }),
   z.strictObject({
     path: z.literal(extractorAuthoringSourcePaths[2]),
+    hash: sha256Schema,
+  }),
+  z.strictObject({
+    path: z.literal(extractorAuthoringSourcePaths[3]),
+    hash: sha256Schema,
+  }),
+  z.strictObject({
+    path: z.literal(extractorAuthoringSourcePaths[4]),
     hash: sha256Schema,
   }),
 ])
@@ -991,6 +1003,8 @@ export const fixtureManifestSchema = z.strictObject({
     })
   }
 })
+
+export type FixtureManifest = z.infer<typeof fixtureManifestSchema>
 
 interface ObservableDivergenceRoute {
   readonly allowedOperations: readonly DivergenceOperation[]

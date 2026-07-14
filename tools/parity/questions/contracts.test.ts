@@ -17,6 +17,14 @@ import {
 
 const validAuthoringSources = [
   {
+    path: 'tools/parity/shared/contracts.ts',
+    hash: 'a'.repeat(64),
+  },
+  {
+    path: 'tools/parity/shared/authoring.ts',
+    hash: 'b'.repeat(64),
+  },
+  {
     path: 'tools/parity/questions/contracts.ts',
     hash: 'c'.repeat(64),
   },

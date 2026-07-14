@@ -171,6 +171,8 @@ interface ExtractorFixture {
   afterLegacySuite?: () => void
   runPaths: Array<{ staging: string; backup: string; extractionRoot: string }>
   authoringSourcePaths: Record<
+    | 'tools/parity/shared/contracts.ts'
+    | 'tools/parity/shared/authoring.ts'
     | 'tools/parity/questions/contracts.ts'
     | 'tools/parity/questions/extractor.ts'
     | 'tools/parity/questions/extract.ts',
@@ -302,6 +304,14 @@ async function createExtractorFixture(
   const patchPath = join(toolRoot, 'tools/parity/questions/legacy-instrumentation.patch')
   const seedsPath = join(toolRoot, 'tools/parity/questions/seeds.json')
   const authoringSourcePaths = {
+    'tools/parity/shared/contracts.ts': join(
+      toolRoot,
+      'tools/parity/shared/contracts.ts',
+    ),
+    'tools/parity/shared/authoring.ts': join(
+      toolRoot,
+      'tools/parity/shared/authoring.ts',
+    ),
     'tools/parity/questions/contracts.ts': join(
       toolRoot,
       'tools/parity/questions/contracts.ts',
@@ -321,6 +331,7 @@ async function createExtractorFixture(
   writeFileSync(patchPath, fixturePatchBytes)
   writeFileSync(seedsPath, `${JSON.stringify({ schemaVersion: 1, cases: seedCases }, null, 2)}\n`)
   for (const [path, sourcePath] of Object.entries(authoringSourcePaths)) {
+    mkdirSync(dirname(sourcePath), { recursive: true })
     writeFileSync(sourcePath, `// deterministic fixture for ${path}\n`)
   }
 
@@ -437,6 +448,8 @@ async function createExtractorFixture(
     patchPath,
     seedsPath,
     authoringSources: ([
+      'tools/parity/shared/contracts.ts',
+      'tools/parity/shared/authoring.ts',
       'tools/parity/questions/contracts.ts',
       'tools/parity/questions/extractor.ts',
       'tools/parity/questions/extract.ts',
@@ -565,6 +578,8 @@ describe('isolated execution and exact seed binding', () => {
   })
 
   test.each([
+    'tools/parity/shared/contracts.ts',
+    'tools/parity/shared/authoring.ts',
     'tools/parity/questions/contracts.ts',
     'tools/parity/questions/extractor.ts',
     'tools/parity/questions/extract.ts',
