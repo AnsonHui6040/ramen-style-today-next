@@ -24,6 +24,7 @@ import {
   repositoryFiles,
 } from './generate-classification-index.js'
 import * as generatorModule from './generate-classification-index.js'
+import { batch2ASemanticPaths } from '../migration/ledger-schema.js'
 import { scanCoreConsumers } from './scan-imports.js'
 
 const sourceRoot = resolve(import.meta.dirname, '../..')
@@ -129,10 +130,6 @@ function writeDocumentationFixture(repoRoot: string) {
   const ledgerSchemaTarget = join(repoRoot, ledgerSchema)
   mkdirSync(resolve(ledgerSchemaTarget, '..'), { recursive: true })
   cpSync(join(sourceRoot, ledgerSchema), ledgerSchemaTarget)
-  const ledgerSource = 'docs/migration/ledger.json'
-  const ledgerSourceTarget = join(repoRoot, ledgerSource)
-  mkdirSync(resolve(ledgerSourceTarget, '..'), { recursive: true })
-  cpSync(join(sourceRoot, ledgerSource), ledgerSourceTarget)
 
   for (const file of [
     'packages/classification-core/src/definitions/questions.ts',
@@ -153,6 +150,40 @@ function writeDocumentationFixture(repoRoot: string) {
     writeFileSync(target, '')
   }
   writeRegisteredConsumers(repoRoot)
+}
+
+function writePreAcceptanceLedger(repoRoot: string) {
+  const ledgerPath = join(repoRoot, 'docs/migration/ledger.json')
+  mkdirSync(resolve(ledgerPath, '..'), { recursive: true })
+  writeFileSync(ledgerPath, `${JSON.stringify({
+    schemaVersion: 1,
+    baseline: {
+      repository: 'AnsonHui6040/ramen-style-today-next',
+      commit: '0'.repeat(40),
+    },
+    entries: [{
+      batch: '2A',
+      status: 'in-review',
+      semanticPaths: [...batch2ASemanticPaths],
+      incidents: [],
+      legacySources: ['test-owned legacy questionnaire fixture'],
+      ownedScopes: [],
+      newOwners: ['packages/classification-core/src/definitions/questions.ts'],
+      transformation: 'Compile the test-owned legacy questionnaire fixture.',
+      behavior: 'Preserve the test-owned pre-acceptance questionnaire behavior.',
+      verification: [],
+    }],
+  }, null, 2)}\n`)
+}
+
+function createPreAcceptanceManifestBytes() {
+  const preAcceptance = JSON.parse(readFileSync(
+    join(sourceRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  ))
+  delete preAcceptance.provenance.questions.verification
+
+  return `${JSON.stringify(preAcceptance, null, 2)}\n`
 }
 
 function writeFutureLedgerSchema(repoRoot: string) {
@@ -210,7 +241,18 @@ test('current in-progress Batch 2A ledger yields no question verification', () =
   expect(loadQuestionEvidence).toBeTypeOf('function')
   if (!loadQuestionEvidence) throw new Error('loadQuestionEvidence is unavailable')
 
-  expect(loadQuestionEvidence(sourceRoot, questionModel.metadata).verification).toBeUndefined()
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-pre-acceptance-'))
+  try {
+    const fixtureManifest = 'tools/parity/fixtures/questions/legacy-v1/manifest.json'
+    const fixtureManifestTarget = join(repoRoot, fixtureManifest)
+    mkdirSync(resolve(fixtureManifestTarget, '..'), { recursive: true })
+    cpSync(join(sourceRoot, fixtureManifest), fixtureManifestTarget)
+    writePreAcceptanceLedger(repoRoot)
+
+    expect(loadQuestionEvidence(repoRoot, questionModel.metadata).verification).toBeUndefined()
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
 })
 
 test('projects one verification from a validated accepted Batch 2A ledger', () => {
@@ -283,16 +325,16 @@ test('Task 14-shaped ledger roundtrip renders manifest-only bound verification',
     writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
     symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
     execFileSync('git', ['init', '--quiet'], { cwd: repoRoot })
-    writeFutureLedgerSchema(repoRoot)
-    writeFileSync(
-      join(repoRoot, 'docs/migration/ledger.json'),
-      `${JSON.stringify(validatedFutureLedger(), null, 2)}\n`,
-    )
+    writePreAcceptanceLedger(repoRoot)
     const classificationRoot = join(repoRoot, 'docs/classification')
     mkdirSync(classificationRoot, { recursive: true })
-    for (const file of ['change-map.md', 'manifest.json', 'index.md']) {
+    for (const file of ['change-map.md', 'index.md']) {
       cpSync(join(sourceRoot, 'docs/classification', file), join(classificationRoot, file))
     }
+    writeFileSync(
+      join(classificationRoot, 'manifest.json'),
+      createPreAcceptanceManifestBytes(),
+    )
     const preAcceptanceManifestBytes = readFileSync(
       join(classificationRoot, 'manifest.json'),
       'utf8',
@@ -301,6 +343,11 @@ test('Task 14-shaped ledger roundtrip renders manifest-only bound verification',
     const preAcceptanceIndex = readFileSync(join(classificationRoot, 'index.md'), 'utf8')
     expect(preAcceptanceManifest.provenance.questions).not.toHaveProperty('verification')
 
+    writeFutureLedgerSchema(repoRoot)
+    writeFileSync(
+      join(repoRoot, 'docs/migration/ledger.json'),
+      `${JSON.stringify(validatedFutureLedger(), null, 2)}\n`,
+    )
     const accepted = runGenerator(repoRoot)
     expect(accepted.status, accepted.stderr).toBe(0)
     const acceptedManifestBytes = readFileSync(
