@@ -8,6 +8,8 @@ export const extractorAuthoringSourcePaths = [
   'tools/parity/questions/extract.ts',
 ] as const
 
+export const questionParitySuiteVersion = '1' as const
+
 export interface ExtractorAuthoringSourceIdentity {
   readonly path: (typeof extractorAuthoringSourcePaths)[number]
   readonly hash: string

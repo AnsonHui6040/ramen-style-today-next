@@ -336,6 +336,53 @@ describe('classification documentation index', () => {
     expect(manifest.provenance.questions).not.toHaveProperty('verification')
   })
 
+  test('omits verification for a different fixture manifest at the current semantic hash', () => {
+    const paths = new Set(documentationRelations.flatMap((item) => [
+      item.canonicalSource,
+      ...item.validators,
+      ...item.consumers,
+      ...item.tests,
+      ...item.migrations,
+    ]))
+    const semanticHash = '7'.repeat(64)
+    const fixtureManifestHash = '3'.repeat(64)
+    const manifest = JSON.parse(buildDocumentation(
+      compiled.model,
+      documentationRelations,
+      new Set(detectedCoreConsumers),
+      paths,
+      {
+        questionEvidence: {
+          sourceRepository: {
+            host: 'github.com',
+            owner: 'AnsonHui6040',
+            repository: 'ramen-style-today',
+          },
+          sourceCommit: '1'.repeat(40),
+          sourceTreeHash: '2'.repeat(40),
+          fixtureManifestPath: 'tools/parity/fixtures/questions/legacy-v1/manifest.json',
+          fixtureManifestHash,
+          fixtureSchemaVersion: '1',
+          fixtureContentHash: '4'.repeat(64),
+          extractorVersion: '1',
+          instrumentationHash: '5'.repeat(64),
+          sourceHash: '6'.repeat(64),
+          semanticHash,
+          verification: {
+            assurance: 'parity-verified',
+            parityScope: 'legacy-observable-transition-projection',
+            fixtureManifestHash: '8'.repeat(64),
+            paritySuiteVersion: '1',
+            verifiedSemanticHash: semanticHash,
+            implementationSha: '9'.repeat(40),
+          },
+        },
+      },
+    ).manifest)
+
+    expect(manifest.provenance.questions).not.toHaveProperty('verification')
+  })
+
   test('rejects missing relations and an unregistered detected consumer', () => {
     const formIndex = documentationRelations.findIndex(
       ({ conceptKey }) => conceptKey === 'question/form',

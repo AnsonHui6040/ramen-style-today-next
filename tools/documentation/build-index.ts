@@ -190,6 +190,7 @@ export function buildDocumentation(
   const questionEvidence = options.questionEvidence
   const matchingVerification = questionEvidence?.verification
     && questionEvidence.verification.verifiedSemanticHash === questionEvidence.semanticHash
+    && questionEvidence.verification.fixtureManifestHash === questionEvidence.fixtureManifestHash
     ? questionEvidence.verification
     : undefined
   const questionProvenance = {

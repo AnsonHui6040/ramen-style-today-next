@@ -11,12 +11,18 @@ import {
 } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
 
+import { z } from 'zod'
+
 import {
   compileClassification,
   compileQuestions,
   type CompiledQuestionModelMetadata,
 } from '@ramen-style/classification-core/compiler'
-import { fixtureManifestSchema } from '../parity/questions/contracts.js'
+import { migrationLedgerSchema } from '../migration/ledger-schema.js'
+import {
+  fixtureManifestSchema,
+  questionParitySuiteVersion,
+} from '../parity/questions/contracts.js'
 import { buildDocumentation } from './build-index.js'
 import {
   createDocumentationRelations,
@@ -173,7 +179,57 @@ function repositoryFiles(repoRoot: string) {
   return new Set(output.split('\0').filter(Boolean))
 }
 
-function loadQuestionEvidence(
+const sha40Schema = z.string().regex(/^[0-9a-f]{40}$/)
+const acceptanceLedgerProjectionSchema = z.object({
+  entries: z.array(z.unknown()),
+})
+const acceptanceBatchEntryProjectionSchema = z.object({
+  batch: z.literal('2A'),
+  status: z.literal('complete'),
+  implementationSha: sha40Schema,
+  verification: z.array(z.object({
+    gate: z.string(),
+    outcome: z.string(),
+    commitSha: sha40Schema.optional(),
+  })),
+})
+
+export function projectQuestionParityVerification(
+  validatedLedger: unknown,
+  identity: { fixtureManifestHash: string; semanticHash: string },
+) {
+  const ledger = acceptanceLedgerProjectionSchema.safeParse(validatedLedger)
+  if (!ledger.success) return undefined
+  const candidates = ledger.data.entries.filter((entry) => (
+    typeof entry === 'object'
+    && entry !== null
+    && 'batch' in entry
+    && entry.batch === '2A'
+  ))
+  if (candidates.length !== 1) return undefined
+  const projected = acceptanceBatchEntryProjectionSchema.safeParse(candidates[0])
+  if (!projected.success) return undefined
+  const { implementationSha, verification } = projected.data
+  if (verification.length !== 2) return undefined
+  const localGates = verification.filter(({ gate }) => gate === 'batch2a-local-verify')
+  const remoteGates = verification.filter(({ gate }) => gate === 'batch2a-remote-ci')
+  if (localGates.length !== 1
+    || remoteGates.length !== 1
+    || localGates[0]!.outcome !== 'passed'
+    || remoteGates[0]!.outcome !== 'passed'
+    || remoteGates[0]!.commitSha !== implementationSha) return undefined
+
+  return {
+    assurance: 'parity-verified' as const,
+    parityScope: 'legacy-observable-transition-projection' as const,
+    fixtureManifestHash: identity.fixtureManifestHash,
+    paritySuiteVersion: questionParitySuiteVersion,
+    verifiedSemanticHash: identity.semanticHash,
+    implementationSha,
+  }
+}
+
+export function loadQuestionEvidence(
   repoRoot: string,
   questionMetadata: CompiledQuestionModelMetadata,
 ) {
@@ -182,19 +238,31 @@ function loadQuestionEvidence(
   const fixtureManifest = fixtureManifestSchema.parse(
     JSON.parse(fixtureManifestBytes.toString('utf8')) as unknown,
   )
+  const validatedLedger = migrationLedgerSchema.parse(JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/migration/ledger.json'),
+    'utf8',
+  )) as unknown)
+  const fixtureManifestHash = createHash('sha256')
+    .update(fixtureManifestBytes)
+    .digest('hex')
+  const verification = projectQuestionParityVerification(validatedLedger, {
+    fixtureManifestHash,
+    semanticHash: questionMetadata.semanticHash,
+  })
 
   return {
     sourceRepository: fixtureManifest.source.repository,
     sourceCommit: fixtureManifest.source.commit,
     sourceTreeHash: fixtureManifest.source.treeHash,
     fixtureManifestPath,
-    fixtureManifestHash: createHash('sha256').update(fixtureManifestBytes).digest('hex'),
+    fixtureManifestHash,
     fixtureSchemaVersion: String(fixtureManifest.fixtureSchemaVersion),
     fixtureContentHash: fixtureManifest.fixtureContentHash,
     extractorVersion: String(fixtureManifest.extractor.version),
     instrumentationHash: fixtureManifest.instrumentation.hash,
     sourceHash: questionMetadata.sourceHash,
     semanticHash: questionMetadata.semanticHash,
+    ...(verification ? { verification } : {}),
   }
 }
 
