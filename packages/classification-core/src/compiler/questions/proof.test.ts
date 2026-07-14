@@ -12,6 +12,9 @@ import {
   transientUnsatisfiableDefinition,
 } from './test-fixtures.js'
 
+const firstProductionProof = proveQuestionModel(questionDefinitions)
+const secondProductionProof = proveQuestionModel(questionDefinitions)
+
 describe('question semantic proofs', () => {
   test.each([
     ['empty branch', emptyBranchDefinition, 'FLOW_EMPTY_BRANCH'],
@@ -49,7 +52,7 @@ describe('question semantic proofs', () => {
   })
 
   test('covers every production question and question-scoped option occurrence', () => {
-    const proof = proveQuestionModel(questionDefinitions)
+    const proof = firstProductionProof
 
     expect(proof.diagnostics).toEqual([])
     expect(proof.coverage.questionIds).toEqual(questionDefinitions.map(({ id }) => id))
@@ -58,7 +61,7 @@ describe('question semantic proofs', () => {
   })
 
   test('emits only legal compiled-order selection keys and a model-sized forced bound', () => {
-    const proof = proveQuestionModel(questionDefinitions)
+    const proof = firstProductionProof
 
     expect(proof.validSelectionKeysByQuestion.source).toContain('["pork","chicken"]')
     expect(proof.validSelectionKeysByQuestion.source).not.toContain('["pork","unsure"]')
@@ -67,8 +70,8 @@ describe('question semantic proofs', () => {
   })
 
   test('is byte-deterministic across independent production proofs', () => {
-    expect(stableJson(proveQuestionModel(questionDefinitions))).toBe(
-      stableJson(proveQuestionModel(questionDefinitions)),
+    expect(stableJson(firstProductionProof)).toBe(
+      stableJson(secondProductionProof),
     )
   })
 })

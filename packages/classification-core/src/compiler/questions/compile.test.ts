@@ -14,6 +14,20 @@ function expectCompiled(definitions: readonly QuestionDefinitionSource[]) {
 }
 
 const productionModel = expectCompiled(questionDefinitions)
+const interactionReorderedModel = expectCompiled(questionDefinitions.map((question) => (
+  question.id === 'form'
+    ? {
+        ...question,
+        options: question.options.map((option) => (
+          option.id === 'soup' ? { ...option, order: 3 } : option
+        )),
+      }
+    : question
+)) as readonly QuestionDefinitionSource[])
+const insertionReorderedModel = expectCompiled([...questionDefinitions].reverse().map((question) => ({
+  ...question,
+  options: [...question.options].reverse(),
+})) as readonly QuestionDefinitionSource[])
 
 describe('question compiler', () => {
   test('emits fixed metadata and attaches proof output', () => {
@@ -60,16 +74,7 @@ describe('question compiler', () => {
 
   test('changes the semantic hash for interaction changes', () => {
     const original = productionModel
-    const reorderedOption = expectCompiled(questionDefinitions.map((question) => (
-      question.id === 'form'
-        ? {
-            ...question,
-            options: question.options.map((option) => (
-              option.id === 'soup' ? { ...option, order: 3 } : option
-            )),
-          }
-        : question
-    )) as readonly QuestionDefinitionSource[])
+    const reorderedOption = interactionReorderedModel
 
     expect(original.metadata.sourceHash).not.toBe(reorderedOption.metadata.sourceHash)
     expect(original.metadata.semanticHash).not.toBe(reorderedOption.metadata.semanticHash)
@@ -77,10 +82,7 @@ describe('question compiler', () => {
 
   test('canonicalizes equivalent question and option insertion order before hashing', () => {
     const original = productionModel
-    const reordered = expectCompiled([...questionDefinitions].reverse().map((question) => ({
-      ...question,
-      options: [...question.options].reverse(),
-    })) as readonly QuestionDefinitionSource[])
+    const reordered = insertionReorderedModel
 
     expect(reordered).toEqual(original)
     expect(reordered.metadata.sourceHash).toBe(original.metadata.sourceHash)

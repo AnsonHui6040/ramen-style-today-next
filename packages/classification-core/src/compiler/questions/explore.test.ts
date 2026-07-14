@@ -15,6 +15,8 @@ import {
   twoOutputDefinition,
 } from './test-fixtures.js'
 
+const productionExploration = exploreQuestionSemantics(questionDefinitions)
+
 describe('finite question semantic exploration', () => {
   test('does not merge branches with equal truth but different allowed outputs', () => {
     const exploration = exploreQuestionSemantics(twoOutputDefinition)
@@ -49,7 +51,7 @@ describe('finite question semantic exploration', () => {
   })
 
   test('uses every semantic field in stable signature deduplication', () => {
-    const exploration = exploreQuestionSemantics(questionDefinitions)
+    const exploration = productionExploration
     const keys = exploration.signatures.map(stableJson)
 
     expect(new Set(keys).size).toBe(keys.length)
@@ -69,7 +71,7 @@ describe('finite question semantic exploration', () => {
   })
 
   test('records every required representative local-selection class', () => {
-    const exploration = exploreQuestionSemantics(questionDefinitions)
+    const exploration = productionExploration
 
     expect(new Set(exploration.representativeCases.map(({ kind }) => kind))).toEqual(new Set([
       'unanswered',

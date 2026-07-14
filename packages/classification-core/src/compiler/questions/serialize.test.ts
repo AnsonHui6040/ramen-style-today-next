@@ -14,20 +14,22 @@ function compileOrThrow(definitions: readonly QuestionDefinitionSource[]): Compi
   return result.model
 }
 
+const reorderedDefinitions = [...questionDefinitions].reverse().map((question) => ({
+  ...question,
+  options: [...question.options].reverse(),
+})) as readonly QuestionDefinitionSource[]
+const productionModel = compileOrThrow(questionDefinitions)
+const reorderedModel = compileOrThrow(reorderedDefinitions)
+const productionArtifact = renderQuestionArtifact(productionModel)
+const reorderedArtifact = renderQuestionArtifact(reorderedModel)
+
 describe('question artifact serialization', () => {
   test('renders identical bytes from compiled equivalent reordered source', () => {
-    const reordered = [...questionDefinitions].reverse().map((question) => ({
-      ...question,
-      options: [...question.options].reverse(),
-    })) as readonly QuestionDefinitionSource[]
-
-    expect(renderQuestionArtifact(compileOrThrow(questionDefinitions))).toBe(
-      renderQuestionArtifact(compileOrThrow(reordered)),
-    )
+    expect(productionArtifact).toBe(reorderedArtifact)
   })
 
   test('renders stable TypeScript with only the browser-neutral freeze import', () => {
-    const rendered = renderQuestionArtifact(compileOrThrow(questionDefinitions))
+    const rendered = productionArtifact
 
     expect(rendered.startsWith([
       "import { deepFreeze } from '../contracts/deep-freeze.js'",
@@ -50,7 +52,7 @@ describe('question artifact serialization', () => {
   })
 
   test('orders object keys canonically without changing canonical array order', () => {
-    const rendered = renderQuestionArtifact(compileOrThrow(questionDefinitions))
+    const rendered = productionArtifact
 
     expect(rendered.indexOf('  "dependentClosures"')).toBeLessThan(
       rendered.indexOf('  "forcedIterationUpperBound"'),

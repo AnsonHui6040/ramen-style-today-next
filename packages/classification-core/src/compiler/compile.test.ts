@@ -6,6 +6,8 @@ import { compileClassification } from './compile.js'
 import type { DefinitionBundleSource } from './source-schema.js'
 
 const sourceFile = 'packages/classification-core/src/definitions/classification.ts'
+const firstProductionCompilation = compileClassification(classificationDefinition, sourceFile)
+const secondProductionCompilation = compileClassification(classificationDefinition, sourceFile)
 
 function mutableDefinition() {
   return structuredClone(classificationDefinition) as unknown as DefinitionBundleSource
@@ -13,8 +15,8 @@ function mutableDefinition() {
 
 describe('classification compiler shell', () => {
   test('compiles deterministic frozen mixed-provenance inventory', () => {
-    const first = compileClassification(classificationDefinition, sourceFile)
-    const second = compileClassification(classificationDefinition, sourceFile)
+    const first = firstProductionCompilation
+    const second = secondProductionCompilation
 
     expect(first.ok).toBe(true)
     expect(second.ok).toBe(true)
@@ -178,7 +180,7 @@ describe('classification compiler shell', () => {
   })
 
   test('allows repeated option values across questions but rejects them within one question', () => {
-    expect(compileClassification(classificationDefinition, sourceFile).ok).toBe(true)
+    expect(firstProductionCompilation.ok).toBe(true)
 
     const duplicateOption = mutableDefinition()
     duplicateOption.questions[0]!.options[1]!.id = 'soup'
