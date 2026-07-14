@@ -1806,7 +1806,7 @@
       "assurance": "compiler-validated",
       "extractorVersion": "1",
       "fixtureContentHash": "89d7f7588c27f6c243eb28bb606c711d881d1223c34c62216d1df39a098419f3",
-      "fixtureManifestHash": "f5182238f5e28a9409d78a3b6c7dbfe8fae6413f962182cd0d6908f1e53ea1ed",
+      "fixtureManifestHash": "95bb158482ba1d50e363f3509e56f27e93fa4956acbd4cb545947f6eae7c43fe",
       "fixtureManifestPath": "tools/parity/fixtures/questions/legacy-v1/manifest.json",
       "fixtureSchemaVersion": "1",
       "instrumentationHash": "cbf5018a0d890fcb3d5915cd2c8e9abde3d93178ebcaa4082823d0f5a21809ba",
@@ -1823,7 +1823,7 @@
       "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a",
       "verification": {
         "assurance": "parity-verified",
-        "fixtureManifestHash": "f5182238f5e28a9409d78a3b6c7dbfe8fae6413f962182cd0d6908f1e53ea1ed",
+        "fixtureManifestHash": "95bb158482ba1d50e363f3509e56f27e93fa4956acbd4cb545947f6eae7c43fe",
         "implementationSha": "ecf9f5b4791862471d0898da7283ba4a40d3fbf9",
         "parityScope": "legacy-observable-transition-projection",
         "paritySuiteVersion": "1",
