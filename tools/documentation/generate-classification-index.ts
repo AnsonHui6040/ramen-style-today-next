@@ -170,7 +170,7 @@ export function installGeneratedOutputs(
   }
 }
 
-function repositoryFiles(repoRoot: string) {
+export function repositoryFiles(repoRoot: string) {
   const output = execFileSync(
     'git',
     ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],

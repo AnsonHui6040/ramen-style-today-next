@@ -395,6 +395,9 @@ describe('classification documentation index', () => {
     )
     expect(result.diagnostics.map((item) => item.code)).toContain('DOC_RELATION_INVALID')
     expect(result.diagnostics.some((item) => item.entityId === 'question/form')).toBe(true)
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      message: 'Detected core consumer is not registered: tools/unregistered.ts',
+    }))
   })
 
   test('rejects duplicate and unknown relation keys', () => {

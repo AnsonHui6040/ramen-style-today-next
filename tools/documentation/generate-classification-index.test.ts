@@ -18,10 +18,13 @@ import { join, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { z } from 'zod'
 
-import { compileQuestions } from '@ramen-style/classification-core/compiler'
-import { installGeneratedOutputs } from './generate-classification-index.js'
+import { questionModel } from '@ramen-style/classification-core/generated/question-model'
+import {
+  installGeneratedOutputs,
+  repositoryFiles,
+} from './generate-classification-index.js'
 import * as generatorModule from './generate-classification-index.js'
-import { documentationDefinition } from './relations.js'
+import { scanCoreConsumers } from './scan-imports.js'
 
 const sourceRoot = resolve(import.meta.dirname, '../..')
 const implementationSha = 'a'.repeat(40)
@@ -206,10 +209,8 @@ test('current in-progress Batch 2A ledger yields no question verification', () =
   }).loadQuestionEvidence
   expect(loadQuestionEvidence).toBeTypeOf('function')
   if (!loadQuestionEvidence) throw new Error('loadQuestionEvidence is unavailable')
-  const compiled = compileQuestions(documentationDefinition.questions)
-  if (!compiled.ok) throw new Error('production questions did not compile')
 
-  expect(loadQuestionEvidence(sourceRoot, compiled.model.metadata).verification).toBeUndefined()
+  expect(loadQuestionEvidence(sourceRoot, questionModel.metadata).verification).toBeUndefined()
 })
 
 test('projects one verification from a validated accepted Batch 2A ledger', () => {
@@ -282,32 +283,31 @@ test('Task 14-shaped ledger roundtrip renders manifest-only bound verification',
     writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
     symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
     execFileSync('git', ['init', '--quiet'], { cwd: repoRoot })
-    const classificationRoot = join(repoRoot, 'docs/classification')
-    mkdirSync(classificationRoot, { recursive: true })
-    writeFileSync(join(classificationRoot, 'change-map.md'), '# Change map\n')
-    writeFileSync(join(classificationRoot, 'manifest.json'), 'old manifest\n')
-    writeFileSync(join(classificationRoot, 'index.md'), 'old index\n')
-
-    const preAcceptance = runGenerator(repoRoot)
-    expect(preAcceptance.status, preAcceptance.stderr).toBe(0)
-    const preAcceptanceManifest = JSON.parse(readFileSync(
-      join(classificationRoot, 'manifest.json'),
-      'utf8',
-    ))
-    const preAcceptanceIndex = readFileSync(join(classificationRoot, 'index.md'), 'utf8')
-    expect(preAcceptanceManifest.provenance.questions).not.toHaveProperty('verification')
-
     writeFutureLedgerSchema(repoRoot)
     writeFileSync(
       join(repoRoot, 'docs/migration/ledger.json'),
       `${JSON.stringify(validatedFutureLedger(), null, 2)}\n`,
     )
-    const accepted = runGenerator(repoRoot)
-    expect(accepted.status, accepted.stderr).toBe(0)
-    const acceptedManifest = JSON.parse(readFileSync(
+    const classificationRoot = join(repoRoot, 'docs/classification')
+    mkdirSync(classificationRoot, { recursive: true })
+    for (const file of ['change-map.md', 'manifest.json', 'index.md']) {
+      cpSync(join(sourceRoot, 'docs/classification', file), join(classificationRoot, file))
+    }
+    const preAcceptanceManifestBytes = readFileSync(
       join(classificationRoot, 'manifest.json'),
       'utf8',
-    ))
+    )
+    const preAcceptanceManifest = JSON.parse(preAcceptanceManifestBytes)
+    const preAcceptanceIndex = readFileSync(join(classificationRoot, 'index.md'), 'utf8')
+    expect(preAcceptanceManifest.provenance.questions).not.toHaveProperty('verification')
+
+    const accepted = runGenerator(repoRoot)
+    expect(accepted.status, accepted.stderr).toBe(0)
+    const acceptedManifestBytes = readFileSync(
+      join(classificationRoot, 'manifest.json'),
+      'utf8',
+    )
+    const acceptedManifest = JSON.parse(acceptedManifestBytes)
     const fixtureManifestHash = createHash('sha256').update(readFileSync(
       join(repoRoot, 'tools/parity/fixtures/questions/legacy-v1/manifest.json'),
     )).digest('hex')
@@ -320,6 +320,7 @@ test('Task 14-shaped ledger roundtrip renders manifest-only bound verification',
       verifiedSemanticHash: acceptedManifest.provenance.questions.semanticHash,
       implementationSha,
     })
+    expect(acceptedManifestBytes).not.toBe(preAcceptanceManifestBytes)
     expect(readFileSync(join(classificationRoot, 'index.md'), 'utf8'))
       .toBe(preAcceptanceIndex)
   } finally {
@@ -331,37 +332,23 @@ test('write mode rejects an owned output symlink before changing any output', ()
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
   const externalRoot = mkdtempSync(join(tmpdir(), 'ramen-index-outside-'))
   try {
-    writeDocumentationFixture(repoRoot)
-
-    writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
-    symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
-    execFileSync('git', ['init', '--quiet'], { cwd: repoRoot })
-
     const classificationRoot = join(repoRoot, 'docs/classification')
     mkdirSync(classificationRoot, { recursive: true })
-    writeFileSync(join(classificationRoot, 'change-map.md'), '# Change map\n')
     const manifest = join(classificationRoot, 'manifest.json')
     writeFileSync(manifest, 'manifest remains unchanged\n')
     const externalTarget = join(externalRoot, 'outside.md')
     writeFileSync(externalTarget, 'outside remains unchanged\n')
     symlinkSync(externalTarget, join(classificationRoot, 'index.md'))
 
-    const result = spawnSync(
-      process.execPath,
-      [
-        join(sourceRoot, 'node_modules/tsx/dist/cli.mjs'),
-        join(repoRoot, 'tools/documentation/generate-classification-index.ts'),
-        '--write',
-      ],
-      { cwd: repoRoot, encoding: 'utf8' },
-    )
-
-    expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain(
-      'DOC_INDEX_DRIFT unexpected owned-path entry docs/classification/index.md',
+    expect(() => installGeneratedOutputs(repoRoot, new Map([
+      ['docs/classification/manifest.json', 'new manifest\n'],
+      ['docs/classification/index.md', 'new index\n'],
+    ]))).toThrow(
+      'DOC_INDEX_DRIFT generated output must be a regular file: docs/classification/index.md',
     )
     expect(readFileSync(externalTarget, 'utf8')).toBe('outside remains unchanged\n')
     expect(readFileSync(manifest, 'utf8')).toBe('manifest remains unchanged\n')
+    expect(readdirSync(classificationRoot).sort()).toEqual(['index.md', 'manifest.json'])
   } finally {
     rmSync(repoRoot, { recursive: true, force: true })
     rmSync(externalRoot, { recursive: true, force: true })
@@ -372,26 +359,12 @@ test('write mode rejects a symlinked classification root without writing outside
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
   const externalRoot = mkdtempSync(join(tmpdir(), 'ramen-index-outside-'))
   try {
-    writeDocumentationFixture(repoRoot)
-
-    writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
-    symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
-    execFileSync('git', ['init', '--quiet'], { cwd: repoRoot })
     mkdirSync(join(repoRoot, 'docs'), { recursive: true })
     symlinkSync(externalRoot, join(repoRoot, 'docs/classification'), 'dir')
 
-    const result = spawnSync(
-      process.execPath,
-      [
-        join(sourceRoot, 'node_modules/tsx/dist/cli.mjs'),
-        join(repoRoot, 'tools/documentation/generate-classification-index.ts'),
-        '--write',
-      ],
-      { cwd: repoRoot, encoding: 'utf8' },
-    )
-
-    expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain(
+    expect(() => installGeneratedOutputs(repoRoot, new Map([
+      ['docs/classification/index.md', 'new index\n'],
+    ]))).toThrow(
       'DOC_INDEX_DRIFT owned output parent must be a regular repository directory',
     )
     expect(readdirSync(externalRoot)).toEqual([])
@@ -440,34 +413,17 @@ test('a second output install failure restores both originals and removes transa
 test('Git inventory preserves a newline-containing eligible consumer path', () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
   try {
-    writeDocumentationFixture(repoRoot)
-    const newlineConsumer = join(repoRoot, 'apps/web/line\nbreak.ts')
+    const newlineConsumerPath = 'apps/web/line\nbreak.ts'
+    const newlineConsumer = join(repoRoot, newlineConsumerPath)
     mkdirSync(resolve(newlineConsumer, '..'), { recursive: true })
     writeFileSync(newlineConsumer, "import '@ramen-style/classification-core'\n")
 
-    writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
-    symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
     execFileSync('git', ['init', '--quiet'], { cwd: repoRoot })
-    const classificationRoot = join(repoRoot, 'docs/classification')
-    mkdirSync(classificationRoot, { recursive: true })
-    writeFileSync(join(classificationRoot, 'change-map.md'), '# Change map\n')
-    writeFileSync(join(classificationRoot, 'manifest.json'), 'old manifest\n')
-    writeFileSync(join(classificationRoot, 'index.md'), 'old index\n')
+    const eligibleFiles = repositoryFiles(repoRoot)
 
-    const result = spawnSync(
-      process.execPath,
-      [
-        join(sourceRoot, 'node_modules/tsx/dist/cli.mjs'),
-        join(repoRoot, 'tools/documentation/generate-classification-index.ts'),
-        '--write',
-      ],
-      { cwd: repoRoot, encoding: 'utf8' },
-    )
-
-    expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain(
-      'Detected core consumer is not registered: apps/web/line\\nbreak.ts',
-    )
+    expect(eligibleFiles).toContain(newlineConsumerPath)
+    expect([...scanCoreConsumers(repoRoot, ['apps'], eligibleFiles)])
+      .toEqual([newlineConsumerPath])
   } finally {
     rmSync(repoRoot, { recursive: true, force: true })
   }
