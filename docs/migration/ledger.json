@@ -268,6 +268,22 @@
           "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29311063386"
         }
       ]
+    },
+    {
+      "batch": "2B",
+      "status": "in-review",
+      "legacySources": [
+        "src/App.tsx",
+        "src/domain/schema.ts",
+        "src/domain/types.ts"
+      ],
+      "ownedScopes": [],
+      "newOwners": [
+        "docs/superpowers/specs/2026-07-14-batch-2b-persistence-repair-design.md"
+      ],
+      "transformation": "Consolidated the approved Batch 2B pure persistence, explicit migration, deterministic repair, legacy observation, provenance, readiness, and exact-SHA acceptance contracts; implementation has not started.",
+      "behavior": "design-only-no-runtime-change",
+      "verification": []
     }
   ]
 }
