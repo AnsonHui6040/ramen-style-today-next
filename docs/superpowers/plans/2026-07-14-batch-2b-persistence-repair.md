@@ -304,10 +304,19 @@ npx tsx tools/parity/questions/extract.ts \
 shasum -a 256 -c .superpowers/batch-2b-baseline/protected.sha256
 npx vitest run tools/parity/shared tools/parity/questions
 npm run parity:questions
-npm run verify
+npm run lint
+npm test
+npm run typecheck
+npm run build
+npm run classification:validate
+npm run questions:check
+npm run runtime:imports:check
+npm run migration:ledger:check
 ```
 
 Compare current manifest `caseIds`, `caseCount`, `fixtureContentHash`, `instrumentation`, and `source` to `.superpowers/batch-2b-baseline/question-manifest-invariants.json`; require exact equality. Only extractor authoring fields may differ.
+
+Run `npm run classification:index:check` once and record the expected sole failure `DOC_INDEX_DRIFT docs/classification/manifest.json`. This drift is not accepted as a remaining verification failure: it is the direct manifest-hash rebind handed to Task 3, which must regenerate and commit the classification metadata before defining or pushing the maintenance candidate. Any other failure stops Task 2.
 
 - [ ] **Step 6: Commit the maintenance implementation**
 
@@ -319,7 +328,7 @@ git diff --cached --check
 git commit -m "Share fixture authoring transaction"
 ```
 
-Add `extractor.test.ts` only if it actually changed. This commit becomes `maintenanceSha`.
+Add `extractor.test.ts` only if it actually changed. This allowlist-only commit is the Task 2 implementation handoff; it is not yet `maintenanceSha`. Task 3 adds the required classification metadata rebind, proves the combined commit with full `npm run verify`, and only that green combined commit becomes `maintenanceSha`.
 
 ---
 
@@ -332,10 +341,29 @@ Add `extractor.test.ts` only if it actually changed. This commit becomes `mainte
 - Generate: `docs/classification/index.md`
 
 **Interfaces:**
-- Consumes: Task 2 SHA and exact successful GitHub Actions run.
-- Produces: complete maintenance evidence and provenance bound to the new question manifest hash while retaining historical semantic implementation identity.
+- Consumes: the Task 2 allowlist-only implementation commit and the in-progress maintenance ledger.
+- Produces: a full-green maintenance candidate containing the classification metadata rebind, then complete exact-SHA maintenance evidence while retaining historical semantic implementation identity.
 
-- [ ] **Step 1: Push and wait for exact maintenance CI**
+- [ ] **Step 1: Rebind classification metadata and create the green maintenance candidate**
+
+```bash
+npm run classification:index
+git diff --name-only
+```
+
+Expected additional changes are limited to `docs/classification/manifest.json` and, only if generator output requires it, `docs/classification/index.md`. The generated metadata must retain historical question `implementationSha`, model version, semantic hash, observable case/content identities, and `parity-verified` scope while rebinding only the current question fixture manifest hash implied by the approved authoring refactor.
+
+```bash
+git add docs/classification/manifest.json docs/classification/index.md
+git diff --cached --check
+git commit -m "Rebind shared extractor maintenance metadata"
+npm run verify
+test -z "$(git status --porcelain)"
+```
+
+This combined HEAD is the maintenance candidate. The exact full verify must be green before it is pushed; no implementation or verification failure is deferred past this point.
+
+- [ ] **Step 2: Push and wait for exact maintenance CI**
 
 ```bash
 MAINTENANCE_SHA=$(git rev-parse HEAD)
@@ -352,9 +380,9 @@ test -n "$RUN_ID"
 gh run watch "$RUN_ID" --exit-status
 ```
 
-Expected: exact maintenance run is `completed/success`.
+Expected: exact maintenance run for the combined Task 2 implementation plus classification metadata rebind is `completed/success`.
 
-- [ ] **Step 2: Record authenticated proof**
+- [ ] **Step 3: Record authenticated proof**
 
 ```bash
 MAINTENANCE_SHA=$(git rev-parse HEAD)
@@ -377,7 +405,7 @@ npm run verify
 
 Expected: maintenance is complete with two gates, old `implementationSha` unchanged, question semantic/corpus identities unchanged, current manifest hash rebound.
 
-- [ ] **Step 3: Commit and push maintenance metadata**
+- [ ] **Step 4: Commit and push maintenance evidence metadata**
 
 ```bash
 git add docs/migration/ledger.json docs/migration/ledger.md \
@@ -386,7 +414,7 @@ git commit -m "Record shared extractor maintenance evidence"
 git push
 ```
 
-- [ ] **Step 4: Authenticate the maintenance metadata commit**
+- [ ] **Step 5: Authenticate the maintenance evidence metadata commit**
 
 ```bash
 MAINTENANCE_METADATA_SHA=$(git rev-parse HEAD)
