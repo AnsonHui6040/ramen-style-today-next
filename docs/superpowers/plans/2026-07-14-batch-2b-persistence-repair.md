@@ -965,13 +965,13 @@ git commit -m "Build current persistence payloads"
 ```ts
 expect(Object.keys(runtimeRoot).sort()).toEqual([
   'applyAnswer',
-  'compiledQuestionModel',
-  'createInitialFlowState',
   'createStoredClassificationPayloadV1',
+  'decodeAnswerDraft',
   'evaluateFlow',
   'getFirstActionableQuestion',
   'getNextInteractiveQuestion',
   'getPreviousInteractiveQuestion',
+  'questionModel',
   'restoreClassification',
   'updatePendingSelection',
 ].sort())
@@ -1211,7 +1211,7 @@ test('migrates observed legacy seafood through the current contract', () => {
   const result = restoreClassification(questionModel, {
     kind: 'legacy-unversioned',
     sourceId: 'ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37',
-    answers: observation.observedLegacyOutput,
+    answers: observation.legacyInput,
   })
   expect(result).toMatchObject({
     status: 'restored-with-changes',
@@ -1223,7 +1223,7 @@ test('migrates observed legacy seafood through the current contract', () => {
 })
 ```
 
-Explicitly prove that the observed legacy empty exclusions output is invalid under the strict current migration contract rather than relabeling it as current truth, and that an observed legacy forced entry is repaired with evidence.
+Use `legacyInput` as the data presented to the new migration core. Use `observedLegacyOutput` only as evidence of what the old public function returned; never feed that already-normalized oracle output back as the persisted source. Explicitly prove that the observed legacy empty-exclusions input is invalid under the strict current migration contract rather than relabeling the legacy fallback output as current truth, and that an observed legacy forced entry is repaired with evidence.
 
 - [ ] **Step 2: Cover the entire public contract matrix**
 
@@ -1293,14 +1293,15 @@ git commit -m "Verify persistence migration contracts"
 - [ ] **Step 1: Write failing assurance and readiness tests**
 
 ```ts
-expect(classificationManifest.persistence).toMatchObject({
+const completedManifest = buildClassificationManifest(completedBatch2BLedger())
+expect(completedManifest.persistence).toMatchObject({
   origin: 'manually-authored',
   assurance: 'contract-verified',
   schemaVersion: 1,
   fixtureManifestPath:
     'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json',
 })
-expect(classificationManifest.readiness).toEqual({
+expect(completedManifest.readiness).toEqual({
   status: 'migration-only',
   blockers: [
     'persistence-adapter-not-integrated',
@@ -1310,9 +1311,17 @@ expect(classificationManifest.readiness).toEqual({
     'runtime-cutover-incomplete',
   ],
 })
+
+const inProgressManifest = buildClassificationManifest(inProgressBatch2BLedger())
+expect(inProgressManifest.persistence).toMatchObject({
+  origin: 'manually-authored',
+  assurance: 'structurally-validated',
+  schemaVersion: 1,
+})
+expect(inProgressManifest.persistence).not.toHaveProperty('implementationSha')
 ```
 
-Until exact Batch 2B evidence is complete, generation must not claim `contract-verified`; it reports the in-progress assurance/readiness state prescribed by the ledger.
+Only a completed-ledger fixture bound to the exact implementation SHA and fixture manifest hash may produce `contract-verified`. Until that evidence is complete, live generation must remain `structurally-validated`, omit `implementationSha`, and retain the in-progress readiness state prescribed by the ledger.
 
 - [ ] **Step 2: Write failing ownership and acceptance tests**
 
@@ -1465,7 +1474,7 @@ Then run:
 
 ```bash
 npm run verify
-npm run verify:acceptance
+GITHUB_TOKEN="$(gh auth token)" npm run verify:acceptance
 git diff --check
 git add docs/classification/index.md docs/classification/manifest.json \
   docs/migration/ledger.json docs/migration/ledger.md
@@ -1488,7 +1497,7 @@ done
 test -n "$metadata_run_id"
 gh run watch "$metadata_run_id" --exit-status
 npm run verify
-npm run verify:acceptance
+GITHUB_TOKEN="$(gh auth token)" npm run verify:acceptance
 test -z "$(git status --porcelain)"
 test "$(git rev-parse HEAD)" = "$(git rev-parse origin/codex/batch-2b-persistence-repair)"
 ```
