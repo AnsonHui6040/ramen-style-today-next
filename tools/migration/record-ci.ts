@@ -10,17 +10,59 @@ import { randomUUID } from 'node:crypto'
 import { basename, dirname, relative, resolve } from 'node:path'
 
 import {
-  recordSuccessfulCi,
+  assertAuthenticatedSuccessfulCiRun,
+  type AuthenticatedSuccessfulCiRun,
   verifySuccessfulCiProof,
-} from './ledger-check.js'
+} from '../acceptance/verify-acceptance.js'
+import { migrationLedgerSchema } from './ledger-schema.js'
 
 export interface RecordSuccessfulCiFileInput {
   batch: string
   expectedCandidateSha: string
   fetchImplementation: typeof fetch
+  githubToken?: string | undefined
   proofInput: unknown
   repoRoot: string
   sourceFile: string
+}
+
+export function recordSuccessfulCi(
+  input: unknown,
+  batch: string,
+  verifiedRun: AuthenticatedSuccessfulCiRun,
+) {
+  const ledger = migrationLedgerSchema.parse(input)
+  assertAuthenticatedSuccessfulCiRun(verifiedRun)
+  const target = ledger.entries.find((entry) => entry.batch === batch)
+  if (!target) throw new Error(`Unknown ledger batch ${batch}`)
+  if (target.status !== 'in-review') throw new Error(`Batch ${batch} is not in review`)
+  const gate = `batch${batch.toLowerCase().replace(/[^a-z0-9]+/g, '')}-remote-ci`
+  if (target.verification.some((item) => item.gate === gate)) {
+    throw new Error(`Batch ${batch} already records remote CI`)
+  }
+
+  return migrationLedgerSchema.parse({
+    ...ledger,
+    entries: ledger.entries.map((entry) => entry.batch === batch ? {
+      ...entry,
+      status: 'complete',
+      ...(batch === '2A' ? {
+        implementationSha: verifiedRun.sha,
+        incidents: ['docs/migration/incidents/2026-07-13-legacy-cache-isolation.md'],
+      } : {}),
+      verification: [
+        ...entry.verification,
+        {
+          gate,
+          command: 'GitHub Actions CI / verify',
+          outcome: 'passed',
+          evidence: 'the pushed acceptance candidate completed the Node 24 verify job successfully',
+          commitSha: verifiedRun.sha,
+          runUrl: verifiedRun.runUrl,
+        },
+      ],
+    } : entry),
+  })
 }
 
 function pathExists(path: string) {
@@ -75,11 +117,15 @@ export async function recordSuccessfulCiFile(
   input: RecordSuccessfulCiFileInput,
 ) {
   assertRegularLedgerSource(input.sourceFile, input.repoRoot)
-  const ledgerInput = JSON.parse(readFileSync(input.sourceFile, 'utf8')) as unknown
+  const ledgerInput = migrationLedgerSchema.parse(JSON.parse(readFileSync(
+    input.sourceFile,
+    'utf8',
+  )) as unknown)
   const verifiedRun = await verifySuccessfulCiProof(
     input.proofInput,
     input.expectedCandidateSha,
     input.fetchImplementation,
+    input.githubToken,
   )
   const updated = recordSuccessfulCi(ledgerInput, input.batch, verifiedRun)
   atomicWriteLedger(

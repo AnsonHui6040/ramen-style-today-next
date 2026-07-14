@@ -11,6 +11,7 @@ export function renderLedger(ledger: MigrationLedger) {
       `- Behavior: \`${entry.behavior}\``,
       `- Transformation: ${entry.transformation}`,
       ...(entry.foundationCommit ? [`- Foundation commit: \`${entry.foundationCommit}\``] : []),
+      ...(entry.implementationSha ? [`- Implementation SHA: \`${entry.implementationSha}\``] : []),
       '',
       '### Legacy sources',
       '',
@@ -22,6 +23,20 @@ export function renderLedger(ledger: MigrationLedger) {
       '',
       ...[...entry.newOwners].sort(compareCodePoints).map((owner) => `- \`${owner}\``),
       '',
+      ...(entry.semanticPaths?.length ? [
+        '### Semantic paths',
+        '',
+        ...entry.semanticPaths.map((path) => `- \`${path}\``),
+        '',
+      ] : []),
+      ...(entry.incidents ? [
+        '### Incidents',
+        '',
+        ...(entry.incidents.length
+          ? entry.incidents.map((incident) => `- \`${incident}\``)
+          : ['- None recorded.']),
+        '',
+      ] : []),
       '### Verification',
       '',
       ...(entry.verification.length

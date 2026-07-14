@@ -12,15 +12,20 @@ import {
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import {
-  authenticateLedgerRemoteCiEvidence,
   checkLedger,
-  recordSuccessfulCi,
-  verifySuccessfulCiProof,
+  checkLedgerOffline,
+  verifySemanticAncestry,
 } from './ledger-check.js'
-import { migrationLedgerSchema } from './ledger-schema.js'
+import { verifySuccessfulCiProof as verifySuccessfulCiProofOnline } from '../acceptance/verify-acceptance.js'
+import { recordSuccessfulCi } from './record-ci.js'
+import {
+  batch2AIncidentPath,
+  batch2ASemanticPaths,
+  migrationLedgerSchema,
+} from './ledger-schema.js'
 import { renderLedger } from './render-ledger.js'
 
 const sourceRoot = resolve(import.meta.dirname, '../..')
@@ -43,6 +48,66 @@ function parentDirectories(files: ReadonlySet<string>) {
 
 const declaredDirectories = parentDirectories(declaredFiles)
 const candidateSha = 'a'.repeat(40)
+
+function verifySuccessfulCiProof(
+  proofInput: unknown,
+  expectedCandidateSha: string,
+  fetchImplementation: typeof fetch,
+) {
+  return verifySuccessfulCiProofOnline(
+    proofInput,
+    expectedCandidateSha,
+    fetchImplementation,
+    'github-token',
+  )
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+function completeBatch2A(overrides: Record<string, unknown> = {}) {
+  return {
+    batch: '2A',
+    status: 'complete',
+    implementationSha: candidateSha,
+    semanticPaths: batch2ASemanticPaths,
+    incidents: [batch2AIncidentPath],
+    legacySources: [],
+    ownedScopes: [],
+    newOwners: [batch2AIncidentPath],
+    transformation: 'Batch 2A completion fixture.',
+    behavior: 'no-production-runtime-change',
+    verification: [
+      {
+        gate: 'batch2a-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'local verification passed',
+      },
+      {
+        gate: 'batch2a-remote-ci',
+        command: 'GitHub Actions CI / verify',
+        outcome: 'passed',
+        evidence: 'authenticated remote verification passed',
+        commitSha: candidateSha,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+    ],
+    ...overrides,
+  }
+}
+
+function batch2ALedger(entry: Record<string, unknown>) {
+  return {
+    schemaVersion: 1,
+    baseline: {
+      repository: 'AnsonHui6040/ramen-style-today',
+      commit: 'b'.repeat(40),
+    },
+    entries: [entry],
+  }
+}
 
 function successfulCiProof(overrides: Record<string, unknown> = {}) {
   return {
@@ -140,8 +205,10 @@ function createCliFixture(options: CliFixtureOptions = {}) {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-cli-'))
   const outsideRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-outside-'))
   const migrationRoot = join(repoRoot, 'tools/migration')
+  const acceptanceRoot = join(repoRoot, 'tools/acceptance')
   const docsRoot = join(repoRoot, 'docs/migration')
   mkdirSync(migrationRoot, { recursive: true })
+  mkdirSync(acceptanceRoot, { recursive: true })
   mkdirSync(docsRoot, { recursive: true })
   const toolFiles = [
     'check-ledger.ts',
@@ -153,6 +220,10 @@ function createCliFixture(options: CliFixtureOptions = {}) {
   for (const file of toolFiles) {
     cpSync(join(sourceRoot, 'tools/migration', file), join(migrationRoot, file))
   }
+  cpSync(
+    join(sourceRoot, 'tools/acceptance/verify-acceptance.ts'),
+    join(acceptanceRoot, 'verify-acceptance.ts'),
+  )
   writeFileSync(join(repoRoot, '.gitignore'), 'node_modules\n')
   symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
 
@@ -160,6 +231,7 @@ function createCliFixture(options: CliFixtureOptions = {}) {
     '.gitignore',
     'docs/migration/ledger.json',
     'docs/migration/ledger.md',
+    'tools/acceptance/verify-acceptance.ts',
     ...toolFiles.map((file) => `tools/migration/${file}`),
   ]
   const input = {
@@ -472,77 +544,135 @@ describe('migration ledger repository checks', () => {
     )
   })
 
-  test('re-authenticates recorded remote CI evidence instead of trusting ledger fields', async () => {
-    const forgedLedger = structuredClone(ledger)
-    const remote = forgedLedger.entries[1]!.verification.find(
-      (item) => item.gate === 'batch1-remote-ci',
-    )!
-    remote.commitSha = candidateSha
-    remote.runUrl = successfulCiProof().runUrl as string
+})
 
-    await expect(authenticateLedgerRemoteCiEvidence(
-      forgedLedger,
-      'b'.repeat(40),
-      githubFetch({ run: apiResponse({ status: 404 }) }),
-      async () => true,
-    )).rejects.toThrow(/GitHub Actions run 123 was not found/)
-  })
-
-  test('rejects mismatched recorded remote CI evidence', async () => {
-    const mismatchedLedger = structuredClone(ledger)
-    const remote = mismatchedLedger.entries[1]!.verification.find(
-      (item) => item.gate === 'batch1-remote-ci',
-    )!
-    remote.commitSha = candidateSha
-    remote.runUrl = successfulCiProof().runUrl as string
-
-    await expect(authenticateLedgerRemoteCiEvidence(
-      mismatchedLedger,
-      'b'.repeat(40),
-      githubFetch({
-        run: apiResponse({
-          payload: successfulGithubRun({ head_sha: 'c'.repeat(40) }),
-        }),
+describe('Batch 2A offline acceptance invariants', () => {
+  test('offline ledger check never calls fetch', async () => {
+    const owner = 'docs/migration/ledger.json'
+    const input = batch2ALedger({
+      ...completeBatch2A({
+        status: 'in-review',
+        implementationSha: undefined,
+        incidents: [],
+        newOwners: [owner],
+        verification: [],
       }),
-      async () => true,
-    )).rejects.toThrow(/head SHA mismatch/)
+    })
+    const fetchImplementation = vi.fn(() => Promise.reject(new Error('network forbidden')))
+    vi.stubGlobal('fetch', fetchImplementation)
+
+    const result = await checkLedgerOffline(input, {
+      repoFiles: new Set([owner]),
+      existingFiles: new Set([owner]),
+      repoDirectories: new Set(['docs', 'docs/migration']),
+      currentMarkdown: undefined,
+      currentHeadSha: 'c'.repeat(40),
+      isCommitAncestor: async () => true,
+      changedPathsBetween: async () => [],
+      questionSemanticHash: 'd'.repeat(64),
+      classificationSemanticHash: 'd'.repeat(64),
+      fixtureManifestHash: 'e'.repeat(64),
+      classificationFixtureManifestHash: 'e'.repeat(64),
+    })
+
+    expect(result).toMatchObject({ ok: true, errors: [] })
+    expect(fetchImplementation).not.toHaveBeenCalled()
   })
 
-  test('accepts authenticated historical evidence that is an ancestor of current HEAD', async () => {
-    const historicalLedger = structuredClone(ledger)
-    const remote = historicalLedger.entries[1]!.verification.find(
-      (item) => item.gate === 'batch1-remote-ci',
-    )!
-    remote.commitSha = candidateSha
-    remote.runUrl = successfulCiProof().runUrl as string
-    const ancestryChecks: [string, string][] = []
+  test('accepts metadata commits only when semantic paths are unchanged', async () => {
+    await expect(verifySemanticAncestry({
+      implementationSha: candidateSha,
+      candidateSha: 'b'.repeat(40),
+      semanticPaths: batch2ASemanticPaths,
+      changedPaths: [
+        'docs/classification/manifest.json',
+        'docs/migration/ledger.json',
+      ],
+    })).resolves.toBeUndefined()
 
-    await expect(authenticateLedgerRemoteCiEvidence(
-      historicalLedger,
-      'b'.repeat(40),
-      githubFetch(),
-      async (evidenceSha, currentHeadSha) => {
-        ancestryChecks.push([evidenceSha, currentHeadSha])
-        return true
-      },
-    )).resolves.toBeUndefined()
-    expect(ancestryChecks).toEqual([[candidateSha, 'b'.repeat(40)]])
+    await expect(verifySemanticAncestry({
+      implementationSha: candidateSha,
+      candidateSha: 'b'.repeat(40),
+      semanticPaths: batch2ASemanticPaths,
+      changedPaths: ['packages/classification-core/src/flow/evaluate.ts'],
+    })).rejects.toThrow('semantic path changed after implementation SHA')
+
+    await expect(verifySemanticAncestry({
+      implementationSha: candidateSha,
+      candidateSha: 'b'.repeat(40),
+      semanticPaths: batch2ASemanticPaths,
+      changedPaths: ['tools/parity/questions-malicious/parity.ts'],
+    })).resolves.toBeUndefined()
   })
 
-  test('rejects authenticated evidence outside current repository history', async () => {
-    const unrelatedLedger = structuredClone(ledger)
-    const remote = unrelatedLedger.entries[1]!.verification.find(
-      (item) => item.gate === 'batch1-remote-ci',
-    )!
-    remote.commitSha = candidateSha
-    remote.runUrl = successfulCiProof().runUrl as string
+  test('complete Batch 2A requires exact incident and verification gates', () => {
+    expect(migrationLedgerSchema.safeParse(batch2ALedger(completeBatch2A())).success).toBe(true)
 
-    await expect(authenticateLedgerRemoteCiEvidence(
-      unrelatedLedger,
-      'b'.repeat(40),
-      githubFetch(),
-      async () => false,
-    )).rejects.toThrow(/not an ancestor of current HEAD/)
+    for (const incidents of [
+      undefined,
+      [],
+      [batch2AIncidentPath, 'docs/migration/incidents/extra.md'],
+    ]) {
+      expect(migrationLedgerSchema.safeParse(batch2ALedger(completeBatch2A({
+        incidents,
+      }))).success).toBe(false)
+    }
+
+    expect(migrationLedgerSchema.safeParse(batch2ALedger(completeBatch2A({
+      verification: completeBatch2A().verification.slice(0, 1),
+    }))).success).toBe(false)
+  })
+
+  test('complete Batch 2A rejects a missing or non-regular incident file', async () => {
+    const input = batch2ALedger(completeBatch2A())
+    const baseState = {
+      repoFiles: new Set([batch2AIncidentPath]),
+      repoDirectories: new Set(['docs', 'docs/migration', 'docs/migration/incidents']),
+      currentMarkdown: undefined,
+      currentHeadSha: 'b'.repeat(40),
+      isCommitAncestor: async () => true,
+      changedPathsBetween: async () => [],
+      questionSemanticHash: 'd'.repeat(64),
+      classificationSemanticHash: 'd'.repeat(64),
+      fixtureManifestHash: 'e'.repeat(64),
+      classificationFixtureManifestHash: 'e'.repeat(64),
+    }
+
+    const missing = await checkLedgerOffline(input, {
+      ...baseState,
+      existingFiles: new Set<string>(),
+    })
+    expect(missing.errors).toContain(
+      `Batch 2A incident is not an existing regular repository file: ${batch2AIncidentPath}`,
+    )
+  })
+
+  test('offline ledger check validates local ancestry and question identity hashes', async () => {
+    const input = batch2ALedger(completeBatch2A())
+    const result = await checkLedgerOffline(input, {
+      repoFiles: new Set([batch2AIncidentPath]),
+      existingFiles: new Set([batch2AIncidentPath]),
+      repoDirectories: new Set(['docs', 'docs/migration', 'docs/migration/incidents']),
+      currentMarkdown: undefined,
+      currentHeadSha: 'b'.repeat(40),
+      isCommitAncestor: async () => false,
+      changedPathsBetween: async () => [],
+      questionSemanticHash: 'd'.repeat(64),
+      classificationSemanticHash: 'f'.repeat(64),
+      fixtureManifestHash: 'e'.repeat(64),
+      classificationFixtureManifestHash: '0'.repeat(64),
+    })
+
+    expect(result.errors).toContain(
+      `Recorded remote CI commit ${candidateSha} is not an ancestor of current HEAD ${'b'.repeat(40)}`,
+    )
+    expect(result.errors).toContain(
+      `Batch 2A implementation SHA ${candidateSha} is not an ancestor of current HEAD ${'b'.repeat(40)}`,
+    )
+    expect(result.errors).toContain('classification manifest question semantic hash is inconsistent')
+    expect(result.errors).toContain(
+      'classification manifest observable-trace fixture manifest hash is inconsistent',
+    )
   })
 })
 

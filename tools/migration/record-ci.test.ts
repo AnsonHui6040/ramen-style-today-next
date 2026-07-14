@@ -29,6 +29,30 @@ function response(url: string, payload: unknown) {
   } as Response
 }
 
+function authenticatedFetch(requestedUrls: string[]) {
+  return (async (request: string | URL | globalThis.Request) => {
+    const url = String(request)
+    requestedUrls.push(url)
+    if (url === runApiUrl) return response(url, {
+      id: 123,
+      workflow_id: 456,
+      html_url: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      head_sha: candidateSha,
+      head_branch: 'main',
+      event: 'push',
+      status: 'completed',
+      conclusion: 'success',
+      path: '.github/workflows/ci.yml@main',
+      repository: { full_name: 'AnsonHui6040/ramen-style-today-next' },
+    })
+    if (url === workflowApiUrl) return response(url, {
+      id: 456,
+      path: '.github/workflows/ci.yml',
+    })
+    throw new Error(`Unexpected GitHub API URL ${url}`)
+  }) as typeof fetch
+}
+
 test('authenticated recording atomically replaces canonical JSON and cleans its same-directory temp file', async () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-record-'))
   try {
@@ -63,27 +87,8 @@ test('authenticated recording atomically replaces canonical JSON and cleans its 
     await recordSuccessfulCiFile({
       batch: '1',
       expectedCandidateSha: candidateSha,
-      fetchImplementation: (async (request: string | URL | globalThis.Request) => {
-        const url = String(request)
-        requestedUrls.push(url)
-        if (url === runApiUrl) return response(url, {
-          id: 123,
-          workflow_id: 456,
-          html_url: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
-          head_sha: candidateSha,
-          head_branch: 'main',
-          event: 'push',
-          status: 'completed',
-          conclusion: 'success',
-          path: '.github/workflows/ci.yml@main',
-          repository: { full_name: 'AnsonHui6040/ramen-style-today-next' },
-        })
-        if (url === workflowApiUrl) return response(url, {
-          id: 456,
-          path: '.github/workflows/ci.yml',
-        })
-        throw new Error(`Unexpected GitHub API URL ${url}`)
-      }) as typeof fetch,
+      fetchImplementation: authenticatedFetch(requestedUrls),
+      githubToken: 'github-token',
       proofInput: {
         schemaVersion: 1,
         sha: candidateSha,
@@ -104,6 +109,140 @@ test('authenticated recording atomically replaces canonical JSON and cleans its 
       commitSha: candidateSha,
       runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
     })
+    expect(readdirSync(dirname(sourceFile)).filter(
+      (file) => file.startsWith('.ledger.json.tmp-'),
+    )).toEqual([])
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
+test('Batch 2A promotion atomically records implementation SHA, incident, and exact remote gate', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-record-2a-'))
+  try {
+    const sourceFile = join(repoRoot, 'docs/migration/ledger.json')
+    mkdirSync(dirname(sourceFile), { recursive: true })
+    const incident = 'docs/migration/incidents/2026-07-13-legacy-cache-isolation.md'
+    const input = {
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: 'b'.repeat(40),
+      },
+      entries: [{
+        batch: '2A',
+        status: 'in-review',
+        semanticPaths: [
+          'packages/classification-core/src/definitions/questions.ts',
+          'packages/classification-core/src/compiler/questions/**',
+          'packages/classification-core/src/generated/question-model.ts',
+          'packages/classification-core/src/flow/**',
+          'tools/parity/questions/**',
+          'tools/parity/fixtures/questions/**',
+        ],
+        incidents: [],
+        legacySources: [],
+        ownedScopes: [],
+        newOwners: [incident],
+        transformation: 'Authenticated Batch 2A recording fixture.',
+        behavior: 'no-production-runtime-change',
+        verification: [{
+          gate: 'batch2a-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'local verification passed',
+        }],
+      }],
+    }
+    writeFileSync(sourceFile, `${JSON.stringify(input, null, 2)}\n`)
+    const requestedUrls: string[] = []
+
+    await recordSuccessfulCiFile({
+      batch: '2A',
+      expectedCandidateSha: candidateSha,
+      fetchImplementation: authenticatedFetch(requestedUrls),
+      githubToken: 'github-token',
+      proofInput: {
+        schemaVersion: 1,
+        sha: candidateSha,
+        runId: 123,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+      repoRoot,
+      sourceFile,
+    })
+
+    expect(requestedUrls).toEqual([runApiUrl, workflowApiUrl])
+    const updated = migrationLedgerSchema.parse(JSON.parse(
+      readFileSync(sourceFile, 'utf8'),
+    ) as unknown)
+    expect(updated.entries[0]).toMatchObject({
+      status: 'complete',
+      implementationSha: candidateSha,
+      incidents: [incident],
+    })
+    expect(updated.entries[0]!.verification.map(({ gate }) => gate)).toEqual([
+      'batch2a-local-verify',
+      'batch2a-remote-ci',
+    ])
+    expect(readdirSync(dirname(sourceFile)).filter(
+      (file) => file.startsWith('.ledger.json.tmp-'),
+    )).toEqual([])
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
+test('failed Batch 2A promotion leaves canonical JSON byte-identical without temp files', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-record-failure-'))
+  try {
+    const sourceFile = join(repoRoot, 'docs/migration/ledger.json')
+    mkdirSync(dirname(sourceFile), { recursive: true })
+    const input = {
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: 'b'.repeat(40),
+      },
+      entries: [{
+        batch: '2A',
+        status: 'in-review',
+        semanticPaths: [
+          'packages/classification-core/src/definitions/questions.ts',
+          'packages/classification-core/src/compiler/questions/**',
+          'packages/classification-core/src/generated/question-model.ts',
+          'packages/classification-core/src/flow/**',
+          'tools/parity/questions/**',
+          'tools/parity/fixtures/questions/**',
+        ],
+        incidents: [],
+        legacySources: [],
+        ownedScopes: [],
+        newOwners: ['docs/migration/ledger.json'],
+        transformation: 'Invalid promotion fixture missing local gate.',
+        behavior: 'no-production-runtime-change',
+        verification: [],
+      }],
+    }
+    const before = `${JSON.stringify(input, null, 2)}\n`
+    writeFileSync(sourceFile, before)
+
+    await expect(recordSuccessfulCiFile({
+      batch: '2A',
+      expectedCandidateSha: candidateSha,
+      fetchImplementation: authenticatedFetch([]),
+      githubToken: 'github-token',
+      proofInput: {
+        schemaVersion: 1,
+        sha: candidateSha,
+        runId: 123,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+      repoRoot,
+      sourceFile,
+    })).rejects.toThrow(/exact verification gates/)
+
+    expect(readFileSync(sourceFile, 'utf8')).toBe(before)
     expect(readdirSync(dirname(sourceFile)).filter(
       (file) => file.startsWith('.ledger.json.tmp-'),
     )).toEqual([])

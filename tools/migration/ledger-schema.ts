@@ -1,7 +1,19 @@
 import { z } from 'zod'
 import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
-const repoPathSchema = z.string().min(1).refine(
+export const batch2ASemanticPaths = [
+  'packages/classification-core/src/definitions/questions.ts',
+  'packages/classification-core/src/compiler/questions/**',
+  'packages/classification-core/src/generated/question-model.ts',
+  'packages/classification-core/src/flow/**',
+  'tools/parity/questions/**',
+  'tools/parity/fixtures/questions/**',
+] as const
+
+export const batch2AIncidentPath =
+  'docs/migration/incidents/2026-07-13-legacy-cache-isolation.md' as const
+
+export const repoPathSchema = z.string().min(1).refine(
   (value) => !value.startsWith('/')
     && !value.includes('\\')
     && value.split('/').every((segment) => segment !== '.' && segment !== '..' && segment !== ''),
@@ -45,12 +57,19 @@ const completionGatePolicies = new Map<string, ReadonlySet<string>>([
     'batch1-local-verify',
     'batch1-remote-ci',
   ])],
+  ['2A', new Set([
+    'batch2a-local-verify',
+    'batch2a-remote-ci',
+  ])],
 ])
 
 const entrySchema = z.strictObject({
   batch: z.string().min(1),
   status: z.enum(['in-review', 'in-progress', 'complete']),
   foundationCommit: z.string().regex(/^[0-9a-f]{40}$/).optional(),
+  implementationSha: z.string().regex(/^[0-9a-f]{40}$/).optional(),
+  semanticPaths: z.array(z.string().min(1)).optional(),
+  incidents: z.array(repoPathSchema).optional(),
   legacySources: z.array(z.string().min(1)),
   ownedScopes: z.array(repoPathSchema).default([]),
   newOwners: z.array(repoPathSchema).min(1),
@@ -74,6 +93,79 @@ const entrySchema = z.strictObject({
     })
     gates.add(verification.gate)
   })
+  if (entry.batch === '2A') {
+    if (entry.incidents === undefined) context.addIssue({
+      code: 'custom',
+      path: ['incidents'],
+      message: 'Batch 2A requires an incidents array',
+    })
+    if (JSON.stringify(entry.semanticPaths) !== JSON.stringify(batch2ASemanticPaths)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['semanticPaths'],
+        message: `Batch 2A requires exact semantic paths: ${batch2ASemanticPaths.join(', ')}`,
+      })
+    }
+    if (entry.status !== 'complete') {
+      if (entry.implementationSha !== undefined) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: 'Batch 2A implementationSha is recorded only when acceptance completes',
+      })
+      if ((entry.incidents?.length ?? 0) !== 0) context.addIssue({
+        code: 'custom',
+        path: ['incidents'],
+        message: 'Batch 2A incidents remain empty before acceptance completes',
+      })
+      const invalidGate = entry.verification.find(
+        ({ gate }) => gate !== 'batch2a-local-verify',
+      )
+      if (invalidGate) context.addIssue({
+        code: 'custom',
+        path: ['verification'],
+        message: 'Batch 2A may record only the local verification gate before acceptance completes',
+      })
+    } else {
+      if (!entry.implementationSha) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: 'complete Batch 2A requires implementationSha',
+      })
+      if (entry.incidents?.length !== 1 || entry.incidents[0] !== batch2AIncidentPath) {
+        context.addIssue({
+          code: 'custom',
+          path: ['incidents'],
+          message: `complete Batch 2A requires exact incident: ${batch2AIncidentPath}`,
+        })
+      }
+      const remoteGate = entry.verification.find(
+        ({ gate }) => gate === 'batch2a-remote-ci',
+      )
+      if (entry.implementationSha && remoteGate?.commitSha !== entry.implementationSha) {
+        context.addIssue({
+          code: 'custom',
+          path: ['verification'],
+          message: 'complete Batch 2A remote CI commit must match implementationSha',
+        })
+      }
+    }
+  } else {
+    if (entry.implementationSha !== undefined) context.addIssue({
+      code: 'custom',
+      path: ['implementationSha'],
+      message: 'implementationSha is currently reserved for Batch 2A',
+    })
+    if (entry.semanticPaths !== undefined) context.addIssue({
+      code: 'custom',
+      path: ['semanticPaths'],
+      message: 'semanticPaths are currently reserved for Batch 2A',
+    })
+    if (entry.incidents !== undefined) context.addIssue({
+      code: 'custom',
+      path: ['incidents'],
+      message: 'incidents are currently reserved for Batch 2A',
+    })
+  }
   if (entry.status === 'complete') {
     const requiredGates = completionGatePolicies.get(entry.batch)
     if (!requiredGates) {

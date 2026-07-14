@@ -117,7 +117,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `3cd7ac638f650d783b33f27feb993fbadf35493f`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883
 
-## Batch 2A — in-progress
+## Batch 2A — in-review
 
 - Behavior: `no-production-runtime-change`
 - Transformation: Added closed serializable question contracts, transcribed the frozen eight-question legacy inventory into declarative production definitions, derived deterministic canonical question and semantic dependency graph data, proved finite question-flow semantics, compiled the proof output into a deterministic tracked question artifact with distinct source and semantic hashes, and added browser-neutral draft decoding, canonical fixed-point flow evaluation, atomic submitted-answer transitions, generic pending-selection interactions, and stable-ID navigation; application runtime behavior remains unchanged.
@@ -167,6 +167,8 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `packages/classification-core/src/flow/test-fixtures.ts`
 - `packages/classification-core/src/flow/types.ts`
 - `packages/classification-core/src/generated/question-model.ts`
+- `tools/acceptance/verify-acceptance.test.ts`
+- `tools/acceptance/verify-acceptance.ts`
 - `tools/parity/fixtures/questions/expected-divergences.json`
 - `tools/parity/fixtures/questions/legacy-v1/cases.json`
 - `tools/parity/fixtures/questions/legacy-v1/manifest.json`
@@ -189,6 +191,19 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `tools/validation/check-runtime-imports.test.ts`
 - `tools/validation/check-runtime-imports.ts`
 
+### Semantic paths
+
+- `packages/classification-core/src/definitions/questions.ts`
+- `packages/classification-core/src/compiler/questions/**`
+- `packages/classification-core/src/generated/question-model.ts`
+- `packages/classification-core/src/flow/**`
+- `tools/parity/questions/**`
+- `tools/parity/fixtures/questions/**`
+
+### Incidents
+
+- None recorded.
+
 ### Verification
 
-- Pending.
+- `batch2a-local-verify`: `npm run verify` — passed; all Batch 2A offline compiler, artifact, runtime, observable trace projection parity, documentation, and ledger gates passed

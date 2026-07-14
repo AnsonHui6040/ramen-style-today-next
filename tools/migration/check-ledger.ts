@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   lstatSync,
   mkdirSync,
@@ -10,10 +10,8 @@ import {
 } from 'node:fs'
 import { basename, dirname, relative, resolve } from 'node:path'
 
-import {
-  authenticateLedgerRemoteCiEvidence,
-  checkLedger,
-} from './ledger-check.js'
+import { checkLedger, checkLedgerOffline } from './ledger-check.js'
+import { migrationLedgerSchema } from './ledger-schema.js'
 import { recordSuccessfulCiFile } from './record-ci.js'
 
 const repoRoot = resolve(import.meta.dirname, '../..')
@@ -42,6 +40,54 @@ function isCommitAncestor(evidenceSha: string, currentHeadSha: string) {
     { cwd: repoRoot, encoding: 'utf8' },
   )
   return ancestor.status === 0
+}
+
+function changedPathsBetween(ancestorSha: string, currentHeadSha: string) {
+  void currentHeadSha
+  const output = execFileSync(
+    'git',
+    ['diff', '--name-only', '--no-renames', '-z', ancestorSha, '--'],
+    { cwd: repoRoot, encoding: 'utf8' },
+  )
+  return output.split('\0').filter(Boolean)
+}
+
+function readBatch2AIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    provenance?: {
+      questions?: {
+        fixtureManifestHash?: unknown
+        semanticHash?: unknown
+      }
+    }
+  }
+  const questions = manifest.provenance?.questions
+  if (typeof questions?.semanticHash !== 'string'
+    || typeof questions.fixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing question identity hashes')
+  }
+  const fixtureManifestHash = createHash('sha256').update(readFileSync(
+    resolve(repoRoot, 'tools/parity/fixtures/questions/legacy-v1/manifest.json'),
+  )).digest('hex')
+  const generatedQuestionModel = readFileSync(
+    resolve(repoRoot, 'packages/classification-core/src/generated/question-model.ts'),
+    'utf8',
+  )
+  const semanticHashMatches = [...generatedQuestionModel.matchAll(
+    /"semanticHash": "([0-9a-f]{64})"/g,
+  )]
+  if (semanticHashMatches.length !== 1) {
+    throw new Error('generated question model must contain exactly one semantic hash')
+  }
+  return {
+    questionSemanticHash: semanticHashMatches[0]![1]!,
+    classificationSemanticHash: questions.semanticHash,
+    fixtureManifestHash,
+    classificationFixtureManifestHash: questions.fixtureManifestHash,
+  }
 }
 
 function pathExists(path: string) {
@@ -161,6 +207,7 @@ async function run() {
       batch,
       expectedCandidateSha,
       fetchImplementation: globalThis.fetch,
+      githubToken: process.env.GITHUB_TOKEN,
       proofInput: proof,
       repoRoot,
       sourceFile,
@@ -183,32 +230,44 @@ async function run() {
       ? (assertRegularFile(outputFile, 'ledger Markdown output'), readFileSync(outputFile, 'utf8'))
       : ''
     : undefined
-  const result = checkLedger({
+  const baseResult = checkLedger({
     input,
     repoFiles,
     existingFiles,
     repoDirectories,
     currentMarkdown,
   })
-  if (!result.ok || result.markdown === undefined) {
-    for (const error of result.errors) console.error(`LEDGER_INVALID ${error}`)
-    process.exitCode = 1
-    return
-  }
-
-  if (mode === '--check') {
+  let result = baseResult
+  if (mode === '--check' && baseResult.ok) {
+    const parsedLedger = migrationLedgerSchema.parse(input)
+    const batch2AIdentities = parsedLedger.entries.some(({ batch }) => batch === '2A')
+      ? readBatch2AIdentities()
+      : {
+          questionSemanticHash: '',
+          classificationSemanticHash: '',
+          fixtureManifestHash: '',
+          classificationFixtureManifestHash: '',
+        }
     const currentHeadSha = execFileSync(
       'git',
       ['rev-parse', 'HEAD'],
       { cwd: repoRoot, encoding: 'utf8' },
     ).trim()
-    await authenticateLedgerRemoteCiEvidence(
-      input,
+    result = await checkLedgerOffline(input, {
+      repoFiles,
+      existingFiles,
+      repoDirectories,
+      currentMarkdown,
       currentHeadSha,
-      globalThis.fetch,
       isCommitAncestor,
-      process.env.GITHUB_TOKEN,
-    )
+      changedPathsBetween,
+      ...batch2AIdentities,
+    })
+  }
+  if (!result.ok || result.markdown === undefined) {
+    for (const error of result.errors) console.error(`LEDGER_INVALID ${error}`)
+    process.exitCode = 1
+    return
   }
 
   if (mode === '--write') {
