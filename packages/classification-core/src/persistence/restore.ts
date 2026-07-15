@@ -12,6 +12,10 @@ import type {
   RestoreResult,
   StoredClassificationPayloadV1,
 } from './contracts.js'
+import {
+  createStoredClassificationPayloadV1,
+  sameStoredClassificationPayloadV1,
+} from './create-payload.js'
 import { decodeCurrentAnswerDraft } from './decode-answers.js'
 import {
   clonePlainData,
@@ -40,6 +44,7 @@ interface DecodedRestoreDraft {
   readonly draft: AnswerDraft
   readonly migrations: readonly AppliedMigration[]
   readonly cursorQuestionId?: string
+  readonly originalCurrentPayload?: StoredClassificationPayloadV1
 }
 
 function invalidModelArtifact(): never {
@@ -145,12 +150,29 @@ function decodeRestoreDraft(
     diagnosticSubset(migratedModel.payload.submittedAnswers),
   )
 
+  const migrations = [...schema.migrations, ...migratedModel.migrations]
+  const originalCurrentPayload = migrations.length === 0
+    ? deepFreeze({
+        schemaVersion: 1,
+        questionModelVersion: migratedModel.payload.questionModelVersion,
+        questionSemanticHash: migratedModel.payload.questionSemanticHash,
+        ...(migratedModel.payload.cursorQuestionId === undefined
+          ? {}
+          : {
+              cursorQuestionId:
+                migratedModel.payload.cursorQuestionId as QuestionId,
+            }),
+        submittedAnswers: decodedAnswers.draft,
+      }) as StoredClassificationPayloadV1
+    : undefined
+
   return {
     draft: decodedAnswers.draft,
-    migrations: [...schema.migrations, ...migratedModel.migrations],
+    migrations,
     ...(migratedModel.payload.cursorQuestionId === undefined
       ? {}
       : { cursorQuestionId: migratedModel.payload.cursorQuestionId }),
+    ...(originalCurrentPayload === undefined ? {} : { originalCurrentPayload }),
   }
 }
 
@@ -163,20 +185,6 @@ function normalizedCursor(
   return cursorRepairs.some(({ code }) => code === 'drop-unknown-cursor')
     ? undefined
     : resumeQuestionId
-}
-
-function buildNormalizedPayload(
-  model: CompiledQuestionModel,
-  submittedAnswers: AnswerDraft,
-  cursorQuestionId?: QuestionId,
-): StoredClassificationPayloadV1 {
-  return deepFreeze({
-    schemaVersion: 1,
-    questionModelVersion: model.metadata.modelVersion,
-    questionSemanticHash: model.metadata.semanticHash,
-    ...(cursorQuestionId === undefined ? {} : { cursorQuestionId }),
-    submittedAnswers,
-  }) as StoredClassificationPayloadV1
 }
 
 function restoreClassificationInternal(
@@ -223,7 +231,26 @@ function restoreClassificationInternal(
       ? {}
       : { resumeQuestionId: resume.resumeQuestionId }),
   }
-  if (changes.length === 0) {
+  const cursorQuestionId = normalizedCursor(
+    decoded.cursorQuestionId,
+    resume.resumeQuestionId,
+    resume.repairs,
+  )
+  const built = createStoredClassificationPayloadV1(
+    trustedModel,
+    projection.submittedAnswers,
+    cursorQuestionId,
+  )
+  if (built.status !== 'created') return invalidModelArtifact()
+
+  const persistenceChanged = decoded.originalCurrentPayload === undefined
+    || !sameStoredClassificationPayloadV1(
+      decoded.originalCurrentPayload,
+      built.payload,
+    )
+  if (persistenceChanged !== (changes.length > 0)) return invalidModelArtifact()
+
+  if (!persistenceChanged) {
     return deepFreeze({
       status: 'restored',
       ...common,
@@ -234,11 +261,6 @@ function restoreClassificationInternal(
     }) as RestoreResult
   }
 
-  const cursorQuestionId = normalizedCursor(
-    decoded.cursorQuestionId,
-    resume.resumeQuestionId,
-    resume.repairs,
-  )
   return deepFreeze({
     status: 'restored-with-changes',
     ...common,
@@ -246,11 +268,7 @@ function restoreClassificationInternal(
     repairs,
     changes: changes as NonEmptyReadonlyArray<RestoreChange>,
     writeBackRequired: true,
-    normalizedPayload: buildNormalizedPayload(
-      trustedModel,
-      projection.submittedAnswers,
-      cursorQuestionId,
-    ),
+    normalizedPayload: built.payload,
   }) as RestoreResult
 }
 
