@@ -6,6 +6,47 @@ import type { StyleDefinitionBundleSource } from '../../contracts/style-model.js
 export const styleBundleFallbackSource =
   'packages/classification-core/src/definitions/styles/index.ts'
 
+export const expectedStyleRuleQuestionIds = [
+  'form',
+  'archetype',
+  'tare',
+  'source',
+  'body',
+  'noodle',
+  'signature',
+] as const
+
+export const expectedBonusIds = [
+  'classic-shoyu',
+  'classic-shio',
+  'miso-sapporo-lane',
+  'tonkotsu-core',
+  'chicken-clear',
+  'chicken-paitan-core',
+  'duck-clear',
+  'duck-paitan-core',
+  'gyokai-soup-core',
+  'shellfish-clear',
+  'iekei-canonical',
+  'jiro-canonical',
+  'hakata-canonical',
+  'sapporo-canonical',
+  'konbusui-canonical',
+  'gyokai-tsukemen-canonical',
+  'aburasoba-canonical',
+  'taiwan-mazesoba-canonical',
+] as const
+
+export const expectedConflictIds = [
+  'shio-light-conflict',
+  'duck-clear-jiro',
+  'shellfish-jiro',
+  'iekei-hakata-thin',
+  'jiro-yuzu',
+  'jiro-duck-shellfish',
+  'taiwan-mazesoba-plain',
+] as const
+
 export type DeepMutable<T> =
   T extends (...args: never[]) => unknown
     ? T

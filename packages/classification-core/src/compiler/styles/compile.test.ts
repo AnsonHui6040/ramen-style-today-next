@@ -1,13 +1,16 @@
 import { describe, expect, test } from 'vitest'
 
 import type {
-  CompileStyleSubtypesResult,
+  CompileStyleRulesResult,
   StyleDefinitionBundleSource,
 } from '../../contracts/style-model.js'
 import { compileStyles } from './compile.js'
 import {
   acceptedQuestionModelFixture,
   canonicalStyleDefinitionBundleFixture,
+  expectedBonusIds,
+  expectedConflictIds,
+  expectedStyleRuleQuestionIds,
   styleBundleFallbackSource,
 } from './test-fixtures.js'
 
@@ -39,22 +42,33 @@ function reverseObjectInsertion(value: unknown): unknown {
 
 function expectNoCoreStage(result: ReturnType<typeof compileStyles>) {
   expect(result.ok).toBe(false)
+  expect(result).not.toHaveProperty('rulesStage')
   expect(result).not.toHaveProperty('subtypeStage')
-  expect(result).not.toHaveProperty('coreStage')
-  expect(result).not.toHaveProperty('model')
-}
-
-type SubtypeSuccess = Extract<CompileStyleSubtypesResult, { readonly ok: true }>
-
-function expectSubtypeSuccess(result: unknown): asserts result is SubtypeSuccess {
-  expect(result).toMatchObject({ ok: true })
-  expect(result).toHaveProperty('subtypeStage')
   expect(result).not.toHaveProperty('coreStage')
   expect(result).not.toHaveProperty('model')
 }
 
 function expectNoSubtypeStage(result: ReturnType<typeof compileStyles>) {
   expect(result.ok).toBe(false)
+  expect(result).not.toHaveProperty('rulesStage')
+  expect(result).not.toHaveProperty('subtypeStage')
+  expect(result).not.toHaveProperty('coreStage')
+  expect(result).not.toHaveProperty('model')
+}
+
+type RulesSuccess = Extract<CompileStyleRulesResult, { readonly ok: true }>
+
+function expectRulesSuccess(result: unknown): asserts result is RulesSuccess {
+  expect(result).toMatchObject({ ok: true })
+  expect(result).toHaveProperty('rulesStage')
+  expect(result).not.toHaveProperty('subtypeStage')
+  expect(result).not.toHaveProperty('coreStage')
+  expect(result).not.toHaveProperty('model')
+}
+
+function expectNoRulesStage(result: ReturnType<typeof compileStyles>) {
+  expect(result.ok).toBe(false)
+  expect(result).not.toHaveProperty('rulesStage')
   expect(result).not.toHaveProperty('subtypeStage')
   expect(result).not.toHaveProperty('coreStage')
   expect(result).not.toHaveProperty('model')
@@ -76,26 +90,24 @@ describe('style intensity core compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expectSubtypeSuccess(result)
-    expect(result.subtypeStage).toMatchObject({
-      kind: 'style-subtype-stage',
+    expectRulesSuccess(result)
+    expect(result.rulesStage).toMatchObject({
+      kind: 'style-rules-stage',
       modelVersion: 'batch3a.1.0',
       questionModelVersion: 'batch2a.1.0',
     })
-    expect(result.subtypeStage.styles.map(({ id }) => id))
+    expect(result.rulesStage.styles.map(({ id }) => id))
       .toEqual(expectedStyles.map(({ id }) => id))
-    expect(result.subtypeStage.styles).toHaveLength(18)
+    expect(result.rulesStage.styles).toHaveLength(18)
 
-    const cores = result.subtypeStage.styles.flatMap(({ cores: styleCores }) => styleCores)
+    const cores = result.rulesStage.styles.flatMap(({ cores: styleCores }) => styleCores)
     expect(cores).toHaveLength(54)
     expect(new Set(cores.map(({ id }) => id)).size).toBe(54)
     expect(cores.map(({ id }) => id)).toEqual(expectedStyles.flatMap(({ id }) => (
       expectedIntensities.map(({ id: intensityId }) => `${id}:${intensityId}`)
     )))
 
-    for (const style of result.subtypeStage.styles) {
+    for (const style of result.rulesStage.styles) {
       const sourceStyle = expectedStyles.find(({ id }) => id === style.id)!
       expect(style.family).toBe(sourceStyle.family)
       expect(style.cores).toHaveLength(3)
@@ -106,9 +118,8 @@ describe('style intensity core compiler', () => {
       expect(style.cores.map(({ priority }) => priority))
         .toEqual(expectedIntensities.map(({ priority }) => priority))
       for (const core of style.cores) {
-        expect(core).not.toHaveProperty('rules')
         expect(core.subtypes).toHaveLength(5)
-        expect(core.resolvedRules.map(({ questionId }) => questionId)).toEqual([
+        expect(core.rules.map(({ questionId }) => questionId)).toEqual([
           'form',
           'archetype',
           'tare',
@@ -129,12 +140,15 @@ describe('style intensity core compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectSubtypeSuccess(result)
-    const style = result.subtypeStage.styles.find(({ id }) => id === 'shoyu-chintan')!
+    expectRulesSuccess(result)
+    const style = result.rulesStage.styles.find(({ id }) => id === 'shoyu-chintan')!
     for (const intensity of source.taxonomy.intensities) {
       const core = style.cores.find(({ intensityId }) => intensityId === intensity.id)!
-      const bodyRule = core.resolvedRules.find(({ questionId }) => questionId === 'body')!
-      expect(bodyRule.tiers).toEqual(intensity.bodyRule.tiers)
+      const bodyRule = core.rules.find(({ questionId }) => questionId === 'body')!
+      for (const tier of intensity.bodyRule.tiers) {
+        expect(bodyRule.targets.filter(({ tier: targetTier }) => targetTier === tier.tier)
+          .map(({ optionId }) => optionId)).toEqual(tier.optionIds)
+      }
       expect(bodyRule.provenance.inheritedFrom).toBe('intensity-profile')
     }
   })
@@ -156,28 +170,28 @@ describe('style intensity core compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectSubtypeSuccess(result)
-    const clean = result.subtypeStage.styles[0]!.cores.find(
+    expectRulesSuccess(result)
+    const clean = result.rulesStage.styles[0]!.cores.find(
       ({ intensityId }) => intensityId === 'clean',
     )!
-    expect(clean.resolvedRules.find(({ questionId }) => questionId === 'body')).toEqual(
+    expect(clean.rules.find(({ questionId }) => questionId === 'body')).toEqual(
       expect.objectContaining({
-        tiers: [{ tier: 'exact', optionIds: ['ultra-heavy'] }],
+        targets: [{ optionId: 'ultra-heavy', tier: 'exact', priority: 4 }],
         provenance: expect.objectContaining({
           inheritedFrom: 'style-intensity-override',
         }),
       }),
     )
-    expect(clean.resolvedRules.find(({ questionId }) => questionId === 'body')!.tiers)
-      .not.toEqual(source.taxonomy.intensities[0]!.bodyRule.tiers)
+    expect(clean.rules.find(({ questionId }) => questionId === 'body')!.targets)
+      .not.toEqual([{ optionId: 'light', tier: 'exact', priority: 0 }])
   })
 
   test('does not fabricate intensity core overrides for canonical definitions', () => {
     const result = compileCanonical()
 
-    expectSubtypeSuccess(result)
-    expect(result.subtypeStage.styles.flatMap(({ cores }) => cores).flatMap(
-      ({ resolvedRules }) => resolvedRules,
+    expectRulesSuccess(result)
+    expect(result.rulesStage.styles.flatMap(({ cores }) => cores).flatMap(
+      ({ rules }) => rules,
     ).some(({ provenance }) => (
       provenance.inheritedFrom === 'style-intensity-override'
     ))).toBe(false)
@@ -346,6 +360,12 @@ describe('style intensity core compiler', () => {
     )
     expectNoCoreStage(duplicateResult)
     expect(diagnosticCodes(duplicateResult)).toEqual([
+      'STYLE_RULE_DUPLICATE_ID',
+      'STYLE_RULE_DUPLICATE_ID',
+      'STYLE_RULE_DUPLICATE_ID',
+      'STYLE_RULE_DUPLICATE_ID',
+      'STYLE_RULE_DUPLICATE_ID',
+      'STYLE_RULE_DUPLICATE_ID',
       'STYLE_CORE_ID_COLLISION',
       'STYLE_INTENSITY_DUPLICATE',
       'STYLE_INVENTORY_MISMATCH',
@@ -354,6 +374,7 @@ describe('style intensity core compiler', () => {
       'STYLE_SUBTYPE_ID_COLLISION',
       'STYLE_SUBTYPE_ID_COLLISION',
       'STYLE_SUBTYPE_ID_COLLISION',
+      'STYLE_RULE_DUPLICATE_ID',
     ])
   })
 
@@ -536,15 +557,15 @@ describe('style noodle subtype compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectSubtypeSuccess(result)
-    expect(result.subtypeStage.kind).toBe('style-subtype-stage')
-    const cores = result.subtypeStage.styles.flatMap(({ cores: styleCores }) => styleCores)
+    expectRulesSuccess(result)
+    expect(result.rulesStage.kind).toBe('style-rules-stage')
+    const cores = result.rulesStage.styles.flatMap(({ cores: styleCores }) => styleCores)
     const subtypes = cores.flatMap(({ subtypes: coreSubtypes }) => coreSubtypes)
     expect(cores).toHaveLength(54)
     expect(subtypes).toHaveLength(270)
     expect(new Set(subtypes.map(({ id }) => id)).size).toBe(270)
 
-    for (const style of result.subtypeStage.styles) {
+    for (const style of result.rulesStage.styles) {
       for (const core of style.cores) {
         expect(core.subtypes).toHaveLength(5)
         expect(core.subtypes.map(({ id }) => id)).toEqual(
@@ -570,14 +591,13 @@ describe('style noodle subtype compiler', () => {
           expect(subtype).not.toHaveProperty('locale')
           expect(subtype).not.toHaveProperty('fallback')
         }
-        expect(core).not.toHaveProperty('rules')
+        expect(core).not.toHaveProperty('resolvedRules')
       }
-      expect(style).not.toHaveProperty('adjustments')
     }
-    expect(result.subtypeStage).not.toHaveProperty('inventory')
-    expect(result.subtypeStage).not.toHaveProperty('sourceHash')
-    expect(result.subtypeStage).not.toHaveProperty('semanticHash')
-    expect(result.subtypeStage).not.toHaveProperty('dataVersion')
+    expect(result.rulesStage).not.toHaveProperty('inventory')
+    expect(result.rulesStage).not.toHaveProperty('sourceHash')
+    expect(result.rulesStage).not.toHaveProperty('semanticHash')
+    expect(result.rulesStage).not.toHaveProperty('dataVersion')
   })
 
   test('keeps subtype and core ordering stable under reversed source declarations', () => {
@@ -591,13 +611,13 @@ describe('style noodle subtype compiler', () => {
       definition.supportedNoodleIds.reverse()
     }
 
-    expectSubtypeSuccess(canonical)
+    expectRulesSuccess(canonical)
     const reversedResult = compileStyles(
       reversed,
       acceptedQuestionModelFixture(),
       styleBundleFallbackSource,
     )
-    expectSubtypeSuccess(reversedResult)
+    expectRulesSuccess(reversedResult)
     expect(reversedResult).toEqual(canonical)
   })
 
@@ -615,9 +635,9 @@ describe('style noodle subtype compiler', () => {
     )
     const repeated = compileCanonical()
 
-    expectSubtypeSuccess(first)
-    expectSubtypeSuccess(reordered)
-    expectSubtypeSuccess(repeated)
+    expectRulesSuccess(first)
+    expectRulesSuccess(reordered)
+    expectRulesSuccess(repeated)
     expect(JSON.stringify(reordered)).toBe(JSON.stringify(first))
     expect(JSON.stringify(repeated)).toBe(JSON.stringify(first))
   })
@@ -629,7 +649,7 @@ describe('style noodle subtype compiler', () => {
       acceptedQuestionModelFixture(),
       styleBundleFallbackSource,
     )
-    expectSubtypeSuccess(result)
+    expectRulesSuccess(result)
     const beforeMutation = JSON.stringify(result)
 
     source.taxonomy.noodles[0]!.labelMessageId = 'mutated-noodle-label'
@@ -752,6 +772,522 @@ describe('style noodle subtype compiler', () => {
 
     expectNoSubtypeStage(forwardResult)
     expectNoSubtypeStage(reversedResult)
+    expect(reversedResult.diagnostics).toEqual(forwardResult.diagnostics)
+    expect(new Set(forwardResult.diagnostics.map((diagnostic) => (
+      JSON.stringify(diagnostic)
+    ))).size).toBe(forwardResult.diagnostics.length)
+  })
+})
+
+describe('style rule and normalized adjustment compiler', () => {
+  test('compiles the exact 378 ordered rules with canonical targets and miss metadata', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    const questionModel = acceptedQuestionModelFixture()
+    const result = compileStyles(source, questionModel, styleBundleFallbackSource)
+
+    expectRulesSuccess(result)
+    expect(result.rulesStage.kind).toBe('style-rules-stage')
+    const cores = result.rulesStage.styles.flatMap(({ cores: styleCores }) => styleCores)
+    const rules = cores.flatMap(({ rules: coreRules }) => coreRules)
+    expect(cores).toHaveLength(54)
+    expect(rules).toHaveLength(378)
+    expect(new Set(rules.map(({ id }) => id)).size).toBe(378)
+
+    const questionPriority = new Map(
+      source.taxonomy.ruleQuestions.map(({ questionId, priority }) => [questionId, priority]),
+    )
+    const optionPriority = new Map(questionModel.questions.map((question) => [
+      question.id,
+      new Map(question.options.map(({ id, order }) => [id, order])),
+    ]))
+
+    for (const style of result.rulesStage.styles) {
+      const sourceStyle = source.definitions.find(({ id }) => id === style.id)!
+      for (const core of style.cores) {
+        expect(core.rules).toHaveLength(7)
+        expect(core.rules.map(({ questionId }) => questionId))
+          .toEqual(expectedStyleRuleQuestionIds)
+        expect(core.rules.map(({ id }) => id)).toEqual(
+          expectedStyleRuleQuestionIds.map((questionId) => `${core.id}:${questionId}`),
+        )
+        expect(core.rules.map(({ parentStyleId }) => parentStyleId))
+          .toEqual(expectedStyleRuleQuestionIds.map(() => style.id))
+        expect(core.rules.map(({ parentCoreId }) => parentCoreId))
+          .toEqual(expectedStyleRuleQuestionIds.map(() => core.id))
+        expect(core.rules.map(({ priority }) => priority)).toEqual(
+          expectedStyleRuleQuestionIds.map((questionId) => questionPriority.get(questionId)),
+        )
+        expect(core.rules.every(({ fallbackTier }) => fallbackTier === 'miss')).toBe(true)
+        expect(core).not.toHaveProperty('resolvedRules')
+
+        for (const rule of core.rules) {
+          const intensityRule = source.taxonomy.intensities.find(
+            ({ id }) => id === core.intensityId,
+          )!.bodyRule
+          const sourceRule = rule.questionId === 'body'
+            ? intensityRule
+            : sourceStyle.baseRules.find(({ questionId }) => questionId === rule.questionId)!
+          const expectedTargets = sourceRule.tiers.flatMap(({ tier, optionIds }) => (
+            optionIds.map((optionId) => ({
+              optionId,
+              tier,
+              priority: optionPriority.get(rule.questionId)!.get(optionId),
+            }))
+          )).sort((left, right) => (
+            left.priority! - right.priority! || compareStrings(left.optionId, right.optionId)
+          ))
+          expect(rule.targets).toEqual(expectedTargets)
+          expect(rule.provenance.sourceFile).toBe(
+            rule.questionId === 'body' ? source.taxonomy.sourceFile : sourceStyle.sourceFile,
+          )
+          expect(rule.provenance.inheritedFrom).toBe(
+            rule.questionId === 'body' ? 'intensity-profile' : 'style-base',
+          )
+          expect(rule.provenance.path).toBe(
+            rule.questionId === 'body'
+              ? `/intensities/${core.priority}/bodyRule`
+              : `/baseRules/${expectedStyleRuleQuestionIds
+                  .filter((questionId) => questionId !== 'body')
+                  .findIndex((questionId) => questionId === rule.questionId)}`,
+          )
+        }
+      }
+    }
+
+    expect(result.rulesStage).not.toHaveProperty('inventory')
+    expect(result.rulesStage).not.toHaveProperty('metadata')
+    expect(result.rulesStage).not.toHaveProperty('sourceHash')
+    expect(result.rulesStage).not.toHaveProperty('semanticHash')
+    expect(result.rulesStage).not.toHaveProperty('dataVersion')
+  })
+
+  test('uses whole-rule intensity overrides when compiling targets', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    source.definitions[0]!.intensityOverrides = {
+      clean: {
+        rules: [{
+          questionId: 'body',
+          tiers: [{ tier: 'exact', optionIds: ['ultra-heavy'] }],
+        }],
+      },
+    }
+
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectRulesSuccess(result)
+    const clean = result.rulesStage.styles[0]!.cores.find(
+      ({ intensityId }) => intensityId === 'clean',
+    )!
+    expect(clean.rules.find(({ questionId }) => questionId === 'body')).toMatchObject({
+      targets: [{ optionId: 'ultra-heavy', tier: 'exact', priority: 4 }],
+      fallbackTier: 'miss',
+      provenance: { inheritedFrom: 'style-intensity-override' },
+    })
+  })
+
+  test('normalizes exact bonus and conflict truth without executing operands', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    const questionModel = acceptedQuestionModelFixture()
+    const result = compileStyles(source, questionModel, styleBundleFallbackSource)
+
+    expectRulesSuccess(result)
+    const adjustments = result.rulesStage.styles.flatMap(
+      ({ adjustments: styleAdjustments }) => styleAdjustments,
+    )
+    const bonuses = adjustments.filter(({ kind }) => kind === 'bonus')
+    const conflicts = adjustments.filter(({ kind }) => kind === 'conflict')
+    expect(bonuses.map(({ id }) => id)).toEqual(expectedBonusIds)
+    expect(conflicts.map(({ id }) => id)).toEqual(expectedConflictIds)
+    expect(bonuses).toHaveLength(18)
+    expect(conflicts).toHaveLength(7)
+    expect(adjustments).toHaveLength(25)
+    expect(bonuses.reduce((count, bonus) => count + bonus.appliesToCoreIds.length, 0))
+      .toBe(54)
+    expect(conflicts.reduce((count, conflict) => count + conflict.appliesToCoreIds.length, 0))
+      .toBe(21)
+
+    const optionPriority = new Map(questionModel.questions.map((question) => [
+      question.id,
+      new Map(question.options.map(({ id, order }) => [id, order])),
+    ]))
+    for (const style of result.rulesStage.styles) {
+      const sourceStyle = source.definitions.find(({ id }) => id === style.id)!
+      expect(style.adjustments.map(({ kind }) => kind)).toEqual([
+        ...sourceStyle.bonuses.map(() => 'bonus' as const),
+        ...sourceStyle.conflicts.map(() => 'conflict' as const),
+      ])
+      const expectedCoreIds = style.cores.map(({ id }) => id)
+      for (const adjustment of style.adjustments) {
+        expect(adjustment.appliesToCoreIds).toEqual(expectedCoreIds)
+        expect(adjustment).not.toHaveProperty('appliedPoints')
+        expect(adjustment).not.toHaveProperty('score')
+        expect(adjustment).not.toHaveProperty('matched')
+        expect(adjustment.provenance.sourceFile).toBe(sourceStyle.sourceFile)
+
+        const expectCanonicalConditions = (
+          compiledConditions: readonly {
+            readonly priority: number
+            readonly questionId: string
+            readonly optionIds: readonly string[]
+          }[],
+          sourceConditions: readonly {
+            readonly priority: number
+            readonly questionId: string
+            readonly optionIds: readonly string[]
+          }[],
+          path: string,
+        ) => expect(compiledConditions).toEqual(
+          [...sourceConditions]
+            .sort((left, right) => left.priority - right.priority)
+            .map(({ priority, questionId, optionIds }, index) => ({
+              priority,
+              questionId,
+              optionIds: [...optionIds].sort((left, right) => (
+                optionPriority.get(questionId)!.get(left)!
+                  - optionPriority.get(questionId)!.get(right)!
+                  || compareStrings(left, right)
+              )),
+              provenance: expect.objectContaining({
+                sourceFile: sourceStyle.sourceFile,
+                path: `${path}/${index}`,
+              }),
+            })),
+        )
+        if (adjustment.kind === 'bonus') {
+          const sourceAdjustment = sourceStyle.bonuses.find(
+            ({ id }) => id === adjustment.id,
+          )!
+          expect(adjustment.priority).toBe(sourceAdjustment.priority)
+          expect(adjustment.labelMessageId).toBe(sourceAdjustment.labelMessageId)
+          expect(adjustment.provenance.path).toBe(
+            `/bonuses/${sourceStyle.bonuses.indexOf(sourceAdjustment)}`,
+          )
+          expect(adjustment.points).toBe(sourceAdjustment.points)
+          expect(adjustment.minMatches).toBe(sourceAdjustment.minMatches)
+          expectCanonicalConditions(
+            adjustment.conditions,
+            sourceAdjustment.conditions,
+            `/bonuses/${sourceStyle.bonuses.indexOf(sourceAdjustment)}/conditions`,
+          )
+        }
+        if (adjustment.kind === 'conflict') {
+          const sourceAdjustment = sourceStyle.conflicts.find(
+            ({ id }) => id === adjustment.id,
+          )!
+          expect(adjustment.priority).toBe(sourceAdjustment.priority)
+          expect(adjustment.labelMessageId).toBe(sourceAdjustment.labelMessageId)
+          expect(adjustment.provenance.path).toBe(
+            `/conflicts/${sourceStyle.conflicts.indexOf(sourceAdjustment)}`,
+          )
+          expect(adjustment.penalty).toBe(sourceAdjustment.penalty)
+          expectCanonicalConditions(
+            adjustment.whenAll,
+            sourceAdjustment.whenAll,
+            `/conflicts/${sourceStyle.conflicts.indexOf(sourceAdjustment)}/whenAll`,
+          )
+        }
+      }
+    }
+  })
+
+  test('binds the exact inert exclusion-tag inventory without executing eligibility', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectRulesSuccess(result)
+    expect(result.rulesStage.exclusionTags).toEqual(
+      source.taxonomy.exclusionTags.map(({ id, priority, exclusionsOptionId }, index) => ({
+        id,
+        priority,
+        questionId: 'exclusions',
+        optionId: exclusionsOptionId,
+        provenance: {
+          sourceFile: source.taxonomy.sourceFile,
+          path: `/exclusionTags/${index}`,
+        },
+      })),
+    )
+    for (const style of result.rulesStage.styles) {
+      const sourceStyle = source.definitions.find(({ id }) => id === style.id)!
+      expect(style.exclusionTags).toEqual(sourceStyle.exclusionTags)
+      expect(style).not.toHaveProperty('eligible')
+      expect(style).not.toHaveProperty('blocked')
+      expect(style).not.toHaveProperty('blockedLead')
+    }
+  })
+
+  test('keeps rule targets, adjustments, and conditions byte-identical under reversal', () => {
+    const canonical = compileCanonical()
+    const reversed = canonicalStyleDefinitionBundleFixture()
+    reversed.definitions.reverse()
+    reversed.taxonomy.ruleQuestions.reverse()
+    reversed.taxonomy.exclusionTags.reverse()
+    reversed.taxonomy.intensities.reverse()
+    for (const intensity of reversed.taxonomy.intensities) {
+      intensity.bodyRule.tiers.reverse()
+      for (const tier of intensity.bodyRule.tiers) tier.optionIds.reverse()
+    }
+    for (const style of reversed.definitions) {
+      style.baseRules.reverse()
+      for (const rule of style.baseRules) {
+        rule.tiers.reverse()
+        for (const tier of rule.tiers) tier.optionIds.reverse()
+      }
+      style.bonuses.reverse()
+      style.conflicts.reverse()
+      style.exclusionTags.reverse()
+      for (const bonus of style.bonuses) {
+        bonus.conditions.reverse()
+        for (const condition of bonus.conditions) condition.optionIds.reverse()
+      }
+      for (const conflict of style.conflicts) {
+        conflict.whenAll.reverse()
+        for (const condition of conflict.whenAll) condition.optionIds.reverse()
+      }
+    }
+
+    expectRulesSuccess(canonical)
+    const reversedResult = compileStyles(
+      reversed,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectRulesSuccess(reversedResult)
+    expect(reversedResult).toEqual(canonical)
+  })
+
+  test('directly rejects empty, missing, duplicate, and overlapping rule targets', () => {
+    const empty = canonicalStyleDefinitionBundleFixture()
+    empty.definitions[0]!.baseRules.find(
+      ({ questionId }) => questionId === 'signature',
+    )!.tiers = []
+    const emptyResult = compileStyles(
+      empty,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoRulesStage(emptyResult)
+    expect(diagnosticCodes(emptyResult)).toContain('STYLE_RULE_EMPTY')
+
+    const missing = canonicalStyleDefinitionBundleFixture()
+    missing.definitions[0]!.baseRules = missing.definitions[0]!.baseRules.filter(
+      ({ questionId }) => questionId !== 'signature',
+    )
+    const missingResult = compileStyles(
+      missing,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoRulesStage(missingResult)
+    expect(diagnosticCodes(missingResult)).toContain('STYLE_RULE_MISSING')
+
+    const duplicate = canonicalStyleDefinitionBundleFixture()
+    duplicate.definitions[0]!.baseRules.find(
+      ({ questionId }) => questionId === 'signature',
+    )!.tiers[0]!.optionIds.push('yuzu-citrus')
+    const duplicateResult = compileStyles(
+      duplicate,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoRulesStage(duplicateResult)
+    expect(diagnosticCodes(duplicateResult)).toContain('STYLE_RULE_OPTION_DUPLICATE')
+
+    const overlap = canonicalStyleDefinitionBundleFixture()
+    overlap.definitions[0]!.baseRules.find(
+      ({ questionId }) => questionId === 'signature',
+    )!.tiers[1]!.optionIds.push('yuzu-citrus')
+    const overlapResult = compileStyles(
+      overlap,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoRulesStage(overlapResult)
+    expect(diagnosticCodes(overlapResult)).toEqual(expect.arrayContaining([
+      'STYLE_RULE_OPTION_DUPLICATE',
+      'STYLE_RULE_TIER_OVERLAP',
+    ]))
+  })
+
+  test('rejects duplicate canonical adjustment conditions independently of priority', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    const firstCondition = source.definitions[0]!.bonuses[0]!.conditions[0]!
+    source.definitions[0]!.bonuses[0]!.conditions.push({
+      ...firstCondition,
+      priority: 99,
+      optionIds: [...firstCondition.optionIds].reverse(),
+    })
+
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoRulesStage(result)
+    expect(diagnosticCodes(result)).toContain('STYLE_ADJUSTMENT_CONDITION_DUPLICATE')
+  })
+
+  test('rejects duplicate adjustment identities and priorities without a rules stage', () => {
+    const duplicateId = canonicalStyleDefinitionBundleFixture()
+    duplicateId.definitions[1]!.bonuses[0]!.id = duplicateId.definitions[0]!
+      .bonuses[0]!.id
+    const duplicateIdResult = compileStyles(
+      duplicateId,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoRulesStage(duplicateIdResult)
+    expect(diagnosticCodes(duplicateIdResult)).toContain('STYLE_ADJUSTMENT_DUPLICATE_ID')
+
+    const duplicatePriority = canonicalStyleDefinitionBundleFixture()
+    const jiro = duplicatePriority.definitions.find(({ id }) => id === 'jiro')!
+    jiro.conflicts[1]!.priority = jiro.conflicts[0]!.priority
+    const duplicatePriorityResult = compileStyles(
+      duplicatePriority,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoRulesStage(duplicatePriorityResult)
+    expect(diagnosticCodes(duplicatePriorityResult))
+      .toContain('STYLE_ADJUSTMENT_PRIORITY_DUPLICATE')
+  })
+
+  test('rejects empty, duplicate-priority, and invalid adjustment conditions', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    source.definitions[0]!.bonuses[0]!.conditions[0]!.optionIds = []
+    source.definitions[0]!.bonuses[0]!.conditions[1]!.priority = 0
+    source.definitions[1]!.conflicts[0]!.whenAll = []
+    source.definitions[2]!.bonuses[0]!.conditions[0]!.questionId = 'unknown-question'
+    source.definitions[3]!.bonuses[0]!.conditions[0]!.optionIds = ['unknown-option']
+    source.definitions[4]!.bonuses[0]!.conditions[0]!.optionIds = ['light']
+    source.definitions[5]!.bonuses[0]!.conditions[0]!.optionIds = ['soup', 'soup']
+
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoRulesStage(result)
+    expect(diagnosticCodes(result)).toEqual(expect.arrayContaining([
+      'STYLE_ADJUSTMENT_CONDITION_EMPTY',
+      'STYLE_ADJUSTMENT_CONDITION_PRIORITY_DUPLICATE',
+      'STYLE_ADJUSTMENT_OPTION_DUPLICATE',
+      'STYLE_ADJUSTMENT_OPTION_UNKNOWN',
+      'STYLE_ADJUSTMENT_OPTION_WRONG_OWNER',
+      'STYLE_ADJUSTMENT_QUESTION_UNKNOWN',
+    ]))
+  })
+
+  test('keeps invalid operand and minMatches failures at the structural boundary', () => {
+    const invalidOperand = canonicalStyleDefinitionBundleFixture()
+    invalidOperand.definitions[0]!.bonuses[0]!.points = 0
+    const operandResult = compileStyles(
+      invalidOperand,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoRulesStage(operandResult)
+    expect(diagnosticCodes(operandResult)).toEqual(['STRUCTURE_INVALID'])
+
+    const invalidMinMatches = canonicalStyleDefinitionBundleFixture()
+    invalidMinMatches.definitions[0]!.bonuses[0]!.minMatches = 99
+    const minMatchesResult = compileStyles(
+      invalidMinMatches,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoRulesStage(minMatchesResult)
+    expect(diagnosticCodes(minMatchesResult)).toEqual(['STRUCTURE_INVALID'])
+  })
+
+  test('rejects unknown, duplicate, and mismatched exclusion tags', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    source.taxonomy.exclusionTags = source.taxonomy.exclusionTags.filter(
+      ({ id }) => id !== 'pork',
+    )
+    source.definitions.find(({ id }) => id === 'tonkotsu')!
+      .exclusionTags.push('pork')
+    source.taxonomy.exclusionTags.find(({ id }) => id === 'chicken')!
+      .exclusionsOptionId = 'duck'
+
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoRulesStage(result)
+    expect(diagnosticCodes(result)).toEqual(expect.arrayContaining([
+      'STYLE_EXCLUSION_TAG_DUPLICATE',
+      'STYLE_EXCLUSION_TAG_MISMATCH',
+      'STYLE_EXCLUSION_TAG_UNKNOWN',
+    ]))
+  })
+
+  test('returns deterministic complete rule and adjustment diagnostics with no stage', () => {
+    function invalidSource() {
+      const source = canonicalStyleDefinitionBundleFixture()
+      source.definitions[0]!.baseRules.find(
+        ({ questionId }) => questionId === 'signature',
+      )!.tiers[1]!.optionIds.push('yuzu-citrus')
+      source.definitions[0]!.bonuses[0]!.conditions[1]!.priority = 0
+      const firstCondition = source.definitions[0]!.bonuses[0]!.conditions[0]!
+      source.definitions[0]!.bonuses[0]!.conditions.push({
+        ...firstCondition,
+        priority: 99,
+        optionIds: [...firstCondition.optionIds].reverse(),
+      })
+      const jiro = source.definitions.find(({ id }) => id === 'jiro')!
+      jiro.conflicts[1]!.priority = jiro.conflicts[0]!.priority
+      source.taxonomy.exclusionTags.find(({ id }) => id === 'pork')!
+        .exclusionsOptionId = 'chicken'
+      return source
+    }
+    const forward = invalidSource()
+    const reversed = invalidSource()
+    reversed.definitions.reverse()
+    reversed.taxonomy.exclusionTags.reverse()
+    for (const style of reversed.definitions) {
+      style.baseRules.reverse()
+      style.bonuses.reverse()
+      style.conflicts.reverse()
+      for (const rule of style.baseRules) {
+        rule.tiers.reverse()
+        for (const tier of rule.tiers) tier.optionIds.reverse()
+      }
+      for (const bonus of style.bonuses) {
+        bonus.conditions.reverse()
+        for (const condition of bonus.conditions) condition.optionIds.reverse()
+      }
+      for (const conflict of style.conflicts) {
+        conflict.whenAll.reverse()
+        for (const condition of conflict.whenAll) condition.optionIds.reverse()
+      }
+    }
+
+    const forwardResult = compileStyles(
+      forward,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    const reversedResult = compileStyles(
+      reversed,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoRulesStage(forwardResult)
+    expectNoRulesStage(reversedResult)
     expect(reversedResult.diagnostics).toEqual(forwardResult.diagnostics)
     expect(new Set(forwardResult.diagnostics.map((diagnostic) => (
       JSON.stringify(diagnostic)

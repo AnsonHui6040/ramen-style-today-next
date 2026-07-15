@@ -804,6 +804,10 @@ combination, or duplicated legacy copy in 270 records.
 - Modify: `packages/classification-core/src/compiler/styles/compile.ts`
 - Modify: `packages/classification-core/src/compiler/styles/compile.test.ts`
 - Modify: `packages/classification-core/src/compiler/styles/test-fixtures.ts`
+- Modify: `packages/classification-core/src/contracts/diagnostic-codes.ts`
+- Modify: `packages/classification-core/src/contracts/diagnostic.test.ts`
+- Modify: `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- Modify: `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
 
 **Interfaces:** Consumes `StyleSubtypeStage` and changes `compileStyles` to
 return `CompileStyleRulesResult` with `rulesStage`. Produces seven ordered rules
@@ -811,10 +815,18 @@ per core, one normalized style-level adjustment set with ordered
 `appliesToCoreIds`, and bound exclusion tags, but no final-model inventory or
 hash metadata.
 
+The approved Task 8 diagnostic amendment requires canonical adjustment
+condition identities (`questionId` plus canonical `optionIds`) to be unique
+within one adjustment independently of priority. Repeated identity emits
+`STYLE_ADJUSTMENT_CONDITION_DUPLICATE`; repeated priority remains the distinct
+`STYLE_ADJUSTMENT_CONDITION_PRIORITY_DUPLICATE` failure.
+
 - [ ] **Step 1: Write RED rule/adjustment mutation tests**
 
-Cover unknown/wrong-owner/duplicate/tier-overlap targets, empty/missing rules,
-duplicate adjustment IDs/priorities, invalid conditions/operands/minMatches,
+Cover unknown/wrong-owner/duplicate/tier-overlap targets, direct empty/missing/
+duplicate-target/tier-overlap rule diagnostics, duplicate adjustment IDs/
+priorities, duplicate condition identity independently of priority, invalid
+conditions/operands/minMatches,
 bonus-before-conflict phase, canonical targets/conditions, provenance, exclusion
 mapping, and 54-to-18 bonus plus 21-to-seven conflict normalization.
 
@@ -846,7 +858,11 @@ After independent rule/truth-boundary review `PASS`:
 ```bash
 git add packages/classification-core/src/compiler/styles/compile.ts \
   packages/classification-core/src/compiler/styles/compile.test.ts \
-  packages/classification-core/src/compiler/styles/test-fixtures.ts
+  packages/classification-core/src/compiler/styles/test-fixtures.ts \
+  packages/classification-core/src/contracts/diagnostic-codes.ts \
+  packages/classification-core/src/contracts/diagnostic.test.ts \
+  docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md \
+  docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md
 git commit -m "Compile style rules and adjustments"
 ```
 

@@ -1,19 +1,25 @@
 import type { CompiledQuestionModel } from '../../contracts/question-model.js'
 import type {
   AdjustmentConditionDefinition,
+  CompiledAdjustment,
+  CompiledAdjustmentCondition,
+  CompiledExclusionTag,
+  CompiledStyleRule,
   CompiledSubtype,
-  CompileStyleSubtypesResult,
+  CompileStyleRulesResult,
   CoreId,
+  ExclusionTagId,
   IntensityId,
   MatchTier,
   NoodleId,
   ResolvedStyleCoreRule,
+  RuleId,
   StyleDefinition,
   StyleRuleDefinition,
   StyleRuleProvenance,
+  StyleRulesStageCore,
+  StyleRulesStageStyle,
   StyleRuleTierDefinition,
-  StyleSubtypeStageCore,
-  StyleSubtypeStageStyle,
   SubtypeId,
 } from '../../contracts/style-model.js'
 import { compareCodePoints } from '../../contracts/source-path.js'
@@ -29,6 +35,14 @@ const requiredNoodleIds = [
   'medium-thick-straight',
   'medium-thick-wavy',
   'extra-thick',
+] as const
+const requiredExclusionTagIds = [
+  'pork',
+  'chicken',
+  'duck',
+  'fish-seafood',
+  'shellfish',
+  'dairy',
 ] as const
 const requiredRuleQuestionIds = [
   'form',
@@ -86,6 +100,10 @@ function subtypeId(parentCoreId: CoreId, noodleId: NoodleId): SubtypeId {
   return `${parentCoreId}:${noodleId}`
 }
 
+function ruleId(parentCoreId: CoreId, questionId: string): RuleId {
+  return `${parentCoreId}:${questionId}`
+}
+
 interface RuleCandidate {
   readonly rule: StyleRuleDefinition
   readonly provenance: StyleRuleProvenance
@@ -95,7 +113,7 @@ export function compileStyles(
   input: unknown,
   questionModel: CompiledQuestionModel,
   sourceFile: string,
-): CompileStyleSubtypesResult {
+): CompileStyleRulesResult {
   const parsed = parseStyleDefinitionBundle(input, sourceFile)
   if (!parsed.definition) return { ok: false, diagnostics: parsed.diagnostics }
 
@@ -142,6 +160,12 @@ export function compileStyles(
       || compareCodePoints(left.id, right.id)
       || compareStableValues(left, right)
   ))
+  const canonicalExclusionTags = [...definition.taxonomy.exclusionTags]
+    .sort((left, right) => (
+      left.priority - right.priority
+        || compareCodePoints(left.id, right.id)
+        || compareStableValues(left, right)
+    ))
   const canonicalRuleQuestions = [...definition.taxonomy.ruleQuestions].sort((left, right) => (
     left.priority - right.priority
       || compareCodePoints(left.questionId, right.questionId)
@@ -170,6 +194,12 @@ export function compileStyles(
     canonicalNoodles.map(({ priority }) => priority),
     definition.taxonomy.sourceFile,
     '/noodles',
+    collector,
+  )
+  reportDuplicatePriorities(
+    canonicalExclusionTags.map(({ priority }) => priority),
+    definition.taxonomy.sourceFile,
+    '/exclusionTags',
     collector,
   )
   reportDuplicatePriorities(
@@ -213,6 +243,15 @@ export function compileStyles(
       message: `Duplicate noodle taxonomy member ${id}`,
     })
   }
+  for (const id of duplicateStrings(canonicalExclusionTags.map(({ id }) => id))) {
+    collector.error({
+      code: 'STYLE_EXCLUSION_TAG_DUPLICATE',
+      sourceFile: definition.taxonomy.sourceFile,
+      path: '/exclusionTags',
+      entityId: id,
+      message: `Duplicate exclusion-tag taxonomy member ${id}`,
+    })
+  }
 
   const declaredIntensityIds = canonicalStringSet(
     canonicalIntensities.map(({ id }) => id),
@@ -243,6 +282,23 @@ export function compileStyles(
       message: 'Noodle taxonomy does not declare the exact approved inventory',
       expected: exactNoodleIds,
       received: canonicalNoodles.map(({ id }) => id),
+    })
+  }
+
+  const declaredExclusionTagIds = canonicalStringSet(
+    canonicalExclusionTags.map(({ id }) => id),
+  )
+  const exactExclusionTagIds = [...requiredExclusionTagIds].sort(compareCodePoints)
+  if (!sameStrings(declaredExclusionTagIds, exactExclusionTagIds)
+    || canonicalExclusionTags.length !== requiredExclusionTagIds.length) {
+    collector.error({
+      code: 'STYLE_INVENTORY_MISMATCH',
+      sourceFile: definition.taxonomy.sourceFile,
+      path: '/exclusionTags',
+      entityId: 'exclusion-tags',
+      message: 'Exclusion-tag taxonomy does not declare the exact approved inventory',
+      expected: exactExclusionTagIds,
+      received: canonicalExclusionTags.map(({ id }) => id),
     })
   }
 
@@ -299,6 +355,33 @@ export function compileStyles(
       path: `/noodles/${index}`,
     })
   }
+  const exclusionTagById = new Map<ExclusionTagId, {
+    readonly tag: typeof canonicalExclusionTags[number]
+    readonly path: string
+  }>()
+  const compiledExclusionTags: CompiledExclusionTag[] = []
+  for (const [index, tag] of canonicalExclusionTags.entries()) {
+    const path = `/exclusionTags/${index}`
+    if (!exclusionTagById.has(tag.id)) exclusionTagById.set(tag.id, { tag, path })
+    const mappedToExclusions = optionOwners.get(tag.exclusionsOptionId)
+      ?.has('exclusions') === true
+    if (tag.exclusionsOptionId !== tag.id || !mappedToExclusions) collector.error({
+      code: 'STYLE_EXCLUSION_TAG_MISMATCH',
+      sourceFile: definition.taxonomy.sourceFile,
+      path: `${path}/exclusionsOptionId`,
+      entityId: tag.id,
+      message: `Exclusion tag ${tag.id} does not use the required same-token mapping`,
+      expected: tag.id,
+      received: tag.exclusionsOptionId,
+    })
+    compiledExclusionTags.push({
+      id: tag.id,
+      priority: tag.priority,
+      questionId: 'exclusions',
+      optionId: tag.exclusionsOptionId,
+      provenance: { sourceFile: definition.taxonomy.sourceFile, path },
+    })
+  }
   const rulePriorityByQuestionId = new Map(
     canonicalRuleQuestions.map(({ questionId, priority }) => [questionId, priority]),
   )
@@ -334,6 +417,49 @@ export function compileStyles(
             || compareCodePoints(left, right)
         )),
       }))
+  }
+
+  function canonicalAdjustmentConditions(
+    conditions: readonly AdjustmentConditionDefinition[],
+  ): AdjustmentConditionDefinition[] {
+    return conditions
+      .map((condition) => ({
+        priority: condition.priority,
+        questionId: condition.questionId,
+        optionIds: [...condition.optionIds].sort((left, right) => (
+          optionPriority(condition.questionId, left)
+            - optionPriority(condition.questionId, right)
+            || compareCodePoints(left, right)
+        )),
+      }))
+      .sort((left, right) => (
+        left.priority - right.priority
+          || compareCodePoints(left.questionId, right.questionId)
+          || compareStableValues(left.optionIds, right.optionIds)
+      ))
+  }
+
+  function reportDuplicateConditionIdentities(
+    conditions: readonly AdjustmentConditionDefinition[],
+    sourceFile: string,
+    path: string,
+    adjustmentId: string,
+  ) {
+    const seen = new Set<string>()
+    for (const [index, condition] of conditions.entries()) {
+      const identity = stableJson({
+        questionId: condition.questionId,
+        optionIds: condition.optionIds,
+      })
+      if (seen.has(identity)) collector.error({
+        code: 'STYLE_ADJUSTMENT_CONDITION_DUPLICATE',
+        sourceFile,
+        path: `${path}/${index}`,
+        entityId: `${adjustmentId}:${condition.questionId}`,
+        message: `Adjustment ${adjustmentId} repeats a canonical condition`,
+      })
+      seen.add(identity)
+    }
   }
 
   function validateRule(
@@ -422,6 +548,13 @@ export function compileStyles(
       optionPriority(condition.questionId, left) - optionPriority(condition.questionId, right)
         || compareCodePoints(left, right)
     ))
+    if (optionIds.length === 0) collector.error({
+      code: 'STYLE_ADJUSTMENT_CONDITION_EMPTY',
+      sourceFile: conditionSourceFile,
+      path: `${path}/optionIds`,
+      entityId,
+      message: `Adjustment condition ${condition.questionId} has no options`,
+    })
     for (const [optionIndex, optionId] of optionIds.entries()) {
       const optionPath = `${path}/optionIds/${optionIndex}`
       if (seen.has(optionId)) collector.error({
@@ -474,7 +607,9 @@ export function compileStyles(
 
   const seenCoreIds = new Set<CoreId>()
   const seenSubtypeIds = new Set<SubtypeId>()
-  const stageStyles: StyleSubtypeStageStyle[] = []
+  const seenRuleIds = new Set<RuleId>()
+  const seenAdjustmentIds = new Set<string>()
+  const stageStyles: StyleRulesStageStyle[] = []
   for (const style of canonicalStyles) {
     const family = familyById.get(style.family)
     if (!family) collector.error({
@@ -531,7 +666,153 @@ export function compileStyles(
       received: baseFormRule === undefined ? undefined : canonicalTiers(baseFormRule),
     })
 
-    validateAdjustmentReferences(style, validateCondition)
+    const canonicalBonuses = [...style.bonuses].sort((left, right) => (
+      left.priority - right.priority
+        || compareCodePoints(left.id, right.id)
+        || compareStableValues(left, right)
+    ))
+    const canonicalConflicts = [...style.conflicts].sort((left, right) => (
+      left.priority - right.priority
+        || compareCodePoints(left.id, right.id)
+        || compareStableValues(left, right)
+    ))
+    for (const priority of duplicateNumbers(
+      canonicalBonuses.map(({ priority: value }) => value),
+    )) collector.error({
+      code: 'STYLE_ADJUSTMENT_PRIORITY_DUPLICATE',
+      sourceFile: style.sourceFile,
+      path: '/bonuses',
+      entityId: `${style.id}:bonus:${priority}`,
+      message: `Style ${style.id} repeats bonus priority ${priority}`,
+    })
+    for (const priority of duplicateNumbers(
+      canonicalConflicts.map(({ priority: value }) => value),
+    )) collector.error({
+      code: 'STYLE_ADJUSTMENT_PRIORITY_DUPLICATE',
+      sourceFile: style.sourceFile,
+      path: '/conflicts',
+      entityId: `${style.id}:conflict:${priority}`,
+      message: `Style ${style.id} repeats conflict priority ${priority}`,
+    })
+
+    for (const [bonusIndex, bonus] of canonicalBonuses.entries()) {
+      const path = `/bonuses/${bonusIndex}`
+      if (seenAdjustmentIds.has(bonus.id)) collector.error({
+        code: 'STYLE_ADJUSTMENT_DUPLICATE_ID',
+        sourceFile: style.sourceFile,
+        path,
+        entityId: bonus.id,
+        message: `Duplicate style adjustment ${bonus.id}`,
+      })
+      seenAdjustmentIds.add(bonus.id)
+      if (!Number.isFinite(bonus.points) || bonus.points <= 0
+        || !Number.isSafeInteger(bonus.minMatches) || bonus.minMatches <= 0
+        || bonus.minMatches > bonus.conditions.length) collector.error({
+        code: 'STYLE_ADJUSTMENT_VALUE_INVALID',
+        sourceFile: style.sourceFile,
+        path,
+        entityId: bonus.id,
+        message: `Bonus ${bonus.id} has an invalid operand or minMatches`,
+      })
+      const conditions = canonicalAdjustmentConditions(bonus.conditions)
+      if (conditions.length === 0) collector.error({
+        code: 'STYLE_ADJUSTMENT_CONDITION_EMPTY',
+        sourceFile: style.sourceFile,
+        path: `${path}/conditions`,
+        entityId: bonus.id,
+        message: `Bonus ${bonus.id} has no conditions`,
+      })
+      for (const priority of duplicateNumbers(
+        conditions.map(({ priority: value }) => value),
+      )) collector.error({
+        code: 'STYLE_ADJUSTMENT_CONDITION_PRIORITY_DUPLICATE',
+        sourceFile: style.sourceFile,
+        path: `${path}/conditions`,
+        entityId: `${bonus.id}:${priority}`,
+        message: `Bonus ${bonus.id} repeats condition priority ${priority}`,
+      })
+      reportDuplicateConditionIdentities(
+        conditions,
+        style.sourceFile,
+        `${path}/conditions`,
+        bonus.id,
+      )
+      for (const [conditionIndex, condition] of conditions.entries()) validateCondition(
+        condition,
+        style.sourceFile,
+        `${path}/conditions/${conditionIndex}`,
+        `${style.id}:${bonus.id}:${condition.questionId}`,
+      )
+    }
+
+    for (const [conflictIndex, conflict] of canonicalConflicts.entries()) {
+      const path = `/conflicts/${conflictIndex}`
+      if (seenAdjustmentIds.has(conflict.id)) collector.error({
+        code: 'STYLE_ADJUSTMENT_DUPLICATE_ID',
+        sourceFile: style.sourceFile,
+        path,
+        entityId: conflict.id,
+        message: `Duplicate style adjustment ${conflict.id}`,
+      })
+      seenAdjustmentIds.add(conflict.id)
+      if (!Number.isFinite(conflict.penalty) || conflict.penalty <= 0) collector.error({
+        code: 'STYLE_ADJUSTMENT_VALUE_INVALID',
+        sourceFile: style.sourceFile,
+        path,
+        entityId: conflict.id,
+        message: `Conflict ${conflict.id} has an invalid operand`,
+      })
+      const conditions = canonicalAdjustmentConditions(conflict.whenAll)
+      if (conditions.length === 0) collector.error({
+        code: 'STYLE_ADJUSTMENT_CONDITION_EMPTY',
+        sourceFile: style.sourceFile,
+        path: `${path}/whenAll`,
+        entityId: conflict.id,
+        message: `Conflict ${conflict.id} has no conditions`,
+      })
+      for (const priority of duplicateNumbers(
+        conditions.map(({ priority: value }) => value),
+      )) collector.error({
+        code: 'STYLE_ADJUSTMENT_CONDITION_PRIORITY_DUPLICATE',
+        sourceFile: style.sourceFile,
+        path: `${path}/whenAll`,
+        entityId: `${conflict.id}:${priority}`,
+        message: `Conflict ${conflict.id} repeats condition priority ${priority}`,
+      })
+      reportDuplicateConditionIdentities(
+        conditions,
+        style.sourceFile,
+        `${path}/whenAll`,
+        conflict.id,
+      )
+      for (const [conditionIndex, condition] of conditions.entries()) validateCondition(
+        condition,
+        style.sourceFile,
+        `${path}/whenAll/${conditionIndex}`,
+        `${style.id}:${conflict.id}:${condition.questionId}`,
+      )
+    }
+
+    const styleExclusionTags = canonicalMembershipIds(
+      style.exclusionTags,
+      canonicalExclusionTags,
+    )
+    for (const id of duplicateStrings(styleExclusionTags)) collector.error({
+      code: 'STYLE_EXCLUSION_TAG_DUPLICATE',
+      sourceFile: style.sourceFile,
+      path: '/exclusionTags',
+      entityId: id,
+      message: `Style ${style.id} repeats exclusion tag ${id}`,
+    })
+    for (const id of styleExclusionTags) {
+      if (!exclusionTagById.has(id)) collector.error({
+        code: 'STYLE_EXCLUSION_TAG_UNKNOWN',
+        sourceFile: style.sourceFile,
+        path: '/exclusionTags',
+        entityId: id,
+        message: `Style ${style.id} references undeclared exclusion tag ${id}`,
+      })
+    }
 
     const supportedIntensityIds = [...style.supportedIntensityIds].sort((left, right) => {
       const leftPriority = intensityById.get(left)?.priority ?? Number.MAX_SAFE_INTEGER
@@ -617,7 +898,7 @@ export function compileStyles(
       })
     }
 
-    const cores: StyleSubtypeStageCore[] = []
+    const cores: StyleRulesStageCore[] = []
     for (const intensityId of supportedIntensityIds) {
       const intensity = intensityById.get(intensityId)
       const bodyCandidate = intensityCandidates.get(intensityId)
@@ -706,6 +987,43 @@ export function compileStyles(
         received: canonicalTiers(overrideFormRule),
       })
 
+      const rules: CompiledStyleRule[] = resolvedRules
+        .map((resolvedRule) => {
+          const id = ruleId(coreId(style.id, intensityId), resolvedRule.questionId)
+          if (seenRuleIds.has(id)) collector.error({
+            code: 'STYLE_RULE_DUPLICATE_ID',
+            sourceFile: resolvedRule.provenance.sourceFile,
+            path: resolvedRule.provenance.path,
+            entityId: id,
+            message: `Generated rule ID collision ${id}`,
+          })
+          seenRuleIds.add(id)
+          return {
+            id,
+            parentStyleId: style.id,
+            parentCoreId: coreId(style.id, intensityId),
+            questionId: resolvedRule.questionId,
+            priority: rulePriorityByQuestionId.get(resolvedRule.questionId)
+              ?? Number.MAX_SAFE_INTEGER,
+            targets: resolvedRule.tiers
+              .flatMap(({ tier, optionIds }) => optionIds.map((optionId) => ({
+                optionId,
+                tier,
+                priority: optionPriority(resolvedRule.questionId, optionId),
+              })))
+              .sort((left, right) => (
+                left.priority - right.priority
+                  || compareCodePoints(left.optionId, right.optionId)
+                  || tierPriorities[left.tier] - tierPriorities[right.tier]
+              )),
+            fallbackTier: 'miss' as const,
+            provenance: { ...resolvedRule.provenance },
+          }
+        })
+        .sort((left, right) => (
+          left.priority - right.priority || compareCodePoints(left.id, right.id)
+        ))
+
       const subtypes: CompiledSubtype[] = []
       for (const noodleId of supportedNoodleIds) {
         const candidate = noodleById.get(noodleId)
@@ -759,7 +1077,7 @@ export function compileStyles(
           labelTemplate: intensity.labelMessageId,
           summaryTemplate: intensity.summaryMessageId,
         },
-        resolvedRules,
+        rules,
         subtypes,
         provenance: [
           { sourceFile: style.sourceFile, path: '' },
@@ -767,6 +1085,44 @@ export function compileStyles(
         ],
       })
     }
+
+    const appliesToCoreIds = cores.map(({ id }) => id)
+    const compileConditions = (
+      conditions: readonly AdjustmentConditionDefinition[],
+      path: string,
+    ): CompiledAdjustmentCondition[] => canonicalAdjustmentConditions(conditions)
+      .map((condition, index) => ({
+        priority: condition.priority,
+        questionId: condition.questionId,
+        optionIds: [...condition.optionIds],
+        provenance: {
+          sourceFile: style.sourceFile,
+          path: `${path}/${index}`,
+        },
+      }))
+    const adjustments: CompiledAdjustment[] = [
+      ...canonicalBonuses.map((bonus, index) => ({
+        kind: 'bonus' as const,
+        id: bonus.id,
+        priority: bonus.priority,
+        labelMessageId: bonus.labelMessageId,
+        points: bonus.points,
+        minMatches: bonus.minMatches,
+        conditions: compileConditions(bonus.conditions, `/bonuses/${index}/conditions`),
+        appliesToCoreIds: [...appliesToCoreIds],
+        provenance: { sourceFile: style.sourceFile, path: `/bonuses/${index}` },
+      })),
+      ...canonicalConflicts.map((conflict, index) => ({
+        kind: 'conflict' as const,
+        id: conflict.id,
+        priority: conflict.priority,
+        labelMessageId: conflict.labelMessageId,
+        penalty: conflict.penalty,
+        whenAll: compileConditions(conflict.whenAll, `/conflicts/${index}/whenAll`),
+        appliesToCoreIds: [...appliesToCoreIds],
+        provenance: { sourceFile: style.sourceFile, path: `/conflicts/${index}` },
+      })),
+    ]
 
     stageStyles.push({
       id: style.id,
@@ -777,10 +1133,8 @@ export function compileStyles(
       supportedIntensityIds,
       supportedNoodleIds,
       cores,
-      exclusionTags: canonicalMembershipIds(
-        style.exclusionTags,
-        definition.taxonomy.exclusionTags,
-      ),
+      adjustments,
+      exclusionTags: styleExclusionTags,
       provenance: { sourceFile: style.sourceFile, path: '' },
     })
   }
@@ -789,11 +1143,12 @@ export function compileStyles(
   if (collector.hasErrors()) return { ok: false, diagnostics }
   return {
     ok: true,
-    subtypeStage: {
-      kind: 'style-subtype-stage',
+    rulesStage: {
+      kind: 'style-rules-stage',
       modelVersion: definition.modelVersion,
       questionModelVersion: questionModel.metadata.modelVersion,
       questionSemanticHash: questionModel.metadata.semanticHash,
+      exclusionTags: compiledExclusionTags,
       styles: stageStyles,
     },
     diagnostics,
@@ -853,54 +1208,6 @@ function reportDuplicateRuleIds(
       entityId: `${style.id}:${questionId}`,
       message: `Style ${style.id} repeats rule ${questionId}`,
     })
-  }
-}
-
-function validateAdjustmentReferences(
-  style: StyleDefinition,
-  validate: (
-    condition: AdjustmentConditionDefinition,
-    sourceFile: string,
-    path: string,
-    entityId: string,
-  ) => void,
-) {
-  const bonuses = [...style.bonuses].sort((left, right) => (
-    left.priority - right.priority
-      || compareCodePoints(left.id, right.id)
-      || compareStableValues(left, right)
-  ))
-  for (const [bonusIndex, bonus] of bonuses.entries()) {
-    const conditions = [...bonus.conditions].sort((left, right) => (
-      left.priority - right.priority
-        || compareCodePoints(left.questionId, right.questionId)
-        || compareStableValues(left, right)
-    ))
-    for (const [conditionIndex, condition] of conditions.entries()) validate(
-      condition,
-      style.sourceFile,
-      `/bonuses/${bonusIndex}/conditions/${conditionIndex}`,
-      `${style.id}:${bonus.id}:${condition.questionId}`,
-    )
-  }
-
-  const conflicts = [...style.conflicts].sort((left, right) => (
-    left.priority - right.priority
-      || compareCodePoints(left.id, right.id)
-      || compareStableValues(left, right)
-  ))
-  for (const [conflictIndex, conflict] of conflicts.entries()) {
-    const conditions = [...conflict.whenAll].sort((left, right) => (
-      left.priority - right.priority
-        || compareCodePoints(left.questionId, right.questionId)
-        || compareStableValues(left, right)
-    ))
-    for (const [conditionIndex, condition] of conditions.entries()) validate(
-      condition,
-      style.sourceFile,
-      `/conflicts/${conflictIndex}/whenAll/${conditionIndex}`,
-      `${style.id}:${conflict.id}:${condition.questionId}`,
-    )
   }
 }
 

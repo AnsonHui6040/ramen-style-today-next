@@ -836,7 +836,10 @@ keeps diagnostics deterministic; it does not make an ambiguous definition
 successful.
 
 The canonical condition identity is the stable tuple of `questionId` and its
-already-canonical `optionIds`. The provenance identity is the stable tuple of
+already-canonical `optionIds`. Condition identities are unique within one
+adjustment independently of condition priority; a repeated identity emits
+`STYLE_ADJUSTMENT_CONDITION_DUPLICATE`, while a repeated numeric priority emits
+`STYLE_ADJUSTMENT_CONDITION_PRIORITY_DUPLICATE`. The provenance identity is the stable tuple of
 `sourceFile`, `path`, and optional `inheritedFrom`. Taxonomy records carry
 explicit numeric priorities; no taxonomy priority is derived from array index.
 
@@ -939,6 +942,7 @@ STYLE_ADJUSTMENT_DUPLICATE_ID
 STYLE_ADJUSTMENT_PRIORITY_DUPLICATE
 STYLE_ADJUSTMENT_CONDITION_EMPTY
 STYLE_ADJUSTMENT_CONDITION_PRIORITY_DUPLICATE
+STYLE_ADJUSTMENT_CONDITION_DUPLICATE
 STYLE_ADJUSTMENT_QUESTION_UNKNOWN
 STYLE_ADJUSTMENT_OPTION_UNKNOWN
 STYLE_ADJUSTMENT_OPTION_WRONG_OWNER
