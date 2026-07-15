@@ -46,4 +46,12 @@ export function compareDiagnostics(left: Diagnostic, right: Diagnostic) {
   return compareCodePoints(left.sourceFile, right.sourceFile)
     || compareCodePoints(left.path, right.path)
     || compareCodePoints(left.code, right.code)
+    || compareOptionalEntityId(left.entityId, right.entityId)
+    || compareCodePoints(left.message, right.message)
+}
+
+function compareOptionalEntityId(left: string | undefined, right: string | undefined) {
+  if (left === undefined) return right === undefined ? 0 : -1
+  if (right === undefined) return 1
+  return compareCodePoints(left, right)
 }
