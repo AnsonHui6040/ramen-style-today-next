@@ -176,7 +176,7 @@ The core must not infer source identity from:
 - similar field names
 - current model IDs that happen to match legacy values
 
-The public source envelope is also closed. A legacy source has exactly `kind`, `sourceId`, and `answers`; a versioned source has exactly `kind` and `payload`. An unknown `kind`, illegal primitive, accessor, or extra field is invalid. A structurally valid but unregistered legacy `sourceId` is unsupported rather than shape-guessed.
+The public source envelope is also closed. A legacy source has exactly `kind`, `sourceId`, and `answers`; a versioned source has exactly `kind` and `payload`. An unknown `kind`, illegal primitive, accessor, or extra field is invalid. A structurally valid but unregistered legacy `sourceId` is `unsupported-source` rather than shape-guessed.
 
 The first registered legacy lineage is exact and immutable. A second unversioned legacy format requires a new `sourceId` and decoder rather than widening the existing one.
 
@@ -236,6 +236,7 @@ The decision matrix is:
 
 | Input identity | Result |
 | --- | --- |
+| structurally valid but unregistered legacy source ID | `unsupported-source` |
 | current schema, current model version, current semantic hash | decode and evaluate directly |
 | registered earlier schema | apply every sequential schema migration, with evidence |
 | registered earlier model version and semantic hash | apply an explicit model migration, with evidence |
@@ -565,6 +566,7 @@ type RestoreResult =
   | {
       readonly status: 'unsupported'
       readonly reason:
+        | 'unsupported-source'
         | 'unsupported-schema-version'
         | 'unsupported-question-model'
         | 'question-model-integrity-error'

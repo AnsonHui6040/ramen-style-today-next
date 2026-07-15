@@ -108,6 +108,7 @@ export type RestoreResult =
   | {
       readonly status: 'unsupported'
       readonly reason:
+        | 'unsupported-source'
         | 'unsupported-schema-version'
         | 'unsupported-question-model'
         | 'question-model-integrity-error'

@@ -133,6 +133,7 @@ describe('persistence contracts', () => {
     >()
     expectTypeOf<Extract<RestoreResult, { status: 'unsupported' }>['reason']>()
       .toEqualTypeOf<
+        | 'unsupported-source'
         | 'unsupported-schema-version'
         | 'unsupported-question-model'
         | 'question-model-integrity-error'

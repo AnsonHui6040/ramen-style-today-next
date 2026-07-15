@@ -774,6 +774,13 @@ git commit -m "Project persistence repairs"
 - Create: `packages/classification-core/src/persistence/resume.test.ts`
 - Create: `packages/classification-core/src/persistence/restore.ts`
 - Create: `packages/classification-core/src/persistence/restore.test.ts`
+- Modify: `packages/classification-core/src/persistence/contracts.ts`
+- Modify: `packages/classification-core/src/persistence/contracts.test.ts`
+- Modify: `docs/superpowers/specs/2026-07-14-batch-2b-persistence-repair-design.md`
+- Modify: `docs/superpowers/plans/2026-07-14-batch-2b-persistence-repair.md`
+
+**Approved contract correction:**
+- A structurally valid but unregistered legacy source ID returns the distinct public reason `unsupported-source`. This keeps the design's unsupported lineage boundary representable without misclassifying external data as `invalid`.
 
 **Interfaces:**
 - Consumes: the explicit restore source union plus Tasks 4–7 decoding, migration, and repair internals.
@@ -822,7 +829,7 @@ test('returns non-empty evidence for migrated legacy state', () => {
 })
 ```
 
-Also cover every unsupported reason, intrinsic invalid data, diagnostic-only submitted subset, schema/model migration order, cursor repair ordering after answer repairs, and exception separation for impossible internal states.
+Also cover every unsupported reason (`unsupported-source`, `unsupported-schema-version`, `unsupported-question-model`, and `question-model-integrity-error`), intrinsic invalid data, diagnostic-only submitted subset, schema/model migration order, cursor repair ordering after answer repairs, and exception separation for impossible internal states.
 
 - [ ] **Step 3: Run and confirm red**
 
@@ -857,7 +864,11 @@ npm run typecheck && npm run lint && git diff --check
 git add packages/classification-core/src/persistence/resume.ts \
   packages/classification-core/src/persistence/resume.test.ts \
   packages/classification-core/src/persistence/restore.ts \
-  packages/classification-core/src/persistence/restore.test.ts
+  packages/classification-core/src/persistence/restore.test.ts \
+  packages/classification-core/src/persistence/contracts.ts \
+  packages/classification-core/src/persistence/contracts.test.ts \
+  docs/superpowers/specs/2026-07-14-batch-2b-persistence-repair-design.md \
+  docs/superpowers/plans/2026-07-14-batch-2b-persistence-repair.md
 git commit -m "Restore persisted classifications"
 ```
 
