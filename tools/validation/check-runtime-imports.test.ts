@@ -7,6 +7,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import * as ts from 'typescript'
 import { describe, expect, test } from 'vitest'
@@ -22,6 +23,14 @@ const runtimeFamilies = [
   { importExtension: '.mjs', sourceExtension: '.mts', declarationExtension: '.d.mts' },
   { importExtension: '.cjs', sourceExtension: '.cts', declarationExtension: '.d.cts' },
 ] as const
+const filesystemSpecifierFamilies = [
+  { name: 'absolute path', toSpecifier: (path: string) => path },
+  { name: 'file URL', toSpecifier: (path: string) => pathToFileURL(path).href },
+  {
+    name: 'mixed-case file URL',
+    toSpecifier: (path: string) => pathToFileURL(path).href.replace(/^file:/, 'FiLe:'),
+  },
+] as const
 
 describe('runtime import boundary', () => {
   test('keeps the real public runtime dependency graph browser-neutral', () => {
@@ -31,6 +40,12 @@ describe('runtime import boundary', () => {
       'packages/classification-core/src/index.ts',
     )
     expect(result.forbidden).toEqual([])
+    expect(result.visited).toEqual(expect.arrayContaining([
+      'packages/classification-core/src/persistence/index.ts',
+      'packages/classification-core/src/persistence/create-payload.ts',
+      'packages/classification-core/src/persistence/restore.ts',
+    ]))
+    expect(result.visited.some((path) => path.endsWith('.test.ts'))).toBe(false)
   })
 
   test('walks re-exports transitively and rejects forbidden modules and paths', () => {
@@ -48,11 +63,16 @@ describe('runtime import boundary', () => {
         join(repoRoot, 'packages/classification-core/src/flow/index.ts'),
         [
           "import 'node:crypto'",
+          "import 'fs'",
           "import 'react'",
           "import 'zod'",
+          "import '@runtime/browser'",
+          "import '@runtime/dom'",
           "import '@legacy/questionnaire'",
+          "import '@runtime/network'",
           "import '@runtime/persistence'",
           "import '@runtime/scoring'",
+          "import '@runtime/storage'",
           "import '@runtime/styles'",
           "import '@runtime/catalog'",
           "export * from '../compiler/index.js'",
@@ -81,12 +101,17 @@ describe('runtime import boundary', () => {
         'packages/classification-core/src/index.ts',
       )
       expect(result.forbidden.map(({ reason }) => reason)).toEqual([
+        'forbidden-module:browser',
         'forbidden-module:catalog',
+        'forbidden-module:dom',
         'forbidden-module:legacy',
+        'forbidden-module:network',
+        'forbidden-module:node',
         'forbidden-module:node',
         'forbidden-module:persistence',
         'forbidden-module:react',
         'forbidden-module:scoring',
+        'forbidden-module:storage',
         'forbidden-module:styles',
         'forbidden-module:zod',
         'forbidden-path:compiler',
@@ -100,6 +125,249 @@ describe('runtime import boundary', () => {
       rmSync(repoRoot, { recursive: true, force: true })
     }
   })
+
+  test('allows the core persistence subtree and checks its runtime dependencies', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-persistence-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(join(sourceRoot, 'persistence'), { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'index.ts'),
+        "export { restore } from './persistence/index.js'\n",
+      )
+      writeFileSync(
+        join(sourceRoot, 'persistence/index.ts'),
+        "export { restore } from './restore.js'\n",
+      )
+      writeFileSync(
+        join(sourceRoot, 'persistence/restore.ts'),
+        "import 'node:fs'\nexport const restore = true\n",
+      )
+
+      const result = checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      )
+      expect(result.forbidden).toEqual([{
+        from: 'packages/classification-core/src/persistence/restore.ts',
+        specifier: 'node:fs',
+        reason: 'forbidden-module:node',
+      }])
+      expect(result.visited).toEqual([
+        'packages/classification-core/src/index.ts',
+        'packages/classification-core/src/persistence/index.ts',
+        'packages/classification-core/src/persistence/restore.ts',
+      ])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('does not traverse type-only import and export edges', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-type-only-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(sourceRoot, { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'index.ts'),
+        [
+          "export { runtimeValue } from './runtime.js'",
+          "export type { HiddenType } from './types.js'",
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(
+        join(sourceRoot, 'runtime.ts'),
+        "export const runtimeValue = true\n",
+      )
+      writeFileSync(
+        join(sourceRoot, 'types.ts'),
+        "import 'node:fs'\nexport interface HiddenType { readonly value: string }\n",
+      )
+
+      const result = checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      )
+      expect(result.forbidden).toEqual([])
+      expect(result.visited).toEqual([
+        'packages/classification-core/src/index.ts',
+        'packages/classification-core/src/runtime.ts',
+      ])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test.each(filesystemSpecifierFamilies)(
+    'traverses an in-repository $name runtime edge',
+    ({ toSpecifier }) => {
+      const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-path-specifier-'))
+      try {
+        const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+        const target = join(sourceRoot, 'absolute-target.ts')
+        const runtimeSpecifier = target.replace(/\.ts$/, '.js')
+        mkdirSync(sourceRoot, { recursive: true })
+        writeFileSync(
+          join(sourceRoot, 'index.ts'),
+          `export { value } from ${JSON.stringify(toSpecifier(runtimeSpecifier))}\n`,
+        )
+        writeFileSync(target, "import 'node:fs'\nexport const value = true\n")
+
+        const result = checkRuntimeImports(
+          repoRoot,
+          'packages/classification-core/src/index.ts',
+        )
+        expect(result.forbidden).toEqual([{
+          from: 'packages/classification-core/src/absolute-target.ts',
+          specifier: 'node:fs',
+          reason: 'forbidden-module:node',
+        }])
+        expect(result.visited).toEqual([
+          'packages/classification-core/src/absolute-target.ts',
+          'packages/classification-core/src/index.ts',
+        ])
+      } finally {
+        rmSync(repoRoot, { recursive: true, force: true })
+      }
+    },
+  )
+
+  test.each(filesystemSpecifierFamilies)(
+    'rejects an outside-repository $name without traversing it',
+    ({ toSpecifier }) => {
+      const fixtureRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-outside-specifier-'))
+      const repoRoot = join(fixtureRoot, 'repo')
+      try {
+        const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+        const outsideTarget = join(fixtureRoot, 'outside-target.ts')
+        const runtimeSpecifier = outsideTarget.replace(/\.ts$/, '.js')
+        mkdirSync(sourceRoot, { recursive: true })
+        writeFileSync(
+          join(sourceRoot, 'index.ts'),
+          `export { value } from ${JSON.stringify(toSpecifier(runtimeSpecifier))}\n`,
+        )
+        writeFileSync(outsideTarget, "import 'node:fs'\nexport const value = true\n")
+
+        const specifier = toSpecifier(runtimeSpecifier)
+        const result = checkRuntimeImports(
+          repoRoot,
+          'packages/classification-core/src/index.ts',
+        )
+        expect(result.forbidden).toEqual([{
+          from: 'packages/classification-core/src/index.ts',
+          specifier,
+          reason: 'forbidden-path:outside-repository',
+        }])
+        expect(result.visited).toEqual(['packages/classification-core/src/index.ts'])
+      } finally {
+        rmSync(fixtureRoot, { recursive: true, force: true })
+      }
+    },
+  )
+
+  test.each([
+    'http://example.test/runtime.js',
+    'https://example.test/runtime.js',
+    'https:example.test/runtime.js',
+  ])(
+    'rejects network module specifier %s',
+    (specifier) => {
+      const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-network-specifier-'))
+      try {
+        const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+        mkdirSync(sourceRoot, { recursive: true })
+        writeFileSync(
+          join(sourceRoot, 'index.ts'),
+          `export { value } from ${JSON.stringify(specifier)}\n`,
+        )
+
+        expect(checkRuntimeImports(
+          repoRoot,
+          'packages/classification-core/src/index.ts',
+        ).forbidden).toEqual([{
+          from: 'packages/classification-core/src/index.ts',
+          specifier,
+          reason: 'forbidden-module:network',
+        }])
+      } finally {
+        rmSync(repoRoot, { recursive: true, force: true })
+      }
+    },
+  )
+
+  test.each([
+    {
+      specifier: 'data:text/javascript,export default 1',
+      reason: 'forbidden-module:url',
+    },
+    {
+      specifier: 'blob:https://example.test/runtime-id',
+      reason: 'forbidden-module:browser',
+    },
+    {
+      specifier: 'custom:opaque-runtime-module',
+      reason: 'forbidden-module:url',
+    },
+  ] as const)('rejects opaque URL module $specifier', ({ specifier, reason }) => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-opaque-url-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(sourceRoot, { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'index.ts'),
+        `export { value } from ${JSON.stringify(specifier)}\n`,
+      )
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      ).forbidden).toEqual([{
+        from: 'packages/classification-core/src/index.ts',
+        specifier,
+        reason,
+      }])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test.each(['persistence', 'Persistence'])(
+    'rejects %s paths outside the exact core persistence subtree',
+    (persistenceSegment) => {
+      const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-persistence-scope-'))
+      try {
+        const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+        const adapterRoot = join(sourceRoot, 'adapters', persistenceSegment)
+        const specifier = `./adapters/${persistenceSegment}/index.js`
+        mkdirSync(adapterRoot, { recursive: true })
+        writeFileSync(
+          join(sourceRoot, 'index.ts'),
+          `export { adapter } from '${specifier}'\n`,
+        )
+        writeFileSync(
+          join(adapterRoot, 'index.ts'),
+          'export const adapter = true\n',
+        )
+
+        const result = checkRuntimeImports(
+          repoRoot,
+          'packages/classification-core/src/index.ts',
+        )
+        expect(result.forbidden).toEqual([{
+          from: 'packages/classification-core/src/index.ts',
+          specifier,
+          reason: 'forbidden-path:persistence',
+        }])
+        expect(result.visited).toEqual([
+          `packages/classification-core/src/adapters/${persistenceSegment}/index.ts`,
+          'packages/classification-core/src/index.ts',
+        ])
+      } finally {
+        rmSync(repoRoot, { recursive: true, force: true })
+      }
+    },
+  )
 
   test.each(runtimeFamilies)('matches NodeNext $importExtension to $sourceExtension extension substitution', ({
     importExtension,

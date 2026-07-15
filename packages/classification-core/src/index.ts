@@ -8,6 +8,10 @@ export {
   getPreviousInteractiveQuestion,
   updatePendingSelection,
 } from './flow/index.js'
+export {
+  createStoredClassificationPayloadV1,
+  restoreClassification,
+} from './persistence/index.js'
 export type {
   Diagnostic,
   DiagnosticReference,
@@ -42,3 +46,15 @@ export type {
   PendingSelectionResult,
   QuestionId,
 } from './flow/index.js'
+export type {
+  AppliedMigration,
+  ClassificationRestoreSource,
+  CreateStoredPayloadResult,
+  PersistenceDiagnostic,
+  PersistenceDiagnosticCode,
+  PersistencePipelineStage,
+  PersistenceRepair,
+  RestoreChange,
+  RestoreResult,
+  StoredClassificationPayloadV1,
+} from './persistence/index.js'

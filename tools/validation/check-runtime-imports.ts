@@ -1,13 +1,38 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
+import { isBuiltin } from 'node:module'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import * as ts from 'typescript'
-import { scanModuleLoads } from '../documentation/scan-imports.js'
 
 const corePackage = '@ramen-style/classification-core'
+const corePersistenceRoot = 'packages/classification-core/src/persistence'
 const sourceExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'] as const
-const forbiddenNames = new Set(['legacy', 'persistence', 'scoring', 'styles', 'catalog'])
+const forbiddenModuleFamilies = new Map<string, RuntimeImportReason>([
+  ['browser', 'forbidden-module:browser'],
+  ['catalog', 'forbidden-module:catalog'],
+  ['dom', 'forbidden-module:dom'],
+  ['happy-dom', 'forbidden-module:dom'],
+  ['jsdom', 'forbidden-module:dom'],
+  ['legacy', 'forbidden-module:legacy'],
+  ['localstorage', 'forbidden-module:storage'],
+  ['network', 'forbidden-module:network'],
+  ['persistence', 'forbidden-module:persistence'],
+  ['scoring', 'forbidden-module:scoring'],
+  ['storage', 'forbidden-module:storage'],
+  ['styles', 'forbidden-module:styles'],
+])
+const forbiddenPathFamilies = new Map<string, RuntimeImportReason>([
+  ['browser', 'forbidden-path:browser'],
+  ['catalog', 'forbidden-path:catalog'],
+  ['dom', 'forbidden-path:dom'],
+  ['legacy', 'forbidden-path:legacy'],
+  ['localstorage', 'forbidden-path:storage'],
+  ['network', 'forbidden-path:network'],
+  ['scoring', 'forbidden-path:scoring'],
+  ['storage', 'forbidden-path:storage'],
+  ['styles', 'forbidden-path:styles'],
+])
 const nodeNextOptions = {
   module: ts.ModuleKind.NodeNext,
   moduleResolution: ts.ModuleResolutionKind.NodeNext,
@@ -37,17 +62,26 @@ export type RuntimeImportReason =
   | 'forbidden-module:node'
   | 'forbidden-module:react'
   | 'forbidden-module:zod'
+  | 'forbidden-module:browser'
+  | 'forbidden-module:dom'
   | 'forbidden-module:legacy'
+  | 'forbidden-module:network'
   | 'forbidden-module:persistence'
   | 'forbidden-module:scoring'
+  | 'forbidden-module:storage'
   | 'forbidden-module:styles'
+  | 'forbidden-module:url'
   | 'forbidden-module:catalog'
   | 'forbidden-path:compiler'
   | 'forbidden-path:tools'
   | 'forbidden-path:definitions'
+  | 'forbidden-path:browser'
+  | 'forbidden-path:dom'
   | 'forbidden-path:legacy'
+  | 'forbidden-path:network'
   | 'forbidden-path:persistence'
   | 'forbidden-path:scoring'
+  | 'forbidden-path:storage'
   | 'forbidden-path:styles'
   | 'forbidden-path:catalog'
   | 'forbidden-path:outside-repository'
@@ -122,15 +156,38 @@ function exactModuleSegments(specifier: string) {
     .split('/')
     .filter(Boolean)
     .flatMap((segment) => segment.startsWith('@') ? [segment.slice(1)] : [segment])
+    .map((segment) => segment.toLowerCase())
+}
+
+function moduleUrlScheme(specifier: string): string | undefined {
+  return /^([a-z][a-z0-9+.-]*):/i.exec(specifier)?.[1]?.toLowerCase()
+}
+
+function isFileUrlSpecifier(specifier: string): boolean {
+  return moduleUrlScheme(specifier) === 'file'
 }
 
 function forbiddenModuleReason(specifier: string): RuntimeImportReason | undefined {
-  if (specifier.startsWith('node:')) return 'forbidden-module:node'
+  if (isBuiltin(specifier)) return 'forbidden-module:node'
+  const scheme = moduleUrlScheme(specifier)
+  if (scheme === 'http' || scheme === 'https') return 'forbidden-module:network'
+  if (scheme === 'blob') return 'forbidden-module:browser'
+  if (scheme && scheme !== 'file') return 'forbidden-module:url'
+  if (
+    specifier.startsWith('.')
+      || isAbsolute(specifier)
+      || isFileUrlSpecifier(specifier)
+  ) return undefined
   const segments = exactModuleSegments(specifier)
-  if (segments[0] === 'react') return 'forbidden-module:react'
+  if (segments[0] === 'react' || segments[0] === 'react-dom') {
+    return 'forbidden-module:react'
+  }
   if (segments[0] === 'zod') return 'forbidden-module:zod'
-  const forbidden = segments.find((segment) => forbiddenNames.has(segment))
-  return forbidden ? `forbidden-module:${forbidden}` as RuntimeImportReason : undefined
+  for (const segment of segments) {
+    const reason = forbiddenModuleFamilies.get(segment)
+    if (reason) return reason
+  }
+  return undefined
 }
 
 function forbiddenPathReason(relativePath: string): RuntimeImportReason | undefined {
@@ -142,14 +199,114 @@ function forbiddenPathReason(relativePath: string): RuntimeImportReason | undefi
   if (coreSegment === 'compiler') return 'forbidden-path:compiler'
   if (coreSegment === 'definitions') return 'forbidden-path:definitions'
   if (segments[0] === 'tools') return 'forbidden-path:tools'
-  const forbidden = segments.find((segment) => forbiddenNames.has(segment))
-  return forbidden ? `forbidden-path:${forbidden}` as RuntimeImportReason : undefined
+  const isCorePersistence = relativePath === corePersistenceRoot
+    || relativePath.startsWith(`${corePersistenceRoot}/`)
+  if (
+    !isCorePersistence
+      && segments.some((segment) => segment.toLowerCase() === 'persistence')
+  ) {
+    return 'forbidden-path:persistence'
+  }
+  for (const segment of segments) {
+    const reason = forbiddenPathFamilies.get(segment.toLowerCase())
+    if (reason) return reason
+  }
+  return undefined
+}
+
+function importClauseLoadsRuntime(importClause: ts.ImportClause | undefined): boolean {
+  if (!importClause) return true
+  if (importClause.isTypeOnly) return false
+  if (importClause.name) return true
+  const bindings = importClause.namedBindings
+  if (!bindings || ts.isNamespaceImport(bindings)) return true
+  return bindings.elements.length === 0
+    || bindings.elements.some((element) => !element.isTypeOnly)
+}
+
+function exportDeclarationLoadsRuntime(statement: ts.ExportDeclaration): boolean {
+  if (statement.isTypeOnly) return false
+  const clause = statement.exportClause
+  if (!clause || ts.isNamespaceExport(clause)) return true
+  return clause.elements.length === 0
+    || clause.elements.some((element) => !element.isTypeOnly)
+}
+
+function scanRuntimeModuleLoads(source: string, fileName: string) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+  )
+  const specifiers: string[] = []
+  const nonliteralDynamicLoads: ('import' | 'require')[] = []
+  const addSpecifier = (specifier: string) => {
+    if (!specifiers.includes(specifier)) specifiers.push(specifier)
+  }
+
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isImportDeclaration(statement)
+        && ts.isStringLiteral(statement.moduleSpecifier)
+        && importClauseLoadsRuntime(statement.importClause)
+    ) addSpecifier(statement.moduleSpecifier.text)
+
+    if (
+      ts.isExportDeclaration(statement)
+        && statement.moduleSpecifier
+        && ts.isStringLiteral(statement.moduleSpecifier)
+        && exportDeclarationLoadsRuntime(statement)
+    ) addSpecifier(statement.moduleSpecifier.text)
+
+    if (
+      ts.isImportEqualsDeclaration(statement)
+        && !statement.isTypeOnly
+        && ts.isExternalModuleReference(statement.moduleReference)
+        && statement.moduleReference.expression
+        && ts.isStringLiteral(statement.moduleReference.expression)
+    ) addSpecifier(statement.moduleReference.expression.text)
+  }
+
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node)) {
+      const kind = node.expression.kind === ts.SyntaxKind.ImportKeyword
+        ? 'import'
+        : ts.isIdentifier(node.expression) && node.expression.text === 'require'
+          ? 'require'
+          : undefined
+      if (kind) {
+        const target = node.arguments[0]
+        if (!target || !ts.isStringLiteralLike(target)) {
+          nonliteralDynamicLoads.push(kind)
+        } else {
+          addSpecifier(target.text)
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+
+  return { specifiers, nonliteralDynamicLoads }
 }
 
 function resolveLocalImport(repoRoot: string, fromFile: string, specifier: string) {
-  if (specifier.startsWith('.')) {
+  if (
+    specifier.startsWith('.')
+      || isAbsolute(specifier)
+      || isFileUrlSpecifier(specifier)
+  ) {
+    let pathSpecifier = specifier
+    if (isFileUrlSpecifier(specifier)) {
+      try {
+        pathSpecifier = fileURLToPath(specifier)
+      } catch {
+        return undefined
+      }
+    }
     const resolvedModule = ts.resolveModuleName(
-      specifier,
+      pathSpecifier,
       fromFile,
       nodeNextOptions,
       ts.sys,
@@ -159,7 +316,7 @@ function resolveLocalImport(repoRoot: string, fromFile: string, specifier: strin
       return resolvedModule.resolvedFileName
     }
     if (!declarationExtensions.has(resolvedModule.extension)) return undefined
-    const runtimeTarget = resolve(dirname(fromFile), specifier)
+    const runtimeTarget = resolve(dirname(fromFile), pathSpecifier)
     const hasRuntimeExtension = [...runtimeFileExtensions].some((extension) => (
       runtimeTarget.endsWith(extension)
     ))
@@ -205,7 +362,7 @@ export function checkRuntimeImports(
     if (visited.has(currentRelative)) continue
     visited.add(currentRelative)
 
-    const moduleLoads = scanModuleLoads(readFileSync(current, 'utf8'), currentRelative)
+    const moduleLoads = scanRuntimeModuleLoads(readFileSync(current, 'utf8'), currentRelative)
     for (const kind of moduleLoads.nonliteralDynamicLoads) forbidden.push({
       from: currentRelative,
       specifier: `${kind}(<nonliteral>)`,
@@ -220,7 +377,10 @@ export function checkRuntimeImports(
         reason: moduleReason,
       })
 
-      const isLocal = specifier.startsWith('.') || isCoreSpecifier(specifier)
+      const isLocal = specifier.startsWith('.')
+        || isAbsolute(specifier)
+        || isFileUrlSpecifier(specifier)
+        || isCoreSpecifier(specifier)
       if (!isLocal) continue
       const resolved = resolveLocalImport(absoluteRoot, current, specifier)
       if (!resolved) {

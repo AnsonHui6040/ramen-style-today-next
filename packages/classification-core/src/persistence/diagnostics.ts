@@ -1,5 +1,4 @@
 import { deepFreeze } from '../contracts/deep-freeze.js'
-import { stableIdSchema } from '../contracts/ids.js'
 import type { CompiledQuestionModel } from '../contracts/question-model.js'
 import type {
   BoundedReceivedSummary,
@@ -9,6 +8,8 @@ import type {
   PersistencePipelineStage,
 } from './contracts.js'
 import { persistenceLimits } from './limits.js'
+
+const stableIdPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
 
 export const persistenceDiagnosticCodes = Object.freeze([
   'PERSISTENCE_SOURCE_INVALID',
@@ -91,7 +92,7 @@ export function summarizeReceived(
       kind: 'string',
       codePointCount,
       ...(includeStableId && codePointCount <= persistenceLimits.maxIdCodePoints
-        && stableIdSchema.safeParse(stringValue).success
+        && stableIdPattern.test(stringValue)
         ? { stableId: stringValue }
         : {}),
     })
