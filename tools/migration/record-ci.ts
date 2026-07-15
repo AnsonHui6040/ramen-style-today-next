@@ -67,6 +67,42 @@ export function recordSuccessfulCi(
       } : entry),
     })
   }
+  if (batch === '2B-boundary-maintenance') {
+    const target = ledger.entries.find((entry) => entry.batch === '2B')
+    if (!target?.boundaryMaintenance) {
+      throw new Error('Unknown ledger target 2B-boundary-maintenance')
+    }
+    if (target.boundaryMaintenance.status !== 'in-progress') {
+      throw new Error('Batch 2B boundary maintenance is not in progress')
+    }
+    return migrationLedgerSchema.parse({
+      ...ledger,
+      entries: ledger.entries.map((entry) => entry.batch === '2B' ? {
+        ...entry,
+        boundaryMaintenance: {
+          ...entry.boundaryMaintenance,
+          status: 'complete',
+          maintenanceSha: verifiedRun.sha,
+          verification: [
+            {
+              gate: 'batch2b-boundary-maintenance-local-verify',
+              command: 'npm run verify',
+              outcome: 'passed',
+              evidence: 'all approved Batch 2B boundary-maintenance gates passed',
+            },
+            {
+              gate: 'batch2b-boundary-maintenance-remote-ci',
+              command: 'GitHub Actions CI / verify',
+              outcome: 'passed',
+              evidence: 'the pushed boundary-maintenance candidate completed Node 24 CI',
+              commitSha: verifiedRun.sha,
+              runUrl: verifiedRun.runUrl,
+            },
+          ],
+        },
+      } : entry),
+    })
+  }
   if (batch === '2B') {
     const target = ledger.entries.find((entry) => entry.batch === '2B')
     if (!target) throw new Error('Unknown ledger batch 2B')

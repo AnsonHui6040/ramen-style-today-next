@@ -121,8 +121,8 @@ export async function verifySuccessfulCiProof(
       headers,
       redirect: 'error',
     })
-  } catch (error) {
-    throw new Error('Unable to verify GitHub Actions run', { cause: error })
+  } catch {
+    throw new Error('Unable to verify GitHub Actions run')
   }
   if (response.redirected) throw new Error('Rejected redirected GitHub API response')
   if (response.url !== apiUrl) throw new Error('Rejected unexpected GitHub API response URL')
@@ -134,8 +134,8 @@ export async function verifySuccessfulCiProof(
   let payload: unknown
   try {
     payload = await response.json()
-  } catch (error) {
-    throw new Error('Received malformed GitHub Actions run response', { cause: error })
+  } catch {
+    throw new Error('Received malformed GitHub Actions run response')
   }
   const runResult = githubActionsRunSchema.safeParse(payload)
   if (!runResult.success) throw new Error('Received malformed GitHub Actions run response')
@@ -148,8 +148,8 @@ export async function verifySuccessfulCiProof(
       headers,
       redirect: 'error',
     })
-  } catch (error) {
-    throw new Error('Unable to verify canonical GitHub Actions workflow', { cause: error })
+  } catch {
+    throw new Error('Unable to verify canonical GitHub Actions workflow')
   }
   if (workflowResponse.redirected) {
     throw new Error('Rejected redirected GitHub workflow API response')
@@ -161,8 +161,8 @@ export async function verifySuccessfulCiProof(
   let workflowPayload: unknown
   try {
     workflowPayload = await workflowResponse.json()
-  } catch (error) {
-    throw new Error('Received malformed GitHub workflow response', { cause: error })
+  } catch {
+    throw new Error('Received malformed GitHub workflow response')
   }
   const workflowResult = githubWorkflowSchema.safeParse(workflowPayload)
   if (!workflowResult.success) throw new Error('Received malformed GitHub workflow response')
@@ -207,8 +207,8 @@ function proofFromRecordedEvidence(
   let runUrl: URL
   try {
     runUrl = new URL(evidence.runUrl)
-  } catch (error) {
-    throw new Error('Recorded remote CI run URL is malformed', { cause: error })
+  } catch {
+    throw new Error('Recorded remote CI run URL is malformed')
   }
   const match = /^\/AnsonHui6040\/ramen-style-today-next\/actions\/runs\/([1-9][0-9]*)$/.exec(
     runUrl.pathname,
@@ -239,9 +239,25 @@ export async function verifyAcceptance(
   githubToken?: string,
 ): Promise<void> {
   const ledger = migrationLedgerSchema.parse(input)
-  const proofs = ledger.entries.flatMap((entry) => entry.verification
-    .filter(({ gate }) => gate.endsWith('-remote-ci'))
-    .map(proofFromRecordedEvidence))
+  const proofs: SuccessfulCiProof[] = []
+  const proofIdentities = new Set<string>()
+  for (const entry of ledger.entries) {
+    const registeredEvidence = [
+      entry.verification,
+      entry.acceptanceBoundary?.verification ?? [],
+      entry.boundaryMaintenance?.verification ?? [],
+    ]
+    for (const evidence of registeredEvidence.flat()) {
+      if (!evidence.gate.endsWith('-remote-ci')) continue
+      const proof = proofFromRecordedEvidence(evidence)
+      const identity = `${proof.sha}\u0000${proof.runUrl}`
+      if (proofIdentities.has(identity)) {
+        throw new Error('Recorded remote CI evidence is duplicated')
+      }
+      proofIdentities.add(identity)
+      proofs.push(proof)
+    }
+  }
   if (proofs.length === 0) return
   if (!githubToken || githubToken.trim() !== githubToken
     || Array.from(githubToken).some((character) => character.codePointAt(0)! <= 32)) {

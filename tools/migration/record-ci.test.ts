@@ -13,10 +13,14 @@ import { dirname, join } from 'node:path'
 import { expect, test } from 'vitest'
 
 import {
+  acceptedBatch2BImplementationSha,
+  acceptedBatch2BMetadataRunUrl,
+  acceptedBatch2BMetadataSha,
   batch2AIncidentPath,
   batch2AMaintenancePaths,
   batch2ASemanticPaths,
   batch2BAcceptanceMetadataPaths,
+  batch2BBoundaryMaintenancePaths,
   batch2BImplementationPaths,
   batch2BVerificationPaths,
   migrationLedgerSchema,
@@ -27,8 +31,64 @@ import { recordSuccessfulCiFile } from './record-ci.js'
 const candidateSha = 'a'.repeat(40)
 const runApiUrl = 'https://api.github.com/repos/AnsonHui6040/ramen-style-today-next/actions/runs/123'
 const workflowApiUrl = 'https://api.github.com/repos/AnsonHui6040/ramen-style-today-next/actions/workflows/ci.yml'
+const runUrl = 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123'
 const historicalBatch2AImplementationSha =
   'ecf9f5b4791862471d0898da7283ba4a40d3fbf9'
+
+function acceptedBatch2BBoundary() {
+  return {
+    implementationSha: acceptedBatch2BImplementationSha,
+    metadataSha: acceptedBatch2BMetadataSha,
+    paths: [...batch2BAcceptanceMetadataPaths],
+    verification: [{
+      gate: 'batch2b-acceptance-boundary-remote-ci',
+      command: 'GitHub Actions CI / verify',
+      outcome: 'passed',
+      evidence: 'the exact accepted metadata commit passed Node 24 CI',
+      commitSha: acceptedBatch2BMetadataSha,
+      runUrl: acceptedBatch2BMetadataRunUrl,
+    }],
+  }
+}
+
+function acceptedBatch2BEntry(boundaryMaintenance: Record<string, unknown> = {
+  status: 'in-progress',
+  paths: [...batch2BBoundaryMaintenancePaths],
+  verification: [],
+}) {
+  return {
+    batch: '2B',
+    status: 'complete',
+    implementationSha: acceptedBatch2BImplementationSha,
+    implementationPaths: [...batch2BImplementationPaths],
+    verificationPaths: [...batch2BVerificationPaths],
+    acceptanceMetadataPaths: [...batch2BAcceptanceMetadataPaths],
+    acceptanceBoundary: acceptedBatch2BBoundary(),
+    boundaryMaintenance,
+    fixtureManifestHash: 'f'.repeat(64),
+    legacySources: ['src/App.tsx'],
+    ownedScopes: [],
+    newOwners: ['packages/classification-core/src/persistence/contracts.ts'],
+    transformation: 'Authenticated Batch 2B boundary-maintenance fixture.',
+    behavior: 'no-production-runtime-change',
+    verification: [
+      {
+        gate: 'batch2b-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'all Batch 2B offline verification gates passed',
+      },
+      {
+        gate: 'batch2b-remote-ci',
+        command: 'GitHub Actions CI / verify',
+        outcome: 'passed',
+        evidence: 'the exact Batch 2B implementation candidate passed CI',
+        commitSha: acceptedBatch2BImplementationSha,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411281929',
+      },
+    ],
+  }
+}
 
 function response(url: string, payload: unknown) {
   return {
@@ -347,38 +407,24 @@ test('Batch 2A maintenance recording preserves semantic identity and records exa
   }
 })
 
-test('Batch 2B promotion records exact implementation evidence and preserves fixture binding', async () => {
+test('Batch 2B boundary maintenance records exact candidate evidence without changing accepted facts', async () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-record-2b-'))
   try {
     const sourceFile = join(repoRoot, 'docs/migration/ledger.json')
     mkdirSync(dirname(sourceFile), { recursive: true })
-    const fixtureManifestHash = 'f'.repeat(64)
     const input = migrationLedgerSchema.parse({
       schemaVersion: 1,
       baseline: {
         repository: 'AnsonHui6040/ramen-style-today',
         commit: 'b'.repeat(40),
       },
-      entries: [{
-        batch: '2B',
-        status: 'in-progress',
-        implementationPaths: [...batch2BImplementationPaths],
-        verificationPaths: [...batch2BVerificationPaths],
-        acceptanceMetadataPaths: [...batch2BAcceptanceMetadataPaths],
-        fixtureManifestHash,
-        legacySources: ['src/App.tsx'],
-        ownedScopes: [],
-        newOwners: ['packages/classification-core/src/persistence/contracts.ts'],
-        transformation: 'Authenticated Batch 2B recording fixture.',
-        behavior: 'no-production-runtime-change',
-        verification: [],
-      }],
+      entries: [acceptedBatch2BEntry()],
     })
     writeFileSync(sourceFile, `${JSON.stringify(input, null, 2)}\n`)
     const requestedUrls: string[] = []
 
     await recordSuccessfulCiFile({
-      batch: '2B',
+      batch: '2B-boundary-maintenance',
       expectedCandidateSha: candidateSha,
       fetchImplementation: authenticatedFetch(requestedUrls),
       githubToken: 'github-token',
@@ -397,14 +443,80 @@ test('Batch 2B promotion records exact implementation evidence and preserves fix
     ) as unknown)
     expect(updated.entries[0]).toMatchObject({
       status: 'complete',
-      implementationSha: candidateSha,
-      fixtureManifestHash,
+      implementationSha: acceptedBatch2BImplementationSha,
+      fixtureManifestHash: 'f'.repeat(64),
+      acceptanceBoundary: acceptedBatch2BBoundary(),
+      boundaryMaintenance: {
+        status: 'complete',
+        maintenanceSha: candidateSha,
+      },
     })
-    expect(updated.entries[0]!.verification.map(({ gate }) => gate)).toEqual([
-      'batch2b-local-verify',
-      'batch2b-remote-ci',
+    expect(updated.entries[0]!.boundaryMaintenance?.verification.map(({ gate }) => gate)).toEqual([
+      'batch2b-boundary-maintenance-local-verify',
+      'batch2b-boundary-maintenance-remote-ci',
     ])
+    expect(updated.entries[0]!.verification[1]).toMatchObject({
+      commitSha: acceptedBatch2BImplementationSha,
+      runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411281929',
+    })
     expect(requestedUrls).toEqual([runApiUrl, workflowApiUrl])
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
+test('Batch 2B boundary maintenance rejects recording unless the nested target is in progress', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-record-2b-complete-'))
+  try {
+    const sourceFile = join(repoRoot, 'docs/migration/ledger.json')
+    mkdirSync(dirname(sourceFile), { recursive: true })
+    const input = migrationLedgerSchema.parse({
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: 'b'.repeat(40),
+      },
+      entries: [acceptedBatch2BEntry({
+        status: 'complete',
+        maintenanceSha: candidateSha,
+        paths: [...batch2BBoundaryMaintenancePaths],
+        verification: [
+          {
+            gate: 'batch2b-boundary-maintenance-local-verify',
+            command: 'npm run verify',
+            outcome: 'passed',
+            evidence: 'local maintenance verification passed',
+          },
+          {
+            gate: 'batch2b-boundary-maintenance-remote-ci',
+            command: 'GitHub Actions CI / verify',
+            outcome: 'passed',
+            evidence: 'remote maintenance verification passed',
+            commitSha: candidateSha,
+            runUrl,
+          },
+        ],
+      })],
+    })
+    const before = `${JSON.stringify(input, null, 2)}\n`
+    writeFileSync(sourceFile, before)
+
+    await expect(recordSuccessfulCiFile({
+      batch: '2B-boundary-maintenance',
+      expectedCandidateSha: candidateSha,
+      fetchImplementation: authenticatedFetch([]),
+      githubToken: 'github-token',
+      proofInput: {
+        schemaVersion: 1,
+        sha: candidateSha,
+        runId: 123,
+        runUrl,
+      },
+      repoRoot,
+      sourceFile,
+    })).rejects.toThrow('Batch 2B boundary maintenance is not in progress')
+
+    expect(readFileSync(sourceFile, 'utf8')).toBe(before)
   } finally {
     rmSync(repoRoot, { recursive: true, force: true })
   }
