@@ -7,8 +7,9 @@ Data version: `196cb23d5c071452ad023c6702b2081578e70afdadfcc151fc7951bd34b17c1d`
 
 ## Persistence
 
-Persistence assurance: `structurally-validated`<br>
+Persistence assurance: `contract-verified`<br>
 Persistence schema version: `1`<br>
+Persistence implementation SHA: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`<br>
 Fixture manifest: `tools/parity/fixtures/persistence/legacy-unversioned/manifest.json`<br>
 Fixture manifest hash: `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`<br>
 Verification scope: `pure persistence restore and payload contracts`<br>

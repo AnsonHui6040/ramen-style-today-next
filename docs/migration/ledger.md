@@ -246,10 +246,11 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `ecf9f5b4791862471d0898da7283ba4a40d3fbf9`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29311063386
 
-## Batch 2B — in-progress
+## Batch 2B — complete
 
 - Behavior: `no-production-runtime-change`
 - Transformation: Implemented a pure bounded persistence core with explicit schema and question-model migration, deterministic submitted-state repair, stable resume resolution, frozen legacy observations, current contract verification, and pre-acceptance provenance and ownership wiring; storage integration and production cutover remain out of scope.
+- Implementation SHA: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`
 
 ### Legacy sources
 
@@ -341,4 +342,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Verification
 
-- Pending.
+- `batch2b-local-verify`: `npm run verify` — passed; all Batch 2B offline implementation and verification gates passed
+- `batch2b-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 2B implementation candidate passed Node 24 CI
+  - Commit: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411281929

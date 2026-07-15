@@ -310,7 +310,8 @@
     },
     {
       "batch": "2B",
-      "status": "in-progress",
+      "status": "complete",
+      "implementationSha": "30b71e3305b0e48a7c77e4869e2411c17941ebb8",
       "implementationPaths": [
         "packages/classification-core/src/persistence/**",
         "packages/classification-core/src/contracts/diagnostic-codes.ts",
@@ -396,7 +397,22 @@
       ],
       "transformation": "Implemented a pure bounded persistence core with explicit schema and question-model migration, deterministic submitted-state repair, stable resume resolution, frozen legacy observations, current contract verification, and pre-acceptance provenance and ownership wiring; storage integration and production cutover remain out of scope.",
       "behavior": "no-production-runtime-change",
-      "verification": []
+      "verification": [
+        {
+          "gate": "batch2b-local-verify",
+          "command": "npm run verify",
+          "outcome": "passed",
+          "evidence": "all Batch 2B offline implementation and verification gates passed"
+        },
+        {
+          "gate": "batch2b-remote-ci",
+          "command": "GitHub Actions CI / verify",
+          "outcome": "passed",
+          "evidence": "the exact Batch 2B implementation candidate passed Node 24 CI",
+          "commitSha": "30b71e3305b0e48a7c77e4869e2411c17941ebb8",
+          "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411281929"
+        }
+      ]
     }
   ]
 }
