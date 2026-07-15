@@ -51,6 +51,45 @@ export const batch2BAcceptanceMetadataPaths = [
   'docs/migration/ledger.md',
 ] as const
 
+export const acceptedBatch2BImplementationSha =
+  '30b71e3305b0e48a7c77e4869e2411c17941ebb8' as const
+
+export const acceptedBatch2BMetadataSha =
+  '6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4' as const
+
+export const acceptedBatch2BMetadataRunUrl =
+  'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411764507' as const
+
+export const batch2BProtectedPersistencePaths = [
+  'packages/classification-core/src/persistence/**',
+  'tools/parity/persistence/**',
+  'tools/parity/fixtures/persistence/**',
+] as const
+
+export const batch2BBoundaryMaintenancePaths = [
+  'tools/migration/ledger-schema.ts',
+  'tools/migration/check-ledger.ts',
+  'tools/migration/ledger-check.ts',
+  'tools/migration/ledger-check.test.ts',
+  'tools/migration/render-ledger.ts',
+  'tools/migration/render-ledger.test.ts',
+  'tools/migration/record-ci.ts',
+  'tools/migration/record-ci.test.ts',
+  'tools/acceptance/verify-acceptance.ts',
+  'tools/acceptance/verify-acceptance.test.ts',
+] as const
+
+export const pendingBatch3APlanningBaseline = [
+  {
+    path: 'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
+    sha256: 'a09a1abdaf706ddc3af7d0974aba2cd30024ae3cea2e3f2b33a02ecccbfcdc0e',
+  },
+  {
+    path: 'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
+    sha256: '0c2661d617fd5d2831f3812e421a87ebd13453a6e0028b766ed562a17f9dd499',
+  },
+] as const
+
 export const persistenceFixtureManifestPath =
   'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json' as const
 
@@ -101,6 +140,85 @@ const verificationSchema = z.strictObject({
     })
   }
 })
+
+function exactPathsSchema(
+  expected: readonly string[],
+  label: string,
+) {
+  return z.array(repoPathSchema).superRefine((paths, context) => {
+    if (JSON.stringify(paths) !== JSON.stringify(expected)) context.addIssue({
+      code: 'custom',
+      message: `${label} requires exact paths: ${expected.join(', ')}`,
+    })
+  })
+}
+
+const batch2BAcceptanceBoundarySchema = z.strictObject({
+  implementationSha: z.literal(acceptedBatch2BImplementationSha),
+  metadataSha: z.literal(acceptedBatch2BMetadataSha),
+  paths: exactPathsSchema(
+    batch2BAcceptanceMetadataPaths,
+    'Batch 2B acceptance boundary',
+  ),
+  verification: z.array(verificationSchema),
+}).superRefine((boundary, context) => {
+  const evidence = boundary.verification[0]
+  if (boundary.verification.length !== 1
+    || evidence?.gate !== 'batch2b-acceptance-boundary-remote-ci'
+    || evidence.commitSha !== acceptedBatch2BMetadataSha
+    || evidence.runUrl !== acceptedBatch2BMetadataRunUrl) {
+    context.addIssue({
+      code: 'custom',
+      path: ['verification'],
+      message: 'Batch 2B acceptance boundary requires its exact accepted metadata remote CI evidence',
+    })
+  }
+})
+
+const batch2BBoundaryMaintenancePathsSchema = exactPathsSchema(
+  batch2BBoundaryMaintenancePaths,
+  'Batch 2B boundary maintenance',
+)
+
+const inProgressBatch2BBoundaryMaintenanceSchema = z.strictObject({
+  status: z.literal('in-progress'),
+  paths: batch2BBoundaryMaintenancePathsSchema,
+  verification: z.array(verificationSchema).length(0),
+})
+
+const completeBatch2BBoundaryMaintenanceSchema = z.strictObject({
+  status: z.literal('complete'),
+  maintenanceSha: fullShaSchema,
+  paths: batch2BBoundaryMaintenancePathsSchema,
+  verification: z.array(verificationSchema),
+}).superRefine((maintenance, context) => {
+  const requiredGates = new Set([
+    'batch2b-boundary-maintenance-local-verify',
+    'batch2b-boundary-maintenance-remote-ci',
+  ])
+  const gates = new Set(maintenance.verification.map(({ gate }) => gate))
+  const exact = gates.size === requiredGates.size
+    && maintenance.verification.length === requiredGates.size
+    && [...requiredGates].every((gate) => gates.has(gate))
+  if (!exact) context.addIssue({
+    code: 'custom',
+    path: ['verification'],
+    message: 'complete Batch 2B boundary maintenance requires exact local and remote verification gates',
+  })
+  const remoteGate = maintenance.verification.find(
+    ({ gate }) => gate === 'batch2b-boundary-maintenance-remote-ci',
+  )
+  if (remoteGate?.commitSha !== maintenance.maintenanceSha) context.addIssue({
+    code: 'custom',
+    path: ['verification'],
+    message: 'complete Batch 2B boundary maintenance remote CI commit must match maintenanceSha',
+  })
+})
+
+const batch2BBoundaryMaintenanceSchema = z.union([
+  inProgressBatch2BBoundaryMaintenanceSchema,
+  completeBatch2BBoundaryMaintenanceSchema,
+])
 
 const maintenancePathsSchema = z.array(repoPathSchema).superRefine((paths, context) => {
   if (JSON.stringify(paths) !== JSON.stringify(batch2AMaintenancePaths)) {
@@ -200,6 +318,8 @@ const entrySchema = z.strictObject({
   implementationPaths: z.array(repoPathSchema).optional(),
   verificationPaths: z.array(repoPathSchema).optional(),
   acceptanceMetadataPaths: z.array(repoPathSchema).optional(),
+  acceptanceBoundary: batch2BAcceptanceBoundarySchema.optional(),
+  boundaryMaintenance: batch2BBoundaryMaintenanceSchema.optional(),
   fixtureManifestHash: sha256Schema.optional(),
   legacySources: z.array(z.string().min(1)),
   ownedScopes: z.array(repoPathSchema).default([]),
@@ -352,12 +472,28 @@ const entrySchema = z.strictObject({
         path: ['verification'],
         message: 'in-progress Batch 2B must not record acceptance evidence',
       })
+      if (entry.acceptanceBoundary !== undefined
+        || entry.boundaryMaintenance !== undefined) context.addIssue({
+        code: 'custom',
+        path: ['acceptanceBoundary'],
+        message: 'Batch 2B acceptance boundary is recorded only after Batch 2B completion',
+      })
     }
     if (entry.status === 'complete') {
-      if (!entry.implementationSha) context.addIssue({
+      if (entry.implementationSha !== acceptedBatch2BImplementationSha) context.addIssue({
         code: 'custom',
         path: ['implementationSha'],
-        message: 'complete Batch 2B requires implementationSha',
+        message: `complete Batch 2B preserves implementationSha ${acceptedBatch2BImplementationSha}`,
+      })
+      if (!entry.acceptanceBoundary) context.addIssue({
+        code: 'custom',
+        path: ['acceptanceBoundary'],
+        message: 'complete Batch 2B requires the accepted metadata boundary',
+      })
+      if (!entry.boundaryMaintenance) context.addIssue({
+        code: 'custom',
+        path: ['boundaryMaintenance'],
+        message: 'complete Batch 2B requires boundary maintenance state',
       })
       const remoteGate = entry.verification.find(
         ({ gate }) => gate === 'batch2b-remote-ci',
@@ -375,6 +511,8 @@ const entrySchema = z.strictObject({
       'implementationPaths',
       'verificationPaths',
       'acceptanceMetadataPaths',
+      'acceptanceBoundary',
+      'boundaryMaintenance',
       'fixtureManifestHash',
     ] as const) {
       if (entry[field] !== undefined) context.addIssue({

@@ -63,6 +63,8 @@ describe('migration ledger', () => {
       verification: [],
     })
     delete batch2B.implementationSha
+    delete batch2B.acceptanceBoundary
+    delete batch2B.boundaryMaintenance
 
     const rendered = renderLedger(migrationLedgerSchema.parse(input))
 
@@ -73,6 +75,27 @@ describe('migration ledger', () => {
     expect(rendered).toContain('### Acceptance metadata paths')
     expect(rendered).toContain(`- Persistence fixture manifest hash: \`${'f'.repeat(64)}\``)
     expect(rendered).not.toContain('Batch 2B — complete')
+  })
+
+  test('renders the immutable Batch 2B boundary and in-progress maintenance distinctly', () => {
+    const rendered = renderLedger(ledger)
+
+    expect(rendered).toContain('## Batch 2B — complete')
+    expect(rendered).toContain('### Accepted Batch 2B boundary')
+    expect(rendered).toContain(
+      '- Accepted metadata SHA: `6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4`',
+    )
+    expect(rendered).toContain(
+      '- Accepted implementation SHA: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`',
+    )
+    expect(rendered).toContain('`batch2b-acceptance-boundary-remote-ci`')
+    expect(rendered).toContain(
+      'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411764507',
+    )
+    expect(rendered).toContain('### Boundary maintenance')
+    expect(rendered).toContain('- Status: `in-progress`')
+    expect(rendered).toContain('#### Boundary maintenance verification')
+    expect(rendered).not.toContain('- Boundary maintenance SHA:')
   })
 
   test('rejects a duplicate batch independently', () => {

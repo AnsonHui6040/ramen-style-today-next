@@ -59,6 +59,52 @@ export function renderLedger(ledger: MigrationLedger) {
         ...entry.acceptanceMetadataPaths.map((path) => `- \`${path}\``),
         '',
       ] : []),
+      ...(entry.acceptanceBoundary ? [
+        '### Accepted Batch 2B boundary',
+        '',
+        `- Accepted implementation SHA: \`${entry.acceptanceBoundary.implementationSha}\``,
+        `- Accepted metadata SHA: \`${entry.acceptanceBoundary.metadataSha}\``,
+        '',
+        '#### Accepted metadata paths',
+        '',
+        ...entry.acceptanceBoundary.paths.map((path) => `- \`${path}\``),
+        '',
+        '#### Accepted boundary verification',
+        '',
+        ...[...entry.acceptanceBoundary.verification]
+          .sort((left, right) => compareCodePoints(left.gate, right.gate))
+          .flatMap((item) => [
+            `- \`${item.gate}\`: \`${item.command}\` — ${item.outcome}; ${item.evidence}`,
+            ...(item.commitSha ? [`  - Commit: \`${item.commitSha}\``] : []),
+            ...(item.runUrl ? [`  - Run: ${item.runUrl}`] : []),
+          ]),
+        '',
+      ] : []),
+      ...(entry.boundaryMaintenance ? [
+        '### Boundary maintenance',
+        '',
+        `- Status: \`${entry.boundaryMaintenance.status}\``,
+        ...(entry.boundaryMaintenance.status === 'complete'
+          ? [`- Boundary maintenance SHA: \`${entry.boundaryMaintenance.maintenanceSha}\``]
+          : []),
+        '',
+        '#### Boundary maintenance paths',
+        '',
+        ...entry.boundaryMaintenance.paths.map((path) => `- \`${path}\``),
+        '',
+        '#### Boundary maintenance verification',
+        '',
+        ...(entry.boundaryMaintenance.verification.length
+          ? [...entry.boundaryMaintenance.verification]
+              .sort((left, right) => compareCodePoints(left.gate, right.gate))
+              .flatMap((item) => [
+                `- \`${item.gate}\`: \`${item.command}\` — ${item.outcome}; ${item.evidence}`,
+                ...(item.commitSha ? [`  - Commit: \`${item.commitSha}\``] : []),
+                ...(item.runUrl ? [`  - Run: ${item.runUrl}`] : []),
+              ])
+          : ['- Pending.']),
+        '',
+      ] : []),
       ...(entry.maintenance ? [
         '### Controlled maintenance',
         '',

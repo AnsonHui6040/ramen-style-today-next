@@ -340,6 +340,45 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `docs/migration/ledger.json`
 - `docs/migration/ledger.md`
 
+### Accepted Batch 2B boundary
+
+- Accepted implementation SHA: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`
+- Accepted metadata SHA: `6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4`
+
+#### Accepted metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
+
+#### Accepted boundary verification
+
+- `batch2b-acceptance-boundary-remote-ci`: `GitHub Actions CI / verify` — passed; the exact accepted metadata commit passed Node 24 CI
+  - Commit: `6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411764507
+
+### Boundary maintenance
+
+- Status: `in-progress`
+
+#### Boundary maintenance paths
+
+- `tools/migration/ledger-schema.ts`
+- `tools/migration/check-ledger.ts`
+- `tools/migration/ledger-check.ts`
+- `tools/migration/ledger-check.test.ts`
+- `tools/migration/render-ledger.ts`
+- `tools/migration/render-ledger.test.ts`
+- `tools/migration/record-ci.ts`
+- `tools/migration/record-ci.test.ts`
+- `tools/acceptance/verify-acceptance.ts`
+- `tools/acceptance/verify-acceptance.test.ts`
+
+#### Boundary maintenance verification
+
+- Pending.
+
 ### Verification
 
 - `batch2b-local-verify`: `npm run verify` — passed; all Batch 2B offline implementation and verification gates passed

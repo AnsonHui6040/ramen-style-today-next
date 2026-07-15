@@ -17,6 +17,7 @@ import {
 } from './ledger-check.js'
 import {
   migrationLedgerSchema,
+  pendingBatch3APlanningBaseline,
   persistenceFixtureManifestPath,
 } from './ledger-schema.js'
 import { recordSuccessfulCiFile } from './record-ci.js'
@@ -47,6 +48,21 @@ function isCommitAncestor(evidenceSha: string, currentHeadSha: string) {
     { cwd: repoRoot, encoding: 'utf8' },
   )
   return ancestor.status === 0
+}
+
+function directParentsOf(commitSha: string) {
+  const exists = spawnSync(
+    'git',
+    ['cat-file', '-e', `${commitSha}^{commit}`],
+    { cwd: repoRoot, encoding: 'utf8' },
+  )
+  if (exists.status !== 0) return []
+  const output = execFileSync(
+    'git',
+    ['show', '--no-patch', '--format=%P', commitSha],
+    { cwd: repoRoot, encoding: 'utf8' },
+  ).trim()
+  return output ? output.split(' ') : []
 }
 
 function sha256File(file: string) {
@@ -298,6 +314,11 @@ async function run() {
   const input = JSON.parse(readFileSync(sourceFile, 'utf8')) as unknown
   const repoFiles = repositoryFiles()
   const existingFiles = new Set([...repoFiles].filter(isSafeRepositoryFile))
+  const repositoryFileHashes = new Map(
+    pendingBatch3APlanningBaseline
+      .filter(({ path }) => existingFiles.has(path))
+      .map(({ path }) => [path, sha256File(resolve(repoRoot, path))]),
+  )
   if (mode === '--write') {
     assertRegularFileOrMissing(outputFile, 'ledger Markdown output')
     repoFiles.add('docs/migration/ledger.md')
@@ -314,6 +335,7 @@ async function run() {
     repoFiles,
     existingFiles,
     repoDirectories,
+    repositoryFileHashes,
     currentMarkdown,
   })
   let result = baseResult
@@ -339,8 +361,10 @@ async function run() {
       existingFiles,
       repoDirectories,
       currentMarkdown,
+      repositoryFileHashes,
       currentHeadSha,
       isCommitAncestor,
+      directParentsOf,
       changedPathsBetween: (implementationSha, headSha) => collectGitChangedPaths(
         repoRoot,
         implementationSha,

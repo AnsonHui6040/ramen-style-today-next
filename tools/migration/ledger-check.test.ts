@@ -63,6 +63,97 @@ const approvedSharedMaintenanceFiles = [
   'tools/parity/shared/authoring.test.ts',
 ] as const
 const persistenceFixtureManifestHash = 'f'.repeat(64)
+const acceptedBatch2BImplementationSha =
+  '30b71e3305b0e48a7c77e4869e2411c17941ebb8'
+const acceptedBatch2BMetadataSha =
+  '6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4'
+const batch2BBoundaryMaintenancePaths = [
+  'tools/migration/ledger-schema.ts',
+  'tools/migration/check-ledger.ts',
+  'tools/migration/ledger-check.ts',
+  'tools/migration/ledger-check.test.ts',
+  'tools/migration/render-ledger.ts',
+  'tools/migration/render-ledger.test.ts',
+  'tools/migration/record-ci.ts',
+  'tools/migration/record-ci.test.ts',
+  'tools/acceptance/verify-acceptance.ts',
+  'tools/acceptance/verify-acceptance.test.ts',
+] as const
+const pendingBatch3APlanningFiles = [
+  {
+    path: 'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
+    sha256: 'a09a1abdaf706ddc3af7d0974aba2cd30024ae3cea2e3f2b33a02ecccbfcdc0e',
+  },
+  {
+    path: 'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
+    sha256: '0c2661d617fd5d2831f3812e421a87ebd13453a6e0028b766ed562a17f9dd499',
+  },
+] as const
+
+function acceptanceBoundary(overrides: Record<string, unknown> = {}) {
+  return {
+    implementationSha: acceptedBatch2BImplementationSha,
+    metadataSha: acceptedBatch2BMetadataSha,
+    paths: [...batch2BAcceptanceMetadataPaths],
+    verification: [{
+      gate: 'batch2b-acceptance-boundary-remote-ci',
+      command: 'GitHub Actions CI / verify',
+      outcome: 'passed',
+      evidence: 'the exact accepted metadata commit passed Node 24 CI',
+      commitSha: acceptedBatch2BMetadataSha,
+      runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411764507',
+    }],
+    ...overrides,
+  }
+}
+
+function boundaryMaintenance(overrides: Record<string, unknown> = {}) {
+  return {
+    status: 'in-progress',
+    paths: [...batch2BBoundaryMaintenancePaths],
+    verification: [],
+    ...overrides,
+  }
+}
+
+function batch2BRepositoryState(options: {
+  boundaryPaths?: readonly string[]
+  changedAfterBoundary?: readonly string[]
+  directParents?: readonly string[]
+  metadataIsAncestor?: boolean
+} = {}) {
+  const owner = 'packages/classification-core/src/persistence/contracts.ts'
+  return {
+    repoFiles: new Set([owner]),
+    existingFiles: new Set([owner]),
+    repoDirectories: parentDirectories(new Set([owner])),
+    currentMarkdown: undefined,
+    currentHeadSha: 'b'.repeat(40),
+    isCommitAncestor: async (ancestorSha: string) => (
+      ancestorSha !== acceptedBatch2BMetadataSha
+      || options.metadataIsAncestor !== false
+    ),
+    directParentsOf: async () => (
+      options.directParents ?? [acceptedBatch2BImplementationSha]
+    ),
+    changedPathsBetween: async (ancestorSha: string, currentHeadSha: string) => {
+      if (ancestorSha === acceptedBatch2BImplementationSha
+        && currentHeadSha === acceptedBatch2BMetadataSha) {
+        return options.boundaryPaths ?? [...batch2BAcceptanceMetadataPaths]
+      }
+      if (ancestorSha === acceptedBatch2BMetadataSha) {
+        return options.changedAfterBoundary ?? []
+      }
+      return []
+    },
+    questionSemanticHash: '',
+    classificationSemanticHash: '',
+    fixtureManifestHash: '',
+    classificationFixtureManifestHash: '',
+    persistenceFixtureManifestHash,
+    classificationPersistenceFixtureManifestHash: persistenceFixtureManifestHash,
+  }
+}
 
 function batch2BEntry(overrides: Record<string, unknown> = {}) {
   return {
@@ -96,7 +187,9 @@ function batch2BLedger(entry: Record<string, unknown> = batch2BEntry()) {
 function completeBatch2B(overrides: Record<string, unknown> = {}) {
   return batch2BEntry({
     status: 'complete',
-    implementationSha: candidateSha,
+    implementationSha: acceptedBatch2BImplementationSha,
+    acceptanceBoundary: acceptanceBoundary(),
+    boundaryMaintenance: boundaryMaintenance(),
     verification: [
       {
         gate: 'batch2b-local-verify',
@@ -109,7 +202,7 @@ function completeBatch2B(overrides: Record<string, unknown> = {}) {
         command: 'GitHub Actions CI / verify',
         outcome: 'passed',
         evidence: 'the exact implementation candidate passed CI',
-        commitSha: candidateSha,
+        commitSha: acceptedBatch2BImplementationSha,
         runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
       },
     ],
@@ -214,6 +307,7 @@ function maintenanceRepositoryState(
     currentMarkdown: undefined,
     currentHeadSha: 'b'.repeat(40),
     isCommitAncestor: async () => true,
+    directParentsOf: async () => [],
     changedPathsBetween: async () => overrides.changedPaths ?? [],
     questionSemanticHash: protectedQuestionBaseline.semanticHash,
     classificationSemanticHash: protectedQuestionBaseline.semanticHash,
@@ -823,6 +917,107 @@ describe('migration ledger repository checks', () => {
 
 })
 
+describe('pending Batch 3A planning baseline', () => {
+  function planningCheck(options: {
+    input?: unknown
+    additionalFiles?: readonly string[]
+    existingFiles?: ReadonlySet<string>
+    hashes?: ReadonlyMap<string, string>
+  } = {}) {
+    const planningPaths = pendingBatch3APlanningFiles.map(({ path }) => path)
+    const repoFiles = new Set([
+      ...declaredFiles,
+      ...planningPaths,
+      ...(options.additionalFiles ?? []),
+    ])
+    return checkLedger({
+      input: options.input ?? ledger,
+      repoFiles,
+      existingFiles: options.existingFiles ?? repoFiles,
+      repoDirectories: parentDirectories(repoFiles),
+      repositoryFileHashes: options.hashes ?? new Map(
+        pendingBatch3APlanningFiles.map(({ path, sha256 }) => [path, sha256]),
+      ),
+      currentMarkdown: renderLedger(ledger),
+    })
+  }
+
+  test('suppresses only ownership diagnostics for the exact two approved regular files', () => {
+    const result = planningCheck()
+
+    expect(result.errors).toEqual([])
+    expect(pendingBatch3APlanningFiles.every(({ path }) => (
+      ledger.entries.every(({ newOwners }) => !newOwners.includes(path))
+    ))).toBe(true)
+  })
+
+  test('rejects content drift and does not partially activate the exception', () => {
+    const hashes = new Map<string, string>(
+      pendingBatch3APlanningFiles.map(({ path, sha256 }) => [path, sha256]),
+    )
+    hashes.set(pendingBatch3APlanningFiles[0].path, '0'.repeat(64))
+
+    const result = planningCheck({ hashes })
+
+    for (const { path } of pendingBatch3APlanningFiles) {
+      expect(result.errors).toContain(
+        `Repository file has no migration-ledger owner: ${path}`,
+      )
+    }
+  })
+
+  test.each([
+    'docs/superpowers/plans/third-batch-3a-file.md',
+    'docs/superpowers/plans/*.md',
+    'docs/superpowers/plans',
+  ])('does not cover an extra, wildcard, or directory path: %s', (extraPath) => {
+    const result = planningCheck({ additionalFiles: [extraPath] })
+
+    expect(result.errors).toContain(
+      `Repository file has no migration-ledger owner: ${extraPath}`,
+    )
+  })
+
+  test('rejects a planning symlink or other non-regular file', () => {
+    const planningPaths = pendingBatch3APlanningFiles.map(({ path }) => path)
+    const repoFiles = new Set([...declaredFiles, ...planningPaths])
+    const existingFiles = new Set(repoFiles)
+    existingFiles.delete(planningPaths[0]!)
+
+    const result = planningCheck({ existingFiles })
+
+    expect(result.errors).toContain(
+      `Repository file has no migration-ledger owner: ${planningPaths[0]}`,
+    )
+  })
+
+  test('is invalid as soon as a Batch 3A ledger entry exists', () => {
+    const withBatch3A = structuredClone(ledger)
+    const owner = 'batch-3a-owner.md'
+    withBatch3A.entries.push({
+      batch: '3A',
+      status: 'in-progress',
+      legacySources: [],
+      ownedScopes: [],
+      newOwners: [owner],
+      transformation: 'Batch 3A ownership fixture.',
+      behavior: 'no-production-runtime-change',
+      verification: [],
+    })
+
+    const result = planningCheck({
+      input: withBatch3A,
+      additionalFiles: [owner],
+    })
+
+    for (const { path } of pendingBatch3APlanningFiles) {
+      expect(result.errors).toContain(
+        `Repository file has no migration-ledger owner: ${path}`,
+      )
+    }
+  })
+})
+
 describe('Batch 2B ownership and acceptance invariants', () => {
   test('accepts only the exact in-progress path groups without implementation evidence', () => {
     expect(migrationLedgerSchema.safeParse(batch2BLedger()).success).toBe(true)
@@ -864,43 +1059,132 @@ describe('Batch 2B ownership and acceptance invariants', () => {
       .toBe(false)
   })
 
-  test('allows only acceptance metadata after the Batch 2B implementation SHA', async () => {
-    const owner = 'packages/classification-core/src/persistence/contracts.ts'
+  test('requires the exact accepted boundary and exact in-progress maintenance shape', () => {
     const input = batch2BLedger(completeBatch2B())
-    const baseState = {
-      repoFiles: new Set([owner]),
-      existingFiles: new Set([owner]),
-      repoDirectories: parentDirectories(new Set([owner])),
-      currentMarkdown: undefined,
-      currentHeadSha: 'b'.repeat(40),
-      isCommitAncestor: async () => true,
-      questionSemanticHash: '',
-      classificationSemanticHash: '',
-      fixtureManifestHash: '',
-      classificationFixtureManifestHash: '',
-      persistenceFixtureManifestHash,
-      classificationPersistenceFixtureManifestHash: persistenceFixtureManifestHash,
-    }
 
-    const accepted = await checkLedgerOffline(input, {
-      ...baseState,
-      changedPathsBetween: async () => [...batch2BAcceptanceMetadataPaths],
+    const parsed = migrationLedgerSchema.parse(input)
+    const batch2B = parsed.entries[0]!
+    expect(batch2B).toMatchObject({
+      status: 'complete',
+      implementationSha: acceptedBatch2BImplementationSha,
+      fixtureManifestHash: persistenceFixtureManifestHash,
+      acceptanceBoundary: acceptanceBoundary(),
+      boundaryMaintenance: boundaryMaintenance(),
     })
+    expect(batch2B.implementationPaths).toEqual(batch2BImplementationPaths)
+    expect(batch2B.verificationPaths).toEqual(batch2BVerificationPaths)
+    expect(batch2B.verification).toHaveLength(2)
+
+    for (const invalidEntry of [
+      completeBatch2B({
+        acceptanceBoundary: acceptanceBoundary({ metadataSha: 'e'.repeat(40) }),
+      }),
+      completeBatch2B({
+        acceptanceBoundary: acceptanceBoundary({
+          paths: [...batch2BAcceptanceMetadataPaths].reverse(),
+        }),
+      }),
+      completeBatch2B({
+        acceptanceBoundary: acceptanceBoundary({ verification: [] }),
+      }),
+      completeBatch2B({
+        boundaryMaintenance: boundaryMaintenance({
+          paths: batch2BBoundaryMaintenancePaths.slice(1),
+        }),
+      }),
+      completeBatch2B({
+        boundaryMaintenance: boundaryMaintenance({ maintenanceSha: candidateSha }),
+      }),
+      completeBatch2B({
+        boundaryMaintenance: boundaryMaintenance({
+          verification: [completeBatch2B().verification[0]],
+        }),
+      }),
+    ]) {
+      expect(migrationLedgerSchema.safeParse(batch2BLedger(invalidEntry)).success)
+        .toBe(false)
+    }
+  })
+
+  test('proves the direct parent, exact boundary diff, and metadata ancestry', async () => {
+    const input = batch2BLedger(completeBatch2B())
+    const accepted = await checkLedgerOffline(input, batch2BRepositoryState())
     expect(accepted.errors).toEqual([])
 
-    for (const [changedPath, expected] of [
-      [batch2BImplementationPaths[0]!.replace('/**', '/restore.ts'),
-        'Batch 2B implementation path changed after implementation SHA'],
-      ['tools/migration/ledger-check.ts',
-        'Batch 2B verification path changed after implementation SHA'],
-      ['README.md', 'Batch 2B metadata completion changed a non-metadata path'],
-    ] as const) {
-      const result = await checkLedgerOffline(input, {
-        ...baseState,
-        changedPathsBetween: async () => [changedPath],
-      })
-      expect(result.errors.some((error) => error.includes(expected))).toBe(true)
+    const ancestorButNotParent = await checkLedgerOffline(
+      input,
+      batch2BRepositoryState({ directParents: ['c'.repeat(40)] }),
+    )
+    expect(ancestorButNotParent.errors).toContain(
+      `Batch 2B accepted metadata SHA ${acceptedBatch2BMetadataSha} must have exactly one parent ${acceptedBatch2BImplementationSha}`,
+    )
+
+    const mergeMetadata = await checkLedgerOffline(
+      input,
+      batch2BRepositoryState({
+        directParents: [acceptedBatch2BImplementationSha, 'c'.repeat(40)],
+      }),
+    )
+    expect(mergeMetadata.errors).toContain(
+      `Batch 2B accepted metadata SHA ${acceptedBatch2BMetadataSha} must have exactly one parent ${acceptedBatch2BImplementationSha}`,
+    )
+
+    const wrongDiff = await checkLedgerOffline(
+      input,
+      batch2BRepositoryState({ boundaryPaths: batch2BAcceptanceMetadataPaths.slice(1) }),
+    )
+    expect(wrongDiff.errors).toContain(
+      'Batch 2B accepted boundary requires the exact acceptance metadata path set',
+    )
+
+    const detached = await checkLedgerOffline(
+      input,
+      batch2BRepositoryState({ metadataIsAncestor: false }),
+    )
+    expect(detached.errors).toContain(
+      `Batch 2B accepted metadata SHA ${acceptedBatch2BMetadataSha} is not an ancestor of current HEAD ${'b'.repeat(40)}`,
+    )
+  })
+
+  test('allows shared paths after acceptance but keeps persistence-exclusive paths frozen', async () => {
+    const input = batch2BLedger(completeBatch2B())
+    for (const sharedPath of [
+      'packages/classification-core/src/contracts/model.ts',
+      'packages/classification-core/src/index.ts',
+      'tools/migration/ledger-check.ts',
+      'tools/acceptance/verify-acceptance.ts',
+    ]) {
+      const result = await checkLedgerOffline(
+        input,
+        batch2BRepositoryState({ changedAfterBoundary: [sharedPath] }),
+      )
+      expect(result.errors).toEqual([])
     }
+
+    const protectedPaths = [
+      'packages/classification-core/src/persistence/restore.ts',
+      'tools/parity/persistence/contracts.ts',
+      'tools/parity/fixtures/persistence/legacy-unversioned/cases.json',
+    ]
+    for (const protectedPath of protectedPaths) {
+      const result = await checkLedgerOffline(
+        input,
+        batch2BRepositoryState({ changedAfterBoundary: [protectedPath] }),
+      )
+      expect(result.errors).toContain(
+        `Batch 2B protected persistence path changed after accepted metadata SHA: ${protectedPath}`,
+      )
+    }
+
+    const forward = await checkLedgerOffline(
+      input,
+      batch2BRepositoryState({ changedAfterBoundary: protectedPaths }),
+    )
+    const reverse = await checkLedgerOffline(
+      input,
+      batch2BRepositoryState({ changedAfterBoundary: [...protectedPaths].reverse() }),
+    )
+    expect(reverse.errors).toEqual(forward.errors)
   })
 
   test('rejects persistence fixture identity drift in the ledger or classification manifest', async () => {
@@ -913,7 +1197,13 @@ describe('Batch 2B ownership and acceptance invariants', () => {
       currentMarkdown: undefined,
       currentHeadSha: 'b'.repeat(40),
       isCommitAncestor: async () => true,
-      changedPathsBetween: async () => [],
+      directParentsOf: async () => [acceptedBatch2BImplementationSha],
+      changedPathsBetween: async (ancestorSha: string, currentHeadSha: string) => (
+        ancestorSha === acceptedBatch2BImplementationSha
+          && currentHeadSha === acceptedBatch2BMetadataSha
+          ? [...batch2BAcceptanceMetadataPaths]
+          : []
+      ),
       questionSemanticHash: '',
       classificationSemanticHash: '',
       fixtureManifestHash: '',
@@ -1094,6 +1384,7 @@ describe('Batch 2A offline acceptance invariants', () => {
       currentMarkdown: undefined,
       currentHeadSha: 'c'.repeat(40),
       isCommitAncestor: async () => true,
+      directParentsOf: async () => [],
       changedPathsBetween: async () => [],
       questionSemanticHash: 'd'.repeat(64),
       classificationSemanticHash: 'd'.repeat(64),
@@ -1157,6 +1448,7 @@ describe('Batch 2A offline acceptance invariants', () => {
       currentMarkdown: undefined,
       currentHeadSha: 'b'.repeat(40),
       isCommitAncestor: async () => true,
+      directParentsOf: async () => [],
       changedPathsBetween: async () => [],
       questionSemanticHash: 'd'.repeat(64),
       classificationSemanticHash: 'd'.repeat(64),
@@ -1182,6 +1474,7 @@ describe('Batch 2A offline acceptance invariants', () => {
       currentMarkdown: undefined,
       currentHeadSha: 'b'.repeat(40),
       isCommitAncestor: async () => false,
+      directParentsOf: async () => [],
       changedPathsBetween: async () => [],
       questionSemanticHash: 'd'.repeat(64),
       classificationSemanticHash: 'f'.repeat(64),

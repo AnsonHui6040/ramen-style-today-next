@@ -338,6 +338,42 @@
         "docs/migration/ledger.json",
         "docs/migration/ledger.md"
       ],
+      "acceptanceBoundary": {
+        "implementationSha": "30b71e3305b0e48a7c77e4869e2411c17941ebb8",
+        "metadataSha": "6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4",
+        "paths": [
+          "docs/classification/index.md",
+          "docs/classification/manifest.json",
+          "docs/migration/ledger.json",
+          "docs/migration/ledger.md"
+        ],
+        "verification": [
+          {
+            "gate": "batch2b-acceptance-boundary-remote-ci",
+            "command": "GitHub Actions CI / verify",
+            "outcome": "passed",
+            "evidence": "the exact accepted metadata commit passed Node 24 CI",
+            "commitSha": "6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4",
+            "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411764507"
+          }
+        ]
+      },
+      "boundaryMaintenance": {
+        "status": "in-progress",
+        "paths": [
+          "tools/migration/ledger-schema.ts",
+          "tools/migration/check-ledger.ts",
+          "tools/migration/ledger-check.ts",
+          "tools/migration/ledger-check.test.ts",
+          "tools/migration/render-ledger.ts",
+          "tools/migration/render-ledger.test.ts",
+          "tools/migration/record-ci.ts",
+          "tools/migration/record-ci.test.ts",
+          "tools/acceptance/verify-acceptance.ts",
+          "tools/acceptance/verify-acceptance.test.ts"
+        ],
+        "verification": []
+      },
       "fixtureManifestHash": "6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226",
       "legacySources": [
         "src/App.tsx",
