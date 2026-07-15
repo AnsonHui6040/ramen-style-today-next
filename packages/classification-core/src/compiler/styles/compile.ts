@@ -6,7 +6,7 @@ import type {
   CompiledExclusionTag,
   CompiledStyleRule,
   CompiledSubtype,
-  CompileStyleRulesResult,
+  CompileStylesResult,
   CoreId,
   ExclusionTagId,
   IntensityId,
@@ -25,6 +25,7 @@ import type {
 import { compareCodePoints } from '../../contracts/source-path.js'
 import { DiagnosticCollector } from '../collector.js'
 import { stableJson } from '../stable-json.js'
+import { proveStyleModel } from './proof.js'
 import { parseStyleDefinitionBundle } from './source-schema.js'
 
 const styleModelVersion = 'batch3a.1.0'
@@ -113,7 +114,7 @@ export function compileStyles(
   input: unknown,
   questionModel: CompiledQuestionModel,
   sourceFile: string,
-): CompileStyleRulesResult {
+): CompileStylesResult {
   const parsed = parseStyleDefinitionBundle(input, sourceFile)
   if (!parsed.definition) return { ok: false, diagnostics: parsed.diagnostics }
 
@@ -1141,18 +1142,14 @@ export function compileStyles(
 
   const diagnostics = collector.toArray()
   if (collector.hasErrors()) return { ok: false, diagnostics }
-  return {
-    ok: true,
-    rulesStage: {
-      kind: 'style-rules-stage',
-      modelVersion: definition.modelVersion,
-      questionModelVersion: questionModel.metadata.modelVersion,
-      questionSemanticHash: questionModel.metadata.semanticHash,
-      exclusionTags: compiledExclusionTags,
-      styles: stageStyles,
-    },
-    diagnostics,
-  }
+  return proveStyleModel({
+    kind: 'style-rules-stage',
+    modelVersion: definition.modelVersion,
+    questionModelVersion: questionModel.metadata.modelVersion,
+    questionSemanticHash: questionModel.metadata.semanticHash,
+    exclusionTags: compiledExclusionTags,
+    styles: stageStyles,
+  }, definition)
 }
 
 function reportDuplicatePriorities(

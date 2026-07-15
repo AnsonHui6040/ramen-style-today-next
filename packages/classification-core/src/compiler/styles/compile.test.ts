@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import type {
-  CompileStyleRulesResult,
+  CompileStylesResult,
   StyleDefinitionBundleSource,
 } from '../../contracts/style-model.js'
 import { compileStyles } from './compile.js'
@@ -56,22 +56,22 @@ function expectNoSubtypeStage(result: ReturnType<typeof compileStyles>) {
   expect(result).not.toHaveProperty('model')
 }
 
-type RulesSuccess = Extract<CompileStyleRulesResult, { readonly ok: true }>
-
-function expectRulesSuccess(result: unknown): asserts result is RulesSuccess {
-  expect(result).toMatchObject({ ok: true })
-  expect(result).toHaveProperty('rulesStage')
-  expect(result).not.toHaveProperty('subtypeStage')
-  expect(result).not.toHaveProperty('coreStage')
-  expect(result).not.toHaveProperty('model')
-}
-
 function expectNoRulesStage(result: ReturnType<typeof compileStyles>) {
   expect(result.ok).toBe(false)
   expect(result).not.toHaveProperty('rulesStage')
   expect(result).not.toHaveProperty('subtypeStage')
   expect(result).not.toHaveProperty('coreStage')
   expect(result).not.toHaveProperty('model')
+}
+
+type ModelSuccess = Extract<CompileStylesResult, { readonly ok: true }>
+
+function expectFinalModelSuccess(result: unknown): asserts result is ModelSuccess {
+  expect(result).toMatchObject({ ok: true })
+  expect(result).toHaveProperty('model')
+  expect(result).not.toHaveProperty('rulesStage')
+  expect(result).not.toHaveProperty('subtypeStage')
+  expect(result).not.toHaveProperty('coreStage')
 }
 
 describe('style intensity core compiler', () => {
@@ -90,24 +90,23 @@ describe('style intensity core compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectRulesSuccess(result)
-    expect(result.rulesStage).toMatchObject({
-      kind: 'style-rules-stage',
+    expectFinalModelSuccess(result)
+    expect(result.model.metadata).toMatchObject({
       modelVersion: 'batch3a.1.0',
       questionModelVersion: 'batch2a.1.0',
     })
-    expect(result.rulesStage.styles.map(({ id }) => id))
+    expect(result.model.styles.map(({ id }) => id))
       .toEqual(expectedStyles.map(({ id }) => id))
-    expect(result.rulesStage.styles).toHaveLength(18)
+    expect(result.model.styles).toHaveLength(18)
 
-    const cores = result.rulesStage.styles.flatMap(({ cores: styleCores }) => styleCores)
+    const cores = result.model.styles.flatMap(({ cores: styleCores }) => styleCores)
     expect(cores).toHaveLength(54)
     expect(new Set(cores.map(({ id }) => id)).size).toBe(54)
     expect(cores.map(({ id }) => id)).toEqual(expectedStyles.flatMap(({ id }) => (
       expectedIntensities.map(({ id: intensityId }) => `${id}:${intensityId}`)
     )))
 
-    for (const style of result.rulesStage.styles) {
+    for (const style of result.model.styles) {
       const sourceStyle = expectedStyles.find(({ id }) => id === style.id)!
       expect(style.family).toBe(sourceStyle.family)
       expect(style.cores).toHaveLength(3)
@@ -140,8 +139,8 @@ describe('style intensity core compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectRulesSuccess(result)
-    const style = result.rulesStage.styles.find(({ id }) => id === 'shoyu-chintan')!
+    expectFinalModelSuccess(result)
+    const style = result.model.styles.find(({ id }) => id === 'shoyu-chintan')!
     for (const intensity of source.taxonomy.intensities) {
       const core = style.cores.find(({ intensityId }) => intensityId === intensity.id)!
       const bodyRule = core.rules.find(({ questionId }) => questionId === 'body')!
@@ -170,8 +169,8 @@ describe('style intensity core compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectRulesSuccess(result)
-    const clean = result.rulesStage.styles[0]!.cores.find(
+    expectFinalModelSuccess(result)
+    const clean = result.model.styles[0]!.cores.find(
       ({ intensityId }) => intensityId === 'clean',
     )!
     expect(clean.rules.find(({ questionId }) => questionId === 'body')).toEqual(
@@ -189,8 +188,8 @@ describe('style intensity core compiler', () => {
   test('does not fabricate intensity core overrides for canonical definitions', () => {
     const result = compileCanonical()
 
-    expectRulesSuccess(result)
-    expect(result.rulesStage.styles.flatMap(({ cores }) => cores).flatMap(
+    expectFinalModelSuccess(result)
+    expect(result.model.styles.flatMap(({ cores }) => cores).flatMap(
       ({ rules }) => rules,
     ).some(({ provenance }) => (
       provenance.inheritedFrom === 'style-intensity-override'
@@ -557,15 +556,15 @@ describe('style noodle subtype compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectRulesSuccess(result)
-    expect(result.rulesStage.kind).toBe('style-rules-stage')
-    const cores = result.rulesStage.styles.flatMap(({ cores: styleCores }) => styleCores)
+    expectFinalModelSuccess(result)
+    expect(result.model.metadata.modelVersion).toBe('batch3a.1.0')
+    const cores = result.model.styles.flatMap(({ cores: styleCores }) => styleCores)
     const subtypes = cores.flatMap(({ subtypes: coreSubtypes }) => coreSubtypes)
     expect(cores).toHaveLength(54)
     expect(subtypes).toHaveLength(270)
     expect(new Set(subtypes.map(({ id }) => id)).size).toBe(270)
 
-    for (const style of result.rulesStage.styles) {
+    for (const style of result.model.styles) {
       for (const core of style.cores) {
         expect(core.subtypes).toHaveLength(5)
         expect(core.subtypes.map(({ id }) => id)).toEqual(
@@ -594,10 +593,10 @@ describe('style noodle subtype compiler', () => {
         expect(core).not.toHaveProperty('resolvedRules')
       }
     }
-    expect(result.rulesStage).not.toHaveProperty('inventory')
-    expect(result.rulesStage).not.toHaveProperty('sourceHash')
-    expect(result.rulesStage).not.toHaveProperty('semanticHash')
-    expect(result.rulesStage).not.toHaveProperty('dataVersion')
+    expect(result.model.inventory).toHaveLength(342)
+    expect(result.model.metadata.sourceHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(result.model.metadata.semanticHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(result.model.metadata.dataVersion).toMatch(/^[0-9a-f]{64}$/)
   })
 
   test('keeps subtype and core ordering stable under reversed source declarations', () => {
@@ -611,13 +610,13 @@ describe('style noodle subtype compiler', () => {
       definition.supportedNoodleIds.reverse()
     }
 
-    expectRulesSuccess(canonical)
+    expectFinalModelSuccess(canonical)
     const reversedResult = compileStyles(
       reversed,
       acceptedQuestionModelFixture(),
       styleBundleFallbackSource,
     )
-    expectRulesSuccess(reversedResult)
+    expectFinalModelSuccess(reversedResult)
     expect(reversedResult).toEqual(canonical)
   })
 
@@ -635,9 +634,9 @@ describe('style noodle subtype compiler', () => {
     )
     const repeated = compileCanonical()
 
-    expectRulesSuccess(first)
-    expectRulesSuccess(reordered)
-    expectRulesSuccess(repeated)
+    expectFinalModelSuccess(first)
+    expectFinalModelSuccess(reordered)
+    expectFinalModelSuccess(repeated)
     expect(JSON.stringify(reordered)).toBe(JSON.stringify(first))
     expect(JSON.stringify(repeated)).toBe(JSON.stringify(first))
   })
@@ -649,7 +648,7 @@ describe('style noodle subtype compiler', () => {
       acceptedQuestionModelFixture(),
       styleBundleFallbackSource,
     )
-    expectRulesSuccess(result)
+    expectFinalModelSuccess(result)
     const beforeMutation = JSON.stringify(result)
 
     source.taxonomy.noodles[0]!.labelMessageId = 'mutated-noodle-label'
@@ -785,9 +784,9 @@ describe('style rule and normalized adjustment compiler', () => {
     const questionModel = acceptedQuestionModelFixture()
     const result = compileStyles(source, questionModel, styleBundleFallbackSource)
 
-    expectRulesSuccess(result)
-    expect(result.rulesStage.kind).toBe('style-rules-stage')
-    const cores = result.rulesStage.styles.flatMap(({ cores: styleCores }) => styleCores)
+    expectFinalModelSuccess(result)
+    expect(result.model.metadata.modelVersion).toBe('batch3a.1.0')
+    const cores = result.model.styles.flatMap(({ cores: styleCores }) => styleCores)
     const rules = cores.flatMap(({ rules: coreRules }) => coreRules)
     expect(cores).toHaveLength(54)
     expect(rules).toHaveLength(378)
@@ -801,7 +800,7 @@ describe('style rule and normalized adjustment compiler', () => {
       new Map(question.options.map(({ id, order }) => [id, order])),
     ]))
 
-    for (const style of result.rulesStage.styles) {
+    for (const style of result.model.styles) {
       const sourceStyle = source.definitions.find(({ id }) => id === style.id)!
       for (const core of style.cores) {
         expect(core.rules).toHaveLength(7)
@@ -854,11 +853,10 @@ describe('style rule and normalized adjustment compiler', () => {
       }
     }
 
-    expect(result.rulesStage).not.toHaveProperty('inventory')
-    expect(result.rulesStage).not.toHaveProperty('metadata')
-    expect(result.rulesStage).not.toHaveProperty('sourceHash')
-    expect(result.rulesStage).not.toHaveProperty('semanticHash')
-    expect(result.rulesStage).not.toHaveProperty('dataVersion')
+    expect(result.model.inventory).toHaveLength(342)
+    expect(result.model.metadata.sourceHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(result.model.metadata.semanticHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(result.model.metadata.dataVersion).toMatch(/^[0-9a-f]{64}$/)
   })
 
   test('uses whole-rule intensity overrides when compiling targets', () => {
@@ -878,8 +876,8 @@ describe('style rule and normalized adjustment compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectRulesSuccess(result)
-    const clean = result.rulesStage.styles[0]!.cores.find(
+    expectFinalModelSuccess(result)
+    const clean = result.model.styles[0]!.cores.find(
       ({ intensityId }) => intensityId === 'clean',
     )!
     expect(clean.rules.find(({ questionId }) => questionId === 'body')).toMatchObject({
@@ -894,8 +892,8 @@ describe('style rule and normalized adjustment compiler', () => {
     const questionModel = acceptedQuestionModelFixture()
     const result = compileStyles(source, questionModel, styleBundleFallbackSource)
 
-    expectRulesSuccess(result)
-    const adjustments = result.rulesStage.styles.flatMap(
+    expectFinalModelSuccess(result)
+    const adjustments = result.model.styles.flatMap(
       ({ adjustments: styleAdjustments }) => styleAdjustments,
     )
     const bonuses = adjustments.filter(({ kind }) => kind === 'bonus')
@@ -914,7 +912,7 @@ describe('style rule and normalized adjustment compiler', () => {
       question.id,
       new Map(question.options.map(({ id, order }) => [id, order])),
     ]))
-    for (const style of result.rulesStage.styles) {
+    for (const style of result.model.styles) {
       const sourceStyle = source.definitions.find(({ id }) => id === style.id)!
       expect(style.adjustments.map(({ kind }) => kind)).toEqual([
         ...sourceStyle.bonuses.map(() => 'bonus' as const),
@@ -1002,8 +1000,8 @@ describe('style rule and normalized adjustment compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expectRulesSuccess(result)
-    expect(result.rulesStage.exclusionTags).toEqual(
+    expectFinalModelSuccess(result)
+    expect(result.model.exclusionTags).toEqual(
       source.taxonomy.exclusionTags.map(({ id, priority, exclusionsOptionId }, index) => ({
         id,
         priority,
@@ -1015,7 +1013,7 @@ describe('style rule and normalized adjustment compiler', () => {
         },
       })),
     )
-    for (const style of result.rulesStage.styles) {
+    for (const style of result.model.styles) {
       const sourceStyle = source.definitions.find(({ id }) => id === style.id)!
       expect(style.exclusionTags).toEqual(sourceStyle.exclusionTags)
       expect(style).not.toHaveProperty('eligible')
@@ -1054,13 +1052,13 @@ describe('style rule and normalized adjustment compiler', () => {
       }
     }
 
-    expectRulesSuccess(canonical)
+    expectFinalModelSuccess(canonical)
     const reversedResult = compileStyles(
       reversed,
       acceptedQuestionModelFixture(),
       styleBundleFallbackSource,
     )
-    expectRulesSuccess(reversedResult)
+    expectFinalModelSuccess(reversedResult)
     expect(reversedResult).toEqual(canonical)
   })
 
@@ -1292,5 +1290,56 @@ describe('style rule and normalized adjustment compiler', () => {
     expect(new Set(forwardResult.diagnostics.map((diagnostic) => (
       JSON.stringify(diagnostic)
     ))).size).toBe(forwardResult.diagnostics.length)
+  })
+})
+
+describe('final style compilation proof boundary', () => {
+  test('returns only the complete model after deterministic proof', () => {
+    const result = compileCanonical()
+
+    expectFinalModelSuccess(result)
+    expect(result.diagnostics).toEqual([])
+    expect(result.model.metadata).toMatchObject({
+      schemaVersion: '1',
+      compilerVersion: '1',
+      modelVersion: 'batch3a.1.0',
+      questionModelVersion: 'batch2a.1.0',
+      questionSemanticHash: 'd1bd2fcecabcfde8a7512b530d9cbec7f2fc0bb1d62ad65cbece2799be753c0d',
+    })
+    expect(result.model.inventory).toHaveLength(342)
+    expect(result).not.toHaveProperty('rulesStage')
+  })
+
+  test('question identity mismatch fails closed before a model or stage escapes', () => {
+    const questionModel = acceptedQuestionModelFixture()
+    questionModel.metadata.semanticHash = 'a'.repeat(64)
+
+    const result = compileStyles(
+      canonicalStyleDefinitionBundleFixture(),
+      questionModel,
+      styleBundleFallbackSource,
+    )
+
+    expect(result.ok).toBe(false)
+    expect(diagnosticCodes(result)).toContain('STYLE_MODEL_VERSION_MISMATCH')
+    expect(result).not.toHaveProperty('model')
+    expect(result).not.toHaveProperty('rulesStage')
+    expect(result).not.toHaveProperty('subtypeStage')
+    expect(result).not.toHaveProperty('coreStage')
+  })
+
+  test('question sourceHash-only mutation does not change style identity', () => {
+    const canonical = compileCanonical()
+    const questionModel = acceptedQuestionModelFixture()
+    questionModel.metadata.sourceHash = 'a'.repeat(64)
+    const changed = compileStyles(
+      canonicalStyleDefinitionBundleFixture(),
+      questionModel,
+      styleBundleFallbackSource,
+    )
+
+    expectFinalModelSuccess(canonical)
+    expectFinalModelSuccess(changed)
+    expect(changed.model.metadata).toEqual(canonical.model.metadata)
   })
 })
