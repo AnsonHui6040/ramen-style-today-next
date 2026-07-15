@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 import {
   batch2AMaintenancePaths,
   batch2BAcceptanceMetadataPaths,
+  batch2BBoundaryMaintenancePaths,
   batch2BImplementationPaths,
   batch2BVerificationPaths,
   migrationLedgerSchema,
@@ -78,7 +79,15 @@ describe('migration ledger', () => {
   })
 
   test('renders the immutable Batch 2B boundary and in-progress maintenance distinctly', () => {
-    const rendered = renderLedger(ledger)
+    const input = structuredClone(ledger)
+    const batch2B = input.entries.find(({ batch }) => batch === '2B')!
+    batch2B.boundaryMaintenance = {
+      status: 'in-progress',
+      paths: [...batch2BBoundaryMaintenancePaths],
+      verification: [],
+    }
+
+    const rendered = renderLedger(migrationLedgerSchema.parse(input))
 
     expect(rendered).toContain('## Batch 2B — complete')
     expect(rendered).toContain('### Accepted Batch 2B boundary')
@@ -96,6 +105,44 @@ describe('migration ledger', () => {
     expect(rendered).toContain('- Status: `in-progress`')
     expect(rendered).toContain('#### Boundary maintenance verification')
     expect(rendered).not.toContain('- Boundary maintenance SHA:')
+  })
+
+  test('renders completed Batch 2B boundary maintenance from an explicit fixture', () => {
+    const maintenanceSha = 'a'.repeat(40)
+    const runUrl =
+      'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123'
+    const input = structuredClone(ledger)
+    const batch2B = input.entries.find(({ batch }) => batch === '2B')!
+    batch2B.boundaryMaintenance = {
+      status: 'complete',
+      maintenanceSha,
+      paths: [...batch2BBoundaryMaintenancePaths],
+      verification: [
+        {
+          gate: 'batch2b-boundary-maintenance-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'local boundary-maintenance verification passed',
+        },
+        {
+          gate: 'batch2b-boundary-maintenance-remote-ci',
+          command: 'GitHub Actions CI / verify',
+          outcome: 'passed',
+          evidence: 'remote boundary-maintenance verification passed',
+          commitSha: maintenanceSha,
+          runUrl,
+        },
+      ],
+    }
+
+    const rendered = renderLedger(migrationLedgerSchema.parse(input))
+
+    expect(rendered).toContain('- Status: `complete`')
+    expect(rendered).toContain(`- Boundary maintenance SHA: \`${maintenanceSha}\``)
+    expect(rendered).toContain('`batch2b-boundary-maintenance-local-verify`')
+    expect(rendered).toContain('`batch2b-boundary-maintenance-remote-ci`')
+    expect(rendered).toContain(`- Commit: \`${maintenanceSha}\``)
+    expect(rendered).toContain(`- Run: ${runUrl}`)
   })
 
   test('rejects a duplicate batch independently', () => {
