@@ -360,7 +360,8 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Boundary maintenance
 
-- Status: `in-progress`
+- Status: `complete`
+- Boundary maintenance SHA: `28fb8179046d3165f633337b242c7f27df69b2d1`
 
 #### Boundary maintenance paths
 
@@ -377,7 +378,10 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 #### Boundary maintenance verification
 
-- Pending.
+- `batch2b-boundary-maintenance-local-verify`: `npm run verify` — passed; all approved Batch 2B boundary-maintenance gates passed
+- `batch2b-boundary-maintenance-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed boundary-maintenance candidate completed Node 24 CI
+  - Commit: `28fb8179046d3165f633337b242c7f27df69b2d1`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29432576692
 
 ### Verification
 
