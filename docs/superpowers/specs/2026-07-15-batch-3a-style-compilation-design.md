@@ -400,6 +400,160 @@ interface CompiledStyleModel {
   readonly inventory: readonly CompiledStyleInventoryRecord[]
 }
 
+interface ResolvedStyleCoreRule {
+  readonly questionId: string
+  readonly tiers: readonly StyleRuleTierDefinition[]
+  readonly provenance: StyleRuleProvenance
+}
+
+interface StyleCoreStageCore {
+  readonly id: CoreId
+  readonly parentStyleId: StyleId
+  readonly intensityId: IntensityId
+  readonly priority: number
+  readonly messageIds: {
+    readonly labelTemplate: string
+    readonly summaryTemplate: string
+  }
+  readonly resolvedRules: readonly ResolvedStyleCoreRule[]
+  readonly provenance: readonly StyleSourceReference[]
+}
+
+interface StyleCoreStageStyle {
+  readonly id: StyleId
+  readonly family: StyleFamilyId
+  readonly displayPriority: number
+  readonly messageIds: {
+    readonly label: string
+    readonly summary: string
+  }
+  readonly accent: string
+  readonly supportedIntensityIds: readonly IntensityId[]
+  readonly supportedNoodleIds: readonly NoodleId[]
+  readonly cores: readonly StyleCoreStageCore[]
+  readonly exclusionTags: readonly ExclusionTagId[]
+  readonly provenance: StyleSourceReference
+}
+
+interface StyleCoreStage {
+  readonly kind: 'style-core-stage'
+  readonly modelVersion: string
+  readonly questionModelVersion: string
+  readonly questionSemanticHash: string
+  readonly styles: readonly StyleCoreStageStyle[]
+}
+
+type CompileStyleCoresResult =
+  | {
+      readonly ok: true
+      readonly coreStage: StyleCoreStage
+      readonly diagnostics: readonly Diagnostic[]
+    }
+  | {
+      readonly ok: false
+      readonly diagnostics: readonly Diagnostic[]
+    }
+
+interface StyleSubtypeStageCore {
+  readonly id: CoreId
+  readonly parentStyleId: StyleId
+  readonly intensityId: IntensityId
+  readonly priority: number
+  readonly messageIds: {
+    readonly labelTemplate: string
+    readonly summaryTemplate: string
+  }
+  readonly resolvedRules: readonly ResolvedStyleCoreRule[]
+  readonly subtypes: readonly CompiledSubtype[]
+  readonly provenance: readonly StyleSourceReference[]
+}
+
+interface StyleSubtypeStageStyle {
+  readonly id: StyleId
+  readonly family: StyleFamilyId
+  readonly displayPriority: number
+  readonly messageIds: {
+    readonly label: string
+    readonly summary: string
+  }
+  readonly accent: string
+  readonly supportedIntensityIds: readonly IntensityId[]
+  readonly supportedNoodleIds: readonly NoodleId[]
+  readonly cores: readonly StyleSubtypeStageCore[]
+  readonly exclusionTags: readonly ExclusionTagId[]
+  readonly provenance: StyleSourceReference
+}
+
+interface StyleSubtypeStage {
+  readonly kind: 'style-subtype-stage'
+  readonly modelVersion: string
+  readonly questionModelVersion: string
+  readonly questionSemanticHash: string
+  readonly styles: readonly StyleSubtypeStageStyle[]
+}
+
+type CompileStyleSubtypesResult =
+  | {
+      readonly ok: true
+      readonly subtypeStage: StyleSubtypeStage
+      readonly diagnostics: readonly Diagnostic[]
+    }
+  | {
+      readonly ok: false
+      readonly diagnostics: readonly Diagnostic[]
+    }
+
+interface StyleRulesStageCore {
+  readonly id: CoreId
+  readonly parentStyleId: StyleId
+  readonly intensityId: IntensityId
+  readonly priority: number
+  readonly messageIds: {
+    readonly labelTemplate: string
+    readonly summaryTemplate: string
+  }
+  readonly rules: readonly CompiledStyleRule[]
+  readonly subtypes: readonly CompiledSubtype[]
+  readonly provenance: readonly StyleSourceReference[]
+}
+
+interface StyleRulesStageStyle {
+  readonly id: StyleId
+  readonly family: StyleFamilyId
+  readonly displayPriority: number
+  readonly messageIds: {
+    readonly label: string
+    readonly summary: string
+  }
+  readonly accent: string
+  readonly supportedIntensityIds: readonly IntensityId[]
+  readonly supportedNoodleIds: readonly NoodleId[]
+  readonly cores: readonly StyleRulesStageCore[]
+  readonly adjustments: readonly CompiledAdjustment[]
+  readonly exclusionTags: readonly ExclusionTagId[]
+  readonly provenance: StyleSourceReference
+}
+
+interface StyleRulesStage {
+  readonly kind: 'style-rules-stage'
+  readonly modelVersion: string
+  readonly questionModelVersion: string
+  readonly questionSemanticHash: string
+  readonly exclusionTags: readonly CompiledExclusionTag[]
+  readonly styles: readonly StyleRulesStageStyle[]
+}
+
+type CompileStyleRulesResult =
+  | {
+      readonly ok: true
+      readonly rulesStage: StyleRulesStage
+      readonly diagnostics: readonly Diagnostic[]
+    }
+  | {
+      readonly ok: false
+      readonly diagnostics: readonly Diagnostic[]
+    }
+
 type CompileStylesResult =
   | {
       readonly ok: true
@@ -415,8 +569,36 @@ function compileStyles(
   input: unknown,
   questionModel: CompiledQuestionModel,
   sourceFile: string,
-): CompileStylesResult
+): CompileStyleCoresResult // Task 6 transaction boundary
 ```
+
+`StyleCoreStage` is the explicit compiler-internal transaction boundary for
+Task 6. Its successful payload is named `coreStage`, never `model`, and contains
+only canonical style/core identity, resolved inert source rules, provenance, and
+the trusted question-model binding identity. It has no subtype collection,
+compiled rule targets, adjustments, exclusion-tag model, inventory, style
+source/semantic/data hash, or placeholder for any of those final values.
+`ResolvedStyleCoreRule` preserves the selected whole source rule plus provenance
+so body-profile inheritance and whole-rule replacement are observable without
+performing Task 8 target expansion.
+
+The staged return type changes only at reviewed task boundaries:
+
+```text
+Task 6  CompileStyleCoresResult     -> coreStage
+Task 7  CompileStyleSubtypesResult  -> subtypeStage
+Task 8  CompileStyleRulesResult     -> rulesStage
+Task 9  CompileStylesResult         -> model
+```
+
+`StyleSubtypeStage` adds generated subtypes while preserving resolved inert
+rules. `StyleRulesStage` replaces those resolved rules with final compiled rules
+and adds normalized adjustments and bound exclusion tags. Neither stage has
+optional future fields, an inventory, style hashes, or final-model metadata.
+Task 9 is the only task that converts the complete staged data to
+`CompiledStyleModel`. All three staged result families and their supporting
+types remain direct internal contract imports and are not re-exported from the
+compiler entrypoint, runtime root, or generated subpath.
 
 The style definition bundle owns `modelVersion: batch3a.1.0`. The second input
 is a successfully compiled, trusted question model. Its model version and
@@ -570,6 +752,12 @@ Before model creation, semantic proof checks:
 - legacy ID parity through frozen fixtures.
 
 No successful model is returned after an ID collision or parent mismatch.
+Task 6 checks source-triggerable core collisions and exact per-style declared
+versus generated intensity membership. Because core IDs and parents are both
+derived internally from the same style ID, Task 6 does not add a test seam for
+an impossible source-level parent mutation. Task 9 owns global parent
+reconstruction, `STYLE_PARENT_MISMATCH`, and proof that the complete canonical
+inventory contains exactly all 18 styles.
 
 ## 8. Rule compilation
 
@@ -840,6 +1028,9 @@ artifact check/write commands own comparison and atomic publication outside the
 package. Semantic proof helpers, including any internal `proveStyleModel`
 function used during compilation, are implementation details and are not
 exported from either the compiler entrypoint or the runtime root.
+The Task 6-8 staged result families, stage values, and supporting stage types
+are likewise compiler-internal transaction types and are never public compiler
+or runtime exports.
 
 The runtime root receives only additive exports:
 
@@ -1299,7 +1490,7 @@ production cutover remain in their architecture-assigned later batches.
 
 ## Approval decisions
 
-Written approval of this design approves these seven choices:
+Written approval of this design approves these eight choices:
 
 1. preserve legacy accent in canonical style metadata without rendering it;
 2. compile tier tokens in 3A and defer numeric tier ratios to 3B;
@@ -1315,7 +1506,12 @@ Written approval of this design approves these seven choices:
 7. complete the narrow Batch 2B acceptance-boundary maintenance in section 16
    before Batch 3A implementation, preserving persistence semantics and evidence
    while allowing later approved batches to own shared paths after the accepted
-   metadata boundary.
+   metadata boundary; and
+8. use explicit compiler-internal core, subtype, and rules stages for Tasks 6-8,
+   without optional future fields, empty final-model fields, or placeholder
+   hashes; Task 9 alone converts staged data to `CompiledStyleModel`, proves
+   global parents and the complete 18-style inventory, and may emit
+   `STYLE_PARENT_MISMATCH`.
 
 If any choice is rejected, the design must be revised and independently
 re-reviewed before an implementation plan is created.

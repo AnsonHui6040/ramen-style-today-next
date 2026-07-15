@@ -1,5 +1,31 @@
+import { styleDefinitionBundle } from '../../definitions/styles/index.js'
+import { questionModel } from '../../generated/question-model.js'
+import type { CompiledQuestionModel } from '../../contracts/question-model.js'
+import type { StyleDefinitionBundleSource } from '../../contracts/style-model.js'
+
 export const styleBundleFallbackSource =
   'packages/classification-core/src/definitions/styles/index.ts'
+
+export type DeepMutable<T> =
+  T extends (...args: never[]) => unknown
+    ? T
+    : T extends readonly (infer Item)[]
+      ? DeepMutable<Item>[]
+      : T extends object
+        ? { -readonly [Key in keyof T]: DeepMutable<T[Key]> }
+        : T
+
+function mutableClone<T>(value: T): DeepMutable<T> {
+  return JSON.parse(JSON.stringify(value)) as DeepMutable<T>
+}
+
+export function canonicalStyleDefinitionBundleFixture(): DeepMutable<StyleDefinitionBundleSource> {
+  return mutableClone(styleDefinitionBundle)
+}
+
+export function acceptedQuestionModelFixture(): DeepMutable<CompiledQuestionModel> {
+  return mutableClone(questionModel)
+}
 
 export function styleDefinitionBundleFixture() {
   return {

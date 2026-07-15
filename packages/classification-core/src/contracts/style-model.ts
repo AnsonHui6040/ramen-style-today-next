@@ -272,6 +272,160 @@ export interface CompiledStyleModel {
   readonly inventory: readonly CompiledStyleInventoryRecord[]
 }
 
+export interface ResolvedStyleCoreRule {
+  readonly questionId: string
+  readonly tiers: readonly StyleRuleTierDefinition[]
+  readonly provenance: StyleRuleProvenance
+}
+
+export interface StyleCoreStageCore {
+  readonly id: CoreId
+  readonly parentStyleId: StyleId
+  readonly intensityId: IntensityId
+  readonly priority: number
+  readonly messageIds: {
+    readonly labelTemplate: string
+    readonly summaryTemplate: string
+  }
+  readonly resolvedRules: readonly ResolvedStyleCoreRule[]
+  readonly provenance: readonly StyleSourceReference[]
+}
+
+export interface StyleCoreStageStyle {
+  readonly id: StyleId
+  readonly family: StyleFamilyId
+  readonly displayPriority: number
+  readonly messageIds: {
+    readonly label: string
+    readonly summary: string
+  }
+  readonly accent: string
+  readonly supportedIntensityIds: readonly IntensityId[]
+  readonly supportedNoodleIds: readonly NoodleId[]
+  readonly cores: readonly StyleCoreStageCore[]
+  readonly exclusionTags: readonly ExclusionTagId[]
+  readonly provenance: StyleSourceReference
+}
+
+export interface StyleCoreStage {
+  readonly kind: 'style-core-stage'
+  readonly modelVersion: string
+  readonly questionModelVersion: string
+  readonly questionSemanticHash: string
+  readonly styles: readonly StyleCoreStageStyle[]
+}
+
+export type CompileStyleCoresResult =
+  | {
+      readonly ok: true
+      readonly coreStage: StyleCoreStage
+      readonly diagnostics: readonly Diagnostic[]
+    }
+  | {
+      readonly ok: false
+      readonly diagnostics: readonly Diagnostic[]
+    }
+
+export interface StyleSubtypeStageCore {
+  readonly id: CoreId
+  readonly parentStyleId: StyleId
+  readonly intensityId: IntensityId
+  readonly priority: number
+  readonly messageIds: {
+    readonly labelTemplate: string
+    readonly summaryTemplate: string
+  }
+  readonly resolvedRules: readonly ResolvedStyleCoreRule[]
+  readonly subtypes: readonly CompiledSubtype[]
+  readonly provenance: readonly StyleSourceReference[]
+}
+
+export interface StyleSubtypeStageStyle {
+  readonly id: StyleId
+  readonly family: StyleFamilyId
+  readonly displayPriority: number
+  readonly messageIds: {
+    readonly label: string
+    readonly summary: string
+  }
+  readonly accent: string
+  readonly supportedIntensityIds: readonly IntensityId[]
+  readonly supportedNoodleIds: readonly NoodleId[]
+  readonly cores: readonly StyleSubtypeStageCore[]
+  readonly exclusionTags: readonly ExclusionTagId[]
+  readonly provenance: StyleSourceReference
+}
+
+export interface StyleSubtypeStage {
+  readonly kind: 'style-subtype-stage'
+  readonly modelVersion: string
+  readonly questionModelVersion: string
+  readonly questionSemanticHash: string
+  readonly styles: readonly StyleSubtypeStageStyle[]
+}
+
+export type CompileStyleSubtypesResult =
+  | {
+      readonly ok: true
+      readonly subtypeStage: StyleSubtypeStage
+      readonly diagnostics: readonly Diagnostic[]
+    }
+  | {
+      readonly ok: false
+      readonly diagnostics: readonly Diagnostic[]
+    }
+
+export interface StyleRulesStageCore {
+  readonly id: CoreId
+  readonly parentStyleId: StyleId
+  readonly intensityId: IntensityId
+  readonly priority: number
+  readonly messageIds: {
+    readonly labelTemplate: string
+    readonly summaryTemplate: string
+  }
+  readonly rules: readonly CompiledStyleRule[]
+  readonly subtypes: readonly CompiledSubtype[]
+  readonly provenance: readonly StyleSourceReference[]
+}
+
+export interface StyleRulesStageStyle {
+  readonly id: StyleId
+  readonly family: StyleFamilyId
+  readonly displayPriority: number
+  readonly messageIds: {
+    readonly label: string
+    readonly summary: string
+  }
+  readonly accent: string
+  readonly supportedIntensityIds: readonly IntensityId[]
+  readonly supportedNoodleIds: readonly NoodleId[]
+  readonly cores: readonly StyleRulesStageCore[]
+  readonly adjustments: readonly CompiledAdjustment[]
+  readonly exclusionTags: readonly ExclusionTagId[]
+  readonly provenance: StyleSourceReference
+}
+
+export interface StyleRulesStage {
+  readonly kind: 'style-rules-stage'
+  readonly modelVersion: string
+  readonly questionModelVersion: string
+  readonly questionSemanticHash: string
+  readonly exclusionTags: readonly CompiledExclusionTag[]
+  readonly styles: readonly StyleRulesStageStyle[]
+}
+
+export type CompileStyleRulesResult =
+  | {
+      readonly ok: true
+      readonly rulesStage: StyleRulesStage
+      readonly diagnostics: readonly Diagnostic[]
+    }
+  | {
+      readonly ok: false
+      readonly diagnostics: readonly Diagnostic[]
+    }
+
 export type CompileStylesResult =
   | {
       readonly ok: true

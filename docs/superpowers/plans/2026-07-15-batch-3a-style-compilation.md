@@ -22,10 +22,14 @@ after the implementation and verification surfaces are stable.
 Vitest 4.1.10, ESLint 10.6.0, tsx 4.23.0, npm workspaces, Git, and GitHub
 Actions.
 
-**Approved specification:**
+**Originally approved specification identity:**
 `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
 (SHA-256
 `a09a1abdaf706ddc3af7d0974aba2cd30024ae3cea2e3f2b33a02ecccbfcdc0e`)
+
+**Task 6 adjudicated specification identity:** same path, amended only for the
+reviewed staged-result and Task 9 proof ownership rulings (SHA-256
+`65712bece6cdf46921b1098451079e03b6859b36faf4162576ef1e4d3c2ca8c6`).
 
 **Initial base:** `6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4`
 (`Accept Batch 2B persistence contracts`)
@@ -667,19 +671,33 @@ tag/copy, policy/eligibility leakage, or a need to change the approved contract.
 ### Task 6: Generate deterministic intensity cores
 
 **Files:**
+- Modify: `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- Modify: `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+- Modify: `packages/classification-core/src/contracts/style-model.ts`
 - Create: `packages/classification-core/src/compiler/styles/compile.ts`
 - Create: `packages/classification-core/src/compiler/styles/compile.test.ts`
 - Modify: `packages/classification-core/src/compiler/styles/test-fixtures.ts`
 
-**Interfaces:** Adds `compileStyles` through core generation with
-`CoreId = ${StyleId}:${IntensityId}` and taxonomy-owned priority.
+**Interfaces:** Adds compiler-internal `StyleCoreStage` and
+`CompileStyleCoresResult`, then implements `compileStyles` through core
+generation with `CoreId = ${StyleId}:${IntensityId}` and taxonomy-owned
+priority. A successful Task 6 result contains `coreStage`, not `model`; it has no
+placeholder final-model collections or hashes and is not a public runtime or
+compiler-entrypoint export. The same internal contract revision defines the
+non-optional subtype and rules stage shapes used by Tasks 7 and 8, but Task 6
+does not populate or return either later stage.
 
 - [ ] **Step 1: Write RED core tests**
 
 Assert 54 exact IDs/parents/priorities, three cores per style, body-profile
-inheritance, whole-rule override semantics, no model on any error, and exact
-diagnostics for intensity, display priority, model version, family mismatch,
-core collision, parent mismatch, or incomplete inventory.
+inheritance through resolved inert rules, whole-rule override semantics, no
+stage on any error, and exact diagnostics for intensity, display priority,
+model version, family mismatch, source-triggerable core collision, or a
+per-style declared/generated intensity inventory mismatch. Task 6 does not add
+a parent-mutation seam and does not claim proof that the full canonical input
+contains all 18 styles. Require exactly the six taxonomy-owned `style-base`
+questions plus `body` owned by `intensity-profile`; an extra known base rule or
+wrong `ruleQuestions.source` is an inventory error, never silently omitted.
 
 - [ ] **Step 2: Confirm RED**
 
@@ -692,7 +710,9 @@ npx vitest run packages/classification-core/src/compiler/styles/compile.test.ts 
 - [ ] **Step 3: Implement question-bound canonical core generation**
 
 Bind family/form and all question/option references to the trusted question
-model. Never use source index for ID or priority.
+model. Emit only the explicit `StyleCoreStage`; never use source index for ID or
+priority. Do not create `CompiledStyleModel`, empty final collections, or
+placeholder hashes.
 
 - [ ] **Step 4: GREEN, review, and commit**
 
@@ -710,12 +730,17 @@ After independent compiler review `PASS`:
 ```bash
 git add packages/classification-core/src/compiler/styles/compile.ts \
   packages/classification-core/src/compiler/styles/compile.test.ts \
-  packages/classification-core/src/compiler/styles/test-fixtures.ts
+  packages/classification-core/src/compiler/styles/test-fixtures.ts \
+  packages/classification-core/src/contracts/style-model.ts \
+  docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md \
+  docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md
 git commit -m "Generate deterministic style cores"
 ```
 
 **Stop conditions:** Fallback core, inferred taxonomy membership, adjustments
-copied onto cores, unstable ordering, scoring arithmetic, or artifact creation.
+copied onto cores, unstable ordering, scoring arithmetic, artifact creation,
+public export of a stage type, or a staged value represented as a partial
+`CompiledStyleModel`.
 
 ---
 
@@ -726,14 +751,19 @@ copied onto cores, unstable ordering, scoring arithmetic, or artifact creation.
 - Modify: `packages/classification-core/src/compiler/styles/compile.test.ts`
 - Modify: `packages/classification-core/src/compiler/styles/test-fixtures.ts`
 
-**Interfaces:** Adds the 54-by-five matrix with
-`SubtypeId = ${CoreId}:${NoodleId}` and taxonomy-owned priority.
+**Interfaces:** Consumes `StyleCoreStage` and changes `compileStyles` to return
+`CompileStyleSubtypesResult` with `subtypeStage`. Adds the 54-by-five matrix with
+`SubtypeId = ${CoreId}:${NoodleId}` and taxonomy-owned priority, without final
+compiled rules, adjustments, inventory, or hashes.
 
 - [ ] **Step 1: Write RED subtype tests**
 
 Assert 270 exact IDs/parents/priorities/message-template roles, declared versus
 generated equality, no fallback, and deterministic diagnostics for noodle
-membership, collision, parent mismatch, and missing/extra combinations.
+membership, source-triggerable collision, and per-style missing/extra
+combinations. Global generated-parent reconstruction and
+`STYLE_PARENT_MISMATCH` remain Task 9 proof responsibilities; Task 7 adds no
+parent-mutation seam.
 
 - [ ] **Step 2: Confirm RED**
 
@@ -775,8 +805,11 @@ combination, or duplicated legacy copy in 270 records.
 - Modify: `packages/classification-core/src/compiler/styles/compile.test.ts`
 - Modify: `packages/classification-core/src/compiler/styles/test-fixtures.ts`
 
-**Interfaces:** Produces seven ordered rules per core and one normalized
-style-level adjustment set with ordered `appliesToCoreIds`.
+**Interfaces:** Consumes `StyleSubtypeStage` and changes `compileStyles` to
+return `CompileStyleRulesResult` with `rulesStage`. Produces seven ordered rules
+per core, one normalized style-level adjustment set with ordered
+`appliesToCoreIds`, and bound exclusion tags, but no final-model inventory or
+hash metadata.
 
 - [ ] **Step 1: Write RED rule/adjustment mutation tests**
 
@@ -830,9 +863,10 @@ cross-style reference, lost legacy operand/condition, or silent repair.
 - Modify: `packages/classification-core/src/compiler/styles/compile.ts`
 - Modify: `packages/classification-core/src/compiler/styles/compile.test.ts`
 
-**Interfaces:** Completes the successful `CompiledStyleModel`, internal semantic
-proof, exact source/semantic/data projections, deep freeze, and deterministic
-diagnostics. `proveStyleModel` stays internal.
+**Interfaces:** Consumes `StyleRulesStage`, converts it to the successful
+`CompiledStyleModel`, changes `compileStyles` to return `CompileStylesResult`,
+and completes internal semantic proof, exact source/semantic/data projections,
+deep freeze, and deterministic diagnostics. `proveStyleModel` stays internal.
 
 - [ ] **Step 1: Write RED proof/determinism tests**
 
@@ -848,6 +882,8 @@ source mutation cannot mutate compiled output
 all nested output/provenance/inventory values frozen
 no timestamp or absolute path
 global IDs and parents exact and unique
+complete canonical inventory contains exactly all 18 styles
+source-inaccessible parent inconsistency emits STYLE_PARENT_MISMATCH during proof
 sourceHash/semanticHash/dataVersion use the exact approved projections
 question modelVersion or semanticHash mismatch fails integration
 question sourceHash-only change leaves style semanticHash unchanged
