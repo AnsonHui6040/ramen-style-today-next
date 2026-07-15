@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "write-initial-shapes",
+      "kind": "legacy-write-observation",
+      "actions": [
+        { "type": "start" }
+      ]
+    },
+    {
+      "id": "write-single-multiple-shapes",
+      "kind": "legacy-write-observation",
+      "actions": [
+        { "type": "start" },
+        { "type": "select", "optionIndex": 0 },
+        { "type": "continue" },
+        { "type": "select", "optionIndex": 0 },
+        { "type": "continue" },
+        { "type": "select", "optionIndex": 0 },
+        { "type": "continue" },
+        { "type": "select", "optionIndex": 0 },
+        { "type": "select", "optionIndex": 1 }
+      ]
+    },
+    {
+      "id": "write-forced-answer",
+      "kind": "legacy-write-observation",
+      "actions": [
+        { "type": "start" },
+        { "type": "select", "optionIndex": 1 },
+        { "type": "continue" },
+        { "type": "select", "optionIndex": 2 },
+        { "type": "continue" }
+      ]
+    },
+    {
+      "id": "restore-seafood",
+      "kind": "legacy-restore-observation",
+      "legacyInput": {
+        "source": [],
+        "signature": [],
+        "exclusions": ["seafood"]
+      }
+    },
+    {
+      "id": "restore-empty-initial-arrays",
+      "kind": "legacy-restore-observation",
+      "legacyInput": {
+        "source": [],
+        "signature": [],
+        "exclusions": []
+      }
+    },
+    {
+      "id": "restore-exclusive-normalization",
+      "kind": "legacy-restore-observation",
+      "legacyInput": {
+        "source": ["unsure", "pork"],
+        "signature": ["no-preference", "chashu"],
+        "exclusions": ["none", "fish-seafood"]
+      }
+    }
+  ]
+}

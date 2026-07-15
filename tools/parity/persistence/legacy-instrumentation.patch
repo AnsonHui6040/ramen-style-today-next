@@ -1,0 +1,293 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..f08654937c6747c1376ab8afb3b86f68e8ab4016 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -31,2 +31,2 @@
+-const STORAGE_KEY = 'ramen-style-today.state.v1'
++export const STORAGE_KEY = 'ramen-style-today.state.v1'
+ const storageAvailabilityListeners = new Set<() => void>()
+diff --git a/src/parity-question-extractor.test.tsx b/src/parity-question-extractor.test.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..8f514b79095185b7a06514afbe36d4c8ea94ac85
+--- /dev/null
++++ b/src/parity-question-extractor.test.tsx
+@@ -0,0 +1,279 @@
++import { lstatSync, readFileSync, writeFileSync } from 'node:fs'
++import { dirname, isAbsolute } from 'node:path'
++
++import { render, waitFor } from '@testing-library/react'
++import userEvent from '@testing-library/user-event'
++import { test } from 'vitest'
++
++import App, { STORAGE_KEY } from './App'
++import { restoreUserAnswers } from './domain/schema'
++
++const orderedCaseIds = [
++  'write-initial-shapes',
++  'write-single-multiple-shapes',
++  'write-forced-answer',
++  'restore-seafood',
++  'restore-empty-initial-arrays',
++  'restore-exclusive-normalization',
++] as const
++
++type PublicAction =
++  | { readonly type: 'start' }
++  | { readonly type: 'select'; readonly optionIndex: number }
++  | { readonly type: 'continue' }
++
++type SeedCase =
++  | {
++      readonly id: string
++      readonly kind: 'legacy-write-observation'
++      readonly actions: readonly PublicAction[]
++    }
++  | {
++      readonly id: string
++      readonly kind: 'legacy-restore-observation'
++      readonly legacyInput: unknown
++    }
++
++type ObservationCase =
++  | {
++      readonly id: string
++      readonly kind: 'legacy-write-observation'
++      readonly actions: readonly PublicAction[]
++      readonly observedAnswers: unknown
++    }
++  | {
++      readonly id: string
++      readonly kind: 'legacy-restore-observation'
++      readonly legacyInput: unknown
++      readonly observedLegacyOutput: unknown
++    }
++
++interface Capability {
++  readonly schemaVersion: 1
++  readonly seedPath: string
++  readonly rawOutputPath: string
++  readonly token: string
++}
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === 'object' && value !== null && !Array.isArray(value)
++}
++
++function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]) {
++  return JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...expected].sort())
++}
++
++function readStrictObject(path: string, expectedKeys: readonly string[]) {
++  const value: unknown = JSON.parse(readFileSync(path, 'utf8'))
++  if (!isRecord(value) || !hasExactKeys(value, expectedKeys)) {
++    throw new Error('invalid persistence extraction input')
++  }
++  return value
++}
++
++function readCapability(path: string): Capability {
++  const value = readStrictObject(path, [
++    'rawOutputPath',
++    'schemaVersion',
++    'seedPath',
++    'token',
++  ])
++  if (
++    value.schemaVersion !== 1
++    || typeof value.seedPath !== 'string'
++    || typeof value.rawOutputPath !== 'string'
++    || typeof value.token !== 'string'
++    || !/^[a-f0-9]{32,128}$/.test(value.token)
++    || !isAbsolute(value.seedPath)
++    || !isAbsolute(value.rawOutputPath)
++    || dirname(value.seedPath) !== dirname(path)
++    || dirname(value.rawOutputPath) !== dirname(path)
++    || lstatSync(value.rawOutputPath, { throwIfNoEntry: false }) !== undefined
++  ) {
++    throw new Error('invalid persistence extraction capability')
++  }
++  return value as unknown as Capability
++}
++
++function assertAction(value: unknown): asserts value is PublicAction {
++  if (!isRecord(value) || typeof value.type !== 'string') {
++    throw new Error('invalid persistence public action')
++  }
++  if (value.type === 'start' || value.type === 'continue') {
++    if (!hasExactKeys(value, ['type'])) throw new Error('invalid persistence public action')
++    return
++  }
++  if (
++    value.type !== 'select'
++    || !hasExactKeys(value, ['optionIndex', 'type'])
++    || typeof value.optionIndex !== 'number'
++    || !Number.isInteger(value.optionIndex)
++    || value.optionIndex < 0
++    || value.optionIndex > 255
++  ) {
++    throw new Error('invalid persistence public action')
++  }
++}
++
++function readSeeds(path: string): readonly SeedCase[] {
++  const value = readStrictObject(path, ['cases', 'schemaVersion'])
++  if (value.schemaVersion !== 1 || !Array.isArray(value.cases)) {
++    throw new Error('invalid persistence seed file')
++  }
++  if (value.cases.length !== orderedCaseIds.length) {
++    throw new Error('invalid persistence seed count')
++  }
++  const cases = value.cases.map((seedCase, index): SeedCase => {
++    if (!isRecord(seedCase) || seedCase.id !== orderedCaseIds[index]) {
++      throw new Error('invalid persistence seed order')
++    }
++    if (seedCase.kind === 'legacy-write-observation') {
++      if (!hasExactKeys(seedCase, ['actions', 'id', 'kind']) || !Array.isArray(seedCase.actions)) {
++        throw new Error('invalid persistence write seed')
++      }
++      seedCase.actions.forEach(assertAction)
++      if (seedCase.actions.length === 0 || seedCase.actions.length > 128) {
++        throw new Error('invalid persistence write seed')
++      }
++      return {
++        id: seedCase.id,
++        kind: seedCase.kind,
++        actions: seedCase.actions,
++      }
++    }
++    if (
++      seedCase.kind !== 'legacy-restore-observation'
++      || !hasExactKeys(seedCase, ['id', 'kind', 'legacyInput'])
++    ) {
++      throw new Error('invalid persistence restore seed')
++    }
++    return {
++      id: seedCase.id,
++      kind: seedCase.kind,
++      legacyInput: seedCase.legacyInput,
++    }
++  })
++  return cases
++}
++
++function toJsonValue(value: unknown): unknown {
++  const serialized = JSON.stringify(value)
++  if (serialized === undefined) throw new Error('persistence observation is not JSON data')
++  return JSON.parse(serialized) as unknown
++}
++
++function assertJsonValue(value: unknown): void {
++  if (
++    value === null
++    || typeof value === 'string'
++    || typeof value === 'boolean'
++    || (typeof value === 'number' && Number.isFinite(value))
++  ) return
++  if (Array.isArray(value)) {
++    value.forEach(assertJsonValue)
++    return
++  }
++  if (!isRecord(value)) throw new Error('persistence observation is not JSON data')
++  Object.values(value).forEach(assertJsonValue)
++}
++
++function assertObservationCase(value: ObservationCase) {
++  if (value.kind === 'legacy-write-observation') {
++    if (!hasExactKeys(value, ['actions', 'id', 'kind', 'observedAnswers'])) {
++      throw new Error('invalid persistence write observation')
++    }
++    value.actions.forEach(assertAction)
++    assertJsonValue(value.observedAnswers)
++    return
++  }
++  if (!hasExactKeys(value, ['id', 'kind', 'legacyInput', 'observedLegacyOutput'])) {
++    throw new Error('invalid persistence restore observation')
++  }
++  assertJsonValue(value.legacyInput)
++  assertJsonValue(value.observedLegacyOutput)
++}
++
++function readSavedAnswers() {
++  const stored = window.localStorage.getItem(STORAGE_KEY)
++  if (!stored) throw new Error('legacy app did not save questionnaire state')
++  const snapshot: unknown = JSON.parse(stored)
++  if (!isRecord(snapshot) || !Object.hasOwn(snapshot, 'answers')) {
++    throw new Error('legacy saved state has no answers')
++  }
++  assertJsonValue(snapshot.answers)
++  return snapshot.answers
++}
++
++function requiredButton(selector: string) {
++  const button = document.querySelector<HTMLButtonElement>(selector)
++  if (!button || button.disabled) throw new Error('expected public action is unavailable')
++  return button
++}
++
++async function runAction(
++  action: PublicAction,
++  user: ReturnType<typeof userEvent.setup>,
++) {
++  const previousStoredState = window.localStorage.getItem(STORAGE_KEY)
++  if (action.type === 'start') {
++    await user.click(requiredButton('.intro-card .primary-button'))
++  } else if (action.type === 'continue') {
++    await user.click(requiredButton('.question-footer .primary-button'))
++  } else {
++    const buttons = document.querySelectorAll<HTMLButtonElement>('.choice-card')
++    const button = buttons.item(action.optionIndex)
++    if (!button || button.disabled) throw new Error('expected public option is unavailable')
++    await user.click(button)
++  }
++  await waitFor(() => {
++    if (window.localStorage.getItem(STORAGE_KEY) === previousStoredState) {
++      throw new Error('legacy public action did not update saved state')
++    }
++  })
++}
++
++async function observeWrite(seedCase: Extract<
++  SeedCase,
++  { readonly kind: 'legacy-write-observation' }
++>): Promise<ObservationCase> {
++  window.localStorage.clear()
++  const user = userEvent.setup()
++  const rendered = render(<App />)
++  await waitFor(() => readSavedAnswers())
++  for (const action of seedCase.actions) await runAction(action, user)
++  const observation = {
++    id: seedCase.id,
++    kind: seedCase.kind,
++    actions: seedCase.actions,
++    observedAnswers: readSavedAnswers(),
++  } as const
++  rendered.unmount()
++  return observation
++}
++
++const extractionTest = process.env.RAMEN_PARITY_SEED ? test : test.skip
++
++extractionTest('extracts direct legacy persistence observations', async () => {
++  const capability = readCapability(process.env.RAMEN_PARITY_SEED!)
++  const seeds = readSeeds(capability.seedPath)
++  const cases: ObservationCase[] = []
++  for (const seedCase of seeds) {
++    const observation = seedCase.kind === 'legacy-write-observation'
++      ? await observeWrite(seedCase)
++      : (() => {
++          const observedLegacyOutput = restoreUserAnswers(seedCase.legacyInput)
++          return {
++            id: seedCase.id,
++            kind: seedCase.kind,
++            legacyInput: seedCase.legacyInput,
++            observedLegacyOutput: toJsonValue(observedLegacyOutput),
++          } as const
++        })()
++    assertObservationCase(observation)
++    cases.push(observation)
++  }
++  writeFileSync(capability.rawOutputPath, `${JSON.stringify({
++    schemaVersion: 1,
++    cases,
++  }, null, 2)}\n`, { flag: 'wx', mode: 0o600 })
++})
