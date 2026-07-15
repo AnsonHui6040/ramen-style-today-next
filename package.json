@@ -17,6 +17,8 @@
     "migration:ledger": "tsx tools/migration/check-ledger.ts --write",
     "migration:ledger:check": "tsx tools/migration/check-ledger.ts --check",
     "migration:ledger:record-ci": "tsx tools/migration/check-ledger.ts --record-ci",
+    "parity:persistence": "tsx tools/parity/persistence/verify-fixtures.ts",
+    "parity:persistence:extract": "tsx tools/parity/persistence/extract.ts",
     "parity:questions": "tsx tools/parity/questions/parity.ts",
     "questions:check": "tsx tools/questions/generate-question-model.ts --check",
     "questions:generate": "tsx tools/questions/generate-question-model.ts --write",
@@ -24,7 +26,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
     "build": "tsc -b packages/classification-core",
-    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run questions:check && npm run runtime:imports:check && npm run parity:questions && npm run classification:index:check && npm run migration:ledger:check",
+    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run questions:check && npm run runtime:imports:check && npm run parity:questions && npm run parity:persistence && npm run classification:index:check && npm run migration:ledger:check",
     "verify:acceptance": "npm run verify && tsx tools/acceptance/verify-acceptance.ts"
   },
   "devDependencies": {

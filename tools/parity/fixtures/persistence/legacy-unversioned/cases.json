@@ -1,0 +1,167 @@
+[
+  {
+    "actions": [
+      {
+        "type": "start"
+      }
+    ],
+    "id": "write-initial-shapes",
+    "kind": "legacy-write-observation",
+    "observedAnswers": {
+      "exclusions": [
+        "none"
+      ],
+      "signature": [],
+      "source": []
+    }
+  },
+  {
+    "actions": [
+      {
+        "type": "start"
+      },
+      {
+        "optionIndex": 0,
+        "type": "select"
+      },
+      {
+        "type": "continue"
+      },
+      {
+        "optionIndex": 0,
+        "type": "select"
+      },
+      {
+        "type": "continue"
+      },
+      {
+        "optionIndex": 0,
+        "type": "select"
+      },
+      {
+        "type": "continue"
+      },
+      {
+        "optionIndex": 0,
+        "type": "select"
+      },
+      {
+        "optionIndex": 1,
+        "type": "select"
+      }
+    ],
+    "id": "write-single-multiple-shapes",
+    "kind": "legacy-write-observation",
+    "observedAnswers": {
+      "archetype": "chintan",
+      "exclusions": [
+        "none"
+      ],
+      "form": "soup",
+      "signature": [],
+      "source": [
+        "pork",
+        "chicken"
+      ],
+      "tare": "shoyu"
+    }
+  },
+  {
+    "actions": [
+      {
+        "type": "start"
+      },
+      {
+        "optionIndex": 1,
+        "type": "select"
+      },
+      {
+        "type": "continue"
+      },
+      {
+        "optionIndex": 2,
+        "type": "select"
+      },
+      {
+        "type": "continue"
+      }
+    ],
+    "id": "write-forced-answer",
+    "kind": "legacy-write-observation",
+    "observedAnswers": {
+      "archetype": "miso-rich",
+      "exclusions": [
+        "none"
+      ],
+      "form": "tsukemen",
+      "signature": [],
+      "source": [],
+      "tare": "miso"
+    }
+  },
+  {
+    "id": "restore-seafood",
+    "kind": "legacy-restore-observation",
+    "legacyInput": {
+      "exclusions": [
+        "seafood"
+      ],
+      "signature": [],
+      "source": []
+    },
+    "observedLegacyOutput": {
+      "exclusions": [
+        "fish-seafood",
+        "shellfish",
+        "shrimp-crab"
+      ],
+      "signature": [],
+      "source": []
+    }
+  },
+  {
+    "id": "restore-empty-initial-arrays",
+    "kind": "legacy-restore-observation",
+    "legacyInput": {
+      "exclusions": [],
+      "signature": [],
+      "source": []
+    },
+    "observedLegacyOutput": {
+      "exclusions": [
+        "none"
+      ],
+      "signature": [],
+      "source": []
+    }
+  },
+  {
+    "id": "restore-exclusive-normalization",
+    "kind": "legacy-restore-observation",
+    "legacyInput": {
+      "exclusions": [
+        "none",
+        "fish-seafood"
+      ],
+      "signature": [
+        "no-preference",
+        "chashu"
+      ],
+      "source": [
+        "unsure",
+        "pork"
+      ]
+    },
+    "observedLegacyOutput": {
+      "exclusions": [
+        "fish-seafood"
+      ],
+      "signature": [
+        "no-preference"
+      ],
+      "source": [
+        "pork"
+      ]
+    }
+  }
+]
