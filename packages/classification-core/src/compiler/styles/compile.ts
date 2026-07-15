@@ -1,17 +1,20 @@
 import type { CompiledQuestionModel } from '../../contracts/question-model.js'
 import type {
   AdjustmentConditionDefinition,
-  CompileStyleCoresResult,
+  CompiledSubtype,
+  CompileStyleSubtypesResult,
   CoreId,
   IntensityId,
   MatchTier,
+  NoodleId,
   ResolvedStyleCoreRule,
-  StyleCoreStageCore,
-  StyleCoreStageStyle,
   StyleDefinition,
   StyleRuleDefinition,
   StyleRuleProvenance,
   StyleRuleTierDefinition,
+  StyleSubtypeStageCore,
+  StyleSubtypeStageStyle,
+  SubtypeId,
 } from '../../contracts/style-model.js'
 import { compareCodePoints } from '../../contracts/source-path.js'
 import { DiagnosticCollector } from '../collector.js'
@@ -20,6 +23,13 @@ import { parseStyleDefinitionBundle } from './source-schema.js'
 
 const styleModelVersion = 'batch3a.1.0'
 const requiredIntensityIds = ['clean', 'standard', 'heavy'] as const
+const requiredNoodleIds = [
+  'thin-straight',
+  'medium-thin-straight',
+  'medium-thick-straight',
+  'medium-thick-wavy',
+  'extra-thick',
+] as const
 const requiredRuleQuestionIds = [
   'form',
   'archetype',
@@ -72,6 +82,10 @@ function coreId(styleId: string, intensityId: IntensityId): CoreId {
   return `${styleId}:${intensityId}`
 }
 
+function subtypeId(parentCoreId: CoreId, noodleId: NoodleId): SubtypeId {
+  return `${parentCoreId}:${noodleId}`
+}
+
 interface RuleCandidate {
   readonly rule: StyleRuleDefinition
   readonly provenance: StyleRuleProvenance
@@ -81,7 +95,7 @@ export function compileStyles(
   input: unknown,
   questionModel: CompiledQuestionModel,
   sourceFile: string,
-): CompileStyleCoresResult {
+): CompileStyleSubtypesResult {
   const parsed = parseStyleDefinitionBundle(input, sourceFile)
   if (!parsed.definition) return { ok: false, diagnostics: parsed.diagnostics }
 
@@ -123,6 +137,11 @@ export function compileStyles(
       || compareCodePoints(left.id, right.id)
       || compareStableValues(left, right)
   ))
+  const canonicalNoodles = [...definition.taxonomy.noodles].sort((left, right) => (
+    left.priority - right.priority
+      || compareCodePoints(left.id, right.id)
+      || compareStableValues(left, right)
+  ))
   const canonicalRuleQuestions = [...definition.taxonomy.ruleQuestions].sort((left, right) => (
     left.priority - right.priority
       || compareCodePoints(left.questionId, right.questionId)
@@ -145,6 +164,12 @@ export function compileStyles(
     canonicalIntensities.map(({ priority }) => priority),
     definition.taxonomy.sourceFile,
     '/intensities',
+    collector,
+  )
+  reportDuplicatePriorities(
+    canonicalNoodles.map(({ priority }) => priority),
+    definition.taxonomy.sourceFile,
+    '/noodles',
     collector,
   )
   reportDuplicatePriorities(
@@ -179,6 +204,15 @@ export function compileStyles(
       message: `Duplicate intensity taxonomy member ${id}`,
     })
   }
+  for (const id of duplicateStrings(canonicalNoodles.map(({ id }) => id))) {
+    collector.error({
+      code: 'STYLE_NOODLE_DUPLICATE',
+      sourceFile: definition.taxonomy.sourceFile,
+      path: '/noodles',
+      entityId: id,
+      message: `Duplicate noodle taxonomy member ${id}`,
+    })
+  }
 
   const declaredIntensityIds = canonicalStringSet(
     canonicalIntensities.map(({ id }) => id),
@@ -194,6 +228,21 @@ export function compileStyles(
       message: 'Intensity taxonomy does not declare the exact approved inventory',
       expected: exactIntensityIds,
       received: canonicalIntensities.map(({ id }) => id),
+    })
+  }
+
+  const declaredNoodleIds = canonicalStringSet(canonicalNoodles.map(({ id }) => id))
+  const exactNoodleIds = [...requiredNoodleIds].sort(compareCodePoints)
+  if (!sameStrings(declaredNoodleIds, exactNoodleIds)
+    || canonicalNoodles.length !== requiredNoodleIds.length) {
+    collector.error({
+      code: 'STYLE_INVENTORY_MISMATCH',
+      sourceFile: definition.taxonomy.sourceFile,
+      path: '/noodles',
+      entityId: 'noodles',
+      message: 'Noodle taxonomy does not declare the exact approved inventory',
+      expected: exactNoodleIds,
+      received: canonicalNoodles.map(({ id }) => id),
     })
   }
 
@@ -239,6 +288,16 @@ export function compileStyles(
   const intensityById = new Map<IntensityId, typeof canonicalIntensities[number]>()
   for (const intensity of canonicalIntensities) {
     if (!intensityById.has(intensity.id)) intensityById.set(intensity.id, intensity)
+  }
+  const noodleById = new Map<NoodleId, {
+    readonly noodle: typeof canonicalNoodles[number]
+    readonly path: string
+  }>()
+  for (const [index, noodle] of canonicalNoodles.entries()) {
+    if (!noodleById.has(noodle.id)) noodleById.set(noodle.id, {
+      noodle,
+      path: `/noodles/${index}`,
+    })
   }
   const rulePriorityByQuestionId = new Map(
     canonicalRuleQuestions.map(({ questionId, priority }) => [questionId, priority]),
@@ -414,7 +473,8 @@ export function compileStyles(
   }
 
   const seenCoreIds = new Set<CoreId>()
-  const stageStyles: StyleCoreStageStyle[] = []
+  const seenSubtypeIds = new Set<SubtypeId>()
+  const stageStyles: StyleSubtypeStageStyle[] = []
   for (const style of canonicalStyles) {
     const family = familyById.get(style.family)
     if (!family) collector.error({
@@ -515,7 +575,49 @@ export function compileStyles(
       })
     }
 
-    const cores: StyleCoreStageCore[] = []
+    const supportedNoodleIds = [...style.supportedNoodleIds].sort((left, right) => {
+      const leftPriority = noodleById.get(left)?.noodle.priority ?? Number.MAX_SAFE_INTEGER
+      const rightPriority = noodleById.get(right)?.noodle.priority ?? Number.MAX_SAFE_INTEGER
+      return leftPriority - rightPriority || compareCodePoints(left, right)
+    })
+    if (supportedNoodleIds.length === 0) collector.error({
+      code: 'STYLE_NOODLE_EMPTY',
+      sourceFile: style.sourceFile,
+      path: '/supportedNoodleIds',
+      entityId: style.id,
+      message: `Style ${style.id} declares no supported noodle`,
+    })
+    for (const id of duplicateStrings(supportedNoodleIds)) collector.error({
+      code: 'STYLE_NOODLE_DUPLICATE',
+      sourceFile: style.sourceFile,
+      path: '/supportedNoodleIds',
+      entityId: id,
+      message: `Style ${style.id} repeats noodle ${id}`,
+    })
+    for (const id of supportedNoodleIds) {
+      if (!noodleById.has(id)) collector.error({
+        code: 'STYLE_NOODLE_UNKNOWN',
+        sourceFile: style.sourceFile,
+        path: '/supportedNoodleIds',
+        entityId: id,
+        message: `Style ${style.id} references undeclared noodle ${id}`,
+      })
+    }
+    const canonicalNoodleMembership = canonicalStringSet(supportedNoodleIds)
+    if (!sameStrings(canonicalNoodleMembership, declaredNoodleIds)
+      || supportedNoodleIds.length !== canonicalNoodles.length) {
+      collector.error({
+        code: 'STYLE_INVENTORY_MISMATCH',
+        sourceFile: style.sourceFile,
+        path: '/supportedNoodleIds',
+        entityId: style.id,
+        message: `Style ${style.id} noodle membership does not match the taxonomy`,
+        expected: declaredNoodleIds,
+        received: supportedNoodleIds,
+      })
+    }
+
+    const cores: StyleSubtypeStageCore[] = []
     for (const intensityId of supportedIntensityIds) {
       const intensity = intensityById.get(intensityId)
       const bodyCandidate = intensityCandidates.get(intensityId)
@@ -604,6 +706,50 @@ export function compileStyles(
         received: canonicalTiers(overrideFormRule),
       })
 
+      const subtypes: CompiledSubtype[] = []
+      for (const noodleId of supportedNoodleIds) {
+        const candidate = noodleById.get(noodleId)
+        if (!candidate) continue
+        const id = subtypeId(coreId(style.id, intensityId), noodleId)
+        if (seenSubtypeIds.has(id)) collector.error({
+          code: 'STYLE_SUBTYPE_ID_COLLISION',
+          sourceFile: style.sourceFile,
+          path: '/supportedNoodleIds',
+          entityId: id,
+          message: `Generated subtype ID collision ${id}`,
+        })
+        seenSubtypeIds.add(id)
+        subtypes.push({
+          id,
+          parentStyleId: style.id,
+          parentCoreId: coreId(style.id, intensityId),
+          noodleId,
+          priority: candidate.noodle.priority,
+          messageIds: {
+            labelTemplate: candidate.noodle.labelMessageId,
+            summaryTemplate: candidate.noodle.summaryMessageId,
+          },
+          provenance: [
+            { sourceFile: style.sourceFile, path: '' },
+            {
+              sourceFile: definition.taxonomy.sourceFile,
+              path: bodyCandidate.provenance.path,
+            },
+            { sourceFile: definition.taxonomy.sourceFile, path: candidate.path },
+          ],
+        })
+      }
+      const generatedNoodleIds = subtypes.map(({ noodleId }) => noodleId)
+      if (!sameStrings(generatedNoodleIds, supportedNoodleIds)) collector.error({
+        code: 'STYLE_INVENTORY_MISMATCH',
+        sourceFile: style.sourceFile,
+        path: '/supportedNoodleIds',
+        entityId: coreId(style.id, intensityId),
+        message: `Generated subtype matrix does not match core ${id}`,
+        expected: supportedNoodleIds,
+        received: generatedNoodleIds,
+      })
+
       cores.push({
         id,
         parentStyleId: style.id,
@@ -614,6 +760,7 @@ export function compileStyles(
           summaryTemplate: intensity.summaryMessageId,
         },
         resolvedRules,
+        subtypes,
         provenance: [
           { sourceFile: style.sourceFile, path: '' },
           { sourceFile: definition.taxonomy.sourceFile, path: bodyCandidate.provenance.path },
@@ -628,10 +775,7 @@ export function compileStyles(
       messageIds: { ...style.messageIds },
       accent: style.accent,
       supportedIntensityIds,
-      supportedNoodleIds: canonicalMembershipIds(
-        style.supportedNoodleIds,
-        definition.taxonomy.noodles,
-      ),
+      supportedNoodleIds,
       cores,
       exclusionTags: canonicalMembershipIds(
         style.exclusionTags,
@@ -645,8 +789,8 @@ export function compileStyles(
   if (collector.hasErrors()) return { ok: false, diagnostics }
   return {
     ok: true,
-    coreStage: {
-      kind: 'style-core-stage',
+    subtypeStage: {
+      kind: 'style-subtype-stage',
       modelVersion: definition.modelVersion,
       questionModelVersion: questionModel.metadata.modelVersion,
       questionSemanticHash: questionModel.metadata.semanticHash,

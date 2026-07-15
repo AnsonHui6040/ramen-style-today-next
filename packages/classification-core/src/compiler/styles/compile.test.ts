@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
-import type { StyleDefinitionBundleSource } from '../../contracts/style-model.js'
+import type {
+  CompileStyleSubtypesResult,
+  StyleDefinitionBundleSource,
+} from '../../contracts/style-model.js'
 import { compileStyles } from './compile.js'
 import {
   acceptedQuestionModelFixture,
@@ -36,6 +39,23 @@ function reverseObjectInsertion(value: unknown): unknown {
 
 function expectNoCoreStage(result: ReturnType<typeof compileStyles>) {
   expect(result.ok).toBe(false)
+  expect(result).not.toHaveProperty('subtypeStage')
+  expect(result).not.toHaveProperty('coreStage')
+  expect(result).not.toHaveProperty('model')
+}
+
+type SubtypeSuccess = Extract<CompileStyleSubtypesResult, { readonly ok: true }>
+
+function expectSubtypeSuccess(result: unknown): asserts result is SubtypeSuccess {
+  expect(result).toMatchObject({ ok: true })
+  expect(result).toHaveProperty('subtypeStage')
+  expect(result).not.toHaveProperty('coreStage')
+  expect(result).not.toHaveProperty('model')
+}
+
+function expectNoSubtypeStage(result: ReturnType<typeof compileStyles>) {
+  expect(result.ok).toBe(false)
+  expect(result).not.toHaveProperty('subtypeStage')
   expect(result).not.toHaveProperty('coreStage')
   expect(result).not.toHaveProperty('model')
 }
@@ -58,24 +78,24 @@ describe('style intensity core compiler', () => {
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result).not.toHaveProperty('model')
-    expect(result.coreStage).toMatchObject({
-      kind: 'style-core-stage',
+    expectSubtypeSuccess(result)
+    expect(result.subtypeStage).toMatchObject({
+      kind: 'style-subtype-stage',
       modelVersion: 'batch3a.1.0',
       questionModelVersion: 'batch2a.1.0',
     })
-    expect(result.coreStage.styles.map(({ id }) => id))
+    expect(result.subtypeStage.styles.map(({ id }) => id))
       .toEqual(expectedStyles.map(({ id }) => id))
-    expect(result.coreStage.styles).toHaveLength(18)
+    expect(result.subtypeStage.styles).toHaveLength(18)
 
-    const cores = result.coreStage.styles.flatMap(({ cores: styleCores }) => styleCores)
+    const cores = result.subtypeStage.styles.flatMap(({ cores: styleCores }) => styleCores)
     expect(cores).toHaveLength(54)
     expect(new Set(cores.map(({ id }) => id)).size).toBe(54)
     expect(cores.map(({ id }) => id)).toEqual(expectedStyles.flatMap(({ id }) => (
       expectedIntensities.map(({ id: intensityId }) => `${id}:${intensityId}`)
     )))
 
-    for (const style of result.coreStage.styles) {
+    for (const style of result.subtypeStage.styles) {
       const sourceStyle = expectedStyles.find(({ id }) => id === style.id)!
       expect(style.family).toBe(sourceStyle.family)
       expect(style.cores).toHaveLength(3)
@@ -87,7 +107,7 @@ describe('style intensity core compiler', () => {
         .toEqual(expectedIntensities.map(({ priority }) => priority))
       for (const core of style.cores) {
         expect(core).not.toHaveProperty('rules')
-        expect(core).not.toHaveProperty('subtypes')
+        expect(core.subtypes).toHaveLength(5)
         expect(core.resolvedRules.map(({ questionId }) => questionId)).toEqual([
           'form',
           'archetype',
@@ -109,9 +129,8 @@ describe('style intensity core compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    const style = result.coreStage.styles.find(({ id }) => id === 'shoyu-chintan')!
+    expectSubtypeSuccess(result)
+    const style = result.subtypeStage.styles.find(({ id }) => id === 'shoyu-chintan')!
     for (const intensity of source.taxonomy.intensities) {
       const core = style.cores.find(({ intensityId }) => intensityId === intensity.id)!
       const bodyRule = core.resolvedRules.find(({ questionId }) => questionId === 'body')!
@@ -137,9 +156,8 @@ describe('style intensity core compiler', () => {
       styleBundleFallbackSource,
     )
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    const clean = result.coreStage.styles[0]!.cores.find(
+    expectSubtypeSuccess(result)
+    const clean = result.subtypeStage.styles[0]!.cores.find(
       ({ intensityId }) => intensityId === 'clean',
     )!
     expect(clean.resolvedRules.find(({ questionId }) => questionId === 'body')).toEqual(
@@ -157,9 +175,8 @@ describe('style intensity core compiler', () => {
   test('does not fabricate intensity core overrides for canonical definitions', () => {
     const result = compileCanonical()
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.coreStage.styles.flatMap(({ cores }) => cores).flatMap(
+    expectSubtypeSuccess(result)
+    expect(result.subtypeStage.styles.flatMap(({ cores }) => cores).flatMap(
       ({ resolvedRules }) => resolvedRules,
     ).some(({ provenance }) => (
       provenance.inheritedFrom === 'style-intensity-override'
@@ -332,6 +349,11 @@ describe('style intensity core compiler', () => {
       'STYLE_CORE_ID_COLLISION',
       'STYLE_INTENSITY_DUPLICATE',
       'STYLE_INVENTORY_MISMATCH',
+      'STYLE_SUBTYPE_ID_COLLISION',
+      'STYLE_SUBTYPE_ID_COLLISION',
+      'STYLE_SUBTYPE_ID_COLLISION',
+      'STYLE_SUBTYPE_ID_COLLISION',
+      'STYLE_SUBTYPE_ID_COLLISION',
     ])
   })
 
@@ -499,5 +521,240 @@ describe('style intensity core compiler', () => {
       acceptedQuestionModelFixture(),
       styleBundleFallbackSource,
     ).ok).toBe(true)
+  })
+})
+
+describe('style noodle subtype compiler', () => {
+  test('generates the exact 270 noodle subtype IDs, parents, priorities, and templates', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    const noodles = [...source.taxonomy.noodles].sort((left, right) => (
+      left.priority - right.priority || compareStrings(left.id, right.id)
+    ))
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectSubtypeSuccess(result)
+    expect(result.subtypeStage.kind).toBe('style-subtype-stage')
+    const cores = result.subtypeStage.styles.flatMap(({ cores: styleCores }) => styleCores)
+    const subtypes = cores.flatMap(({ subtypes: coreSubtypes }) => coreSubtypes)
+    expect(cores).toHaveLength(54)
+    expect(subtypes).toHaveLength(270)
+    expect(new Set(subtypes.map(({ id }) => id)).size).toBe(270)
+
+    for (const style of result.subtypeStage.styles) {
+      for (const core of style.cores) {
+        expect(core.subtypes).toHaveLength(5)
+        expect(core.subtypes.map(({ id }) => id)).toEqual(
+          noodles.map(({ id }) => `${core.id}:${id}`),
+        )
+        expect(core.subtypes.map(({ parentStyleId }) => parentStyleId))
+          .toEqual(noodles.map(() => style.id))
+        expect(core.subtypes.map(({ parentCoreId }) => parentCoreId))
+          .toEqual(noodles.map(() => core.id))
+        expect(core.subtypes.map(({ noodleId }) => noodleId))
+          .toEqual(noodles.map(({ id }) => id))
+        expect(core.subtypes.map(({ priority }) => priority))
+          .toEqual(noodles.map(({ priority }) => priority))
+        expect(core.subtypes.map(({ messageIds }) => messageIds)).toEqual(
+          noodles.map(({ labelMessageId, summaryMessageId }) => ({
+            labelTemplate: labelMessageId,
+            summaryTemplate: summaryMessageId,
+          })),
+        )
+        for (const subtype of core.subtypes) {
+          expect(subtype.messageIds).not.toHaveProperty('label')
+          expect(subtype.messageIds).not.toHaveProperty('summary')
+          expect(subtype).not.toHaveProperty('locale')
+          expect(subtype).not.toHaveProperty('fallback')
+        }
+        expect(core).not.toHaveProperty('rules')
+      }
+      expect(style).not.toHaveProperty('adjustments')
+    }
+    expect(result.subtypeStage).not.toHaveProperty('inventory')
+    expect(result.subtypeStage).not.toHaveProperty('sourceHash')
+    expect(result.subtypeStage).not.toHaveProperty('semanticHash')
+    expect(result.subtypeStage).not.toHaveProperty('dataVersion')
+  })
+
+  test('keeps subtype and core ordering stable under reversed source declarations', () => {
+    const canonical = compileCanonical()
+    const reversed = canonicalStyleDefinitionBundleFixture()
+    reversed.definitions.reverse()
+    reversed.taxonomy.intensities.reverse()
+    reversed.taxonomy.noodles.reverse()
+    for (const definition of reversed.definitions) {
+      definition.supportedIntensityIds.reverse()
+      definition.supportedNoodleIds.reverse()
+    }
+
+    expectSubtypeSuccess(canonical)
+    const reversedResult = compileStyles(
+      reversed,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectSubtypeSuccess(reversedResult)
+    expect(reversedResult).toEqual(canonical)
+  })
+
+  test('ignores object insertion order and repeats subtype compilation byte-identically', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    const first = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    const reordered = compileStyles(
+      reverseObjectInsertion(source),
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    const repeated = compileCanonical()
+
+    expectSubtypeSuccess(first)
+    expectSubtypeSuccess(reordered)
+    expectSubtypeSuccess(repeated)
+    expect(JSON.stringify(reordered)).toBe(JSON.stringify(first))
+    expect(JSON.stringify(repeated)).toBe(JSON.stringify(first))
+  })
+
+  test('copies subtype templates and provenance independently from source mutation', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectSubtypeSuccess(result)
+    const beforeMutation = JSON.stringify(result)
+
+    source.taxonomy.noodles[0]!.labelMessageId = 'mutated-noodle-label'
+    source.taxonomy.noodles[0]!.summaryMessageId = 'mutated-noodle-summary'
+    source.definitions[0]!.supportedNoodleIds.reverse()
+
+    expect(JSON.stringify(result)).toBe(beforeMutation)
+  })
+
+  test('rejects a missing per-core noodle combination without a subtype stage', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    source.definitions[0]!.supportedNoodleIds = source.definitions[0]!
+      .supportedNoodleIds.filter((id) => id !== 'extra-thick')
+
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoSubtypeStage(result)
+    expect(diagnosticCodes(result)).toContain('STYLE_INVENTORY_MISMATCH')
+  })
+
+  test('rejects a closed noodle token missing from taxonomy as unknown and extra', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    source.taxonomy.noodles = source.taxonomy.noodles.filter(
+      ({ id }) => id !== 'extra-thick',
+    )
+
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoSubtypeStage(result)
+    expect(diagnosticCodes(result)).toContain('STYLE_NOODLE_UNKNOWN')
+    expect(diagnosticCodes(result)).toContain('STYLE_INVENTORY_MISMATCH')
+  })
+
+  test('rejects an out-of-contract noodle token structurally without a stage', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    Reflect.set(source.definitions[0]!.supportedNoodleIds, 0, 'unknown-noodle')
+
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoSubtypeStage(result)
+    expect(diagnosticCodes(result)).toContain('STRUCTURE_INVALID')
+  })
+
+  test('rejects empty or duplicate noodle membership and subtype collisions', () => {
+    const empty = canonicalStyleDefinitionBundleFixture()
+    empty.definitions[0]!.supportedNoodleIds = []
+    const emptyResult = compileStyles(
+      empty,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoSubtypeStage(emptyResult)
+    expect(diagnosticCodes(emptyResult)).toContain('STYLE_NOODLE_EMPTY')
+    expect(diagnosticCodes(emptyResult)).toContain('STYLE_INVENTORY_MISMATCH')
+
+    const duplicate = canonicalStyleDefinitionBundleFixture()
+    duplicate.definitions[0]!.supportedNoodleIds.push('thin-straight')
+    const duplicateResult = compileStyles(
+      duplicate,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    expectNoSubtypeStage(duplicateResult)
+    expect(diagnosticCodes(duplicateResult)).toContain('STYLE_NOODLE_DUPLICATE')
+    expect(diagnosticCodes(duplicateResult)).toContain('STYLE_SUBTYPE_ID_COLLISION')
+    expect(diagnosticCodes(duplicateResult)).toContain('STYLE_INVENTORY_MISMATCH')
+  })
+
+  test('rejects duplicate noodle taxonomy priority without source-index fallback', () => {
+    const source = canonicalStyleDefinitionBundleFixture()
+    source.taxonomy.noodles[1]!.priority = source.taxonomy.noodles[0]!.priority
+
+    const result = compileStyles(
+      source,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoSubtypeStage(result)
+    expect(diagnosticCodes(result)).toContain('STYLE_PRIORITY_DUPLICATE')
+  })
+
+  test('returns deterministic complete noodle diagnostics and no stage for multiple errors', () => {
+    function invalidSource() {
+      const source = canonicalStyleDefinitionBundleFixture()
+      source.definitions[0]!.supportedNoodleIds = []
+      source.definitions[1]!.supportedNoodleIds.push('thin-straight')
+      source.taxonomy.noodles[1]!.priority = source.taxonomy.noodles[0]!.priority
+      return source
+    }
+
+    const forward = invalidSource()
+    const reversed = invalidSource()
+    reversed.definitions.reverse()
+    reversed.taxonomy.noodles.reverse()
+    for (const definition of reversed.definitions) definition.supportedNoodleIds.reverse()
+
+    const forwardResult = compileStyles(
+      forward,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+    const reversedResult = compileStyles(
+      reversed,
+      acceptedQuestionModelFixture(),
+      styleBundleFallbackSource,
+    )
+
+    expectNoSubtypeStage(forwardResult)
+    expectNoSubtypeStage(reversedResult)
+    expect(reversedResult.diagnostics).toEqual(forwardResult.diagnostics)
+    expect(new Set(forwardResult.diagnostics.map((diagnostic) => (
+      JSON.stringify(diagnostic)
+    ))).size).toBe(forwardResult.diagnostics.length)
   })
 })
