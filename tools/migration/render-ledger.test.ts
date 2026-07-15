@@ -51,6 +51,10 @@ describe('migration ledger', () => {
     const input = structuredClone(ledger)
     const batch2B = input.entries.find(({ batch }) => batch === '2B')!
     Object.assign(batch2B, {
+      status: 'complete',
+      implementationSha: 'a'.repeat(40),
+    })
+    Object.assign(batch2B, {
       status: 'in-progress',
       implementationPaths: [...batch2BImplementationPaths],
       verificationPaths: [...batch2BVerificationPaths],
@@ -58,6 +62,7 @@ describe('migration ledger', () => {
       fixtureManifestHash: 'f'.repeat(64),
       verification: [],
     })
+    delete batch2B.implementationSha
 
     const rendered = renderLedger(migrationLedgerSchema.parse(input))
 
