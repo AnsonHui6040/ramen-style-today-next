@@ -23,6 +23,8 @@
     "questions:check": "tsx tools/questions/generate-question-model.ts --check",
     "questions:generate": "tsx tools/questions/generate-question-model.ts --write",
     "runtime:imports:check": "tsx tools/validation/check-runtime-imports.ts",
+    "styles:check": "tsx tools/styles/generate-style-model.ts --check",
+    "styles:generate": "tsx tools/styles/generate-style-model.ts --write",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
     "build": "tsc -b packages/classification-core",
