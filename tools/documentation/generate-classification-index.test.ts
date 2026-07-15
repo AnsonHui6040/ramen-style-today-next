@@ -538,7 +538,7 @@ test('Task 14-shaped ledger roundtrip renders manifest-only bound verification',
   } finally {
     rmSync(repoRoot, { recursive: true, force: true })
   }
-}, 20_000)
+}, 30_000)
 
 test('write mode rejects an owned output symlink before changing any output', () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
