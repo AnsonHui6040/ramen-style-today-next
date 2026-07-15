@@ -5,6 +5,18 @@
 Model version: `batch2a.1.0`<br>
 Data version: `196cb23d5c071452ad023c6702b2081578e70afdadfcc151fc7951bd34b17c1d`
 
+## Persistence
+
+Persistence assurance: `structurally-validated`<br>
+Persistence schema version: `1`<br>
+Fixture manifest: `tools/parity/fixtures/persistence/legacy-unversioned/manifest.json`<br>
+Fixture manifest hash: `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`<br>
+Verification scope: `pure persistence restore and payload contracts`<br>
+Legacy source: `github.com/AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`<br>
+Legacy source tree: `3e527de876cfeccfd3154ddc492830d71c4cfd9a`<br>
+Readiness: `migration-only`<br>
+Readiness blockers: `persistence-adapter-not-integrated`<br>`persisted-data-cutover-incomplete`<br>`styles-not-production-verified`<br>`scoring-not-production-verified`<br>`runtime-cutover-incomplete`
+
 | Concept | Canonical source | Validators | Consumers | Migrations | Generated owners | Messages | Tests |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `intensity/demo-shoyu:standard` | `packages/classification-core/src/definitions/synthetic.ts` | `packages/classification-core/src/compiler/compile.ts`<br>`packages/classification-core/src/compiler/source-schema.ts` | `tools/validation/validate-classification.ts` | — | `docs/classification/index.md`<br>`docs/classification/manifest.json` | — | `packages/classification-core/src/compiler/compile.test.ts` |

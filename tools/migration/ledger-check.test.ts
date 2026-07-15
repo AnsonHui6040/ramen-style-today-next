@@ -27,6 +27,9 @@ import {
   batch2AIncidentPath,
   batch2AMaintenancePaths,
   batch2ASemanticPaths,
+  batch2BAcceptanceMetadataPaths,
+  batch2BImplementationPaths,
+  batch2BVerificationPaths,
   migrationLedgerSchema,
   protectedQuestionBaseline,
 } from './ledger-schema.js'
@@ -59,6 +62,60 @@ const approvedSharedMaintenanceFiles = [
   'tools/parity/shared/authoring.ts',
   'tools/parity/shared/authoring.test.ts',
 ] as const
+const persistenceFixtureManifestHash = 'f'.repeat(64)
+
+function batch2BEntry(overrides: Record<string, unknown> = {}) {
+  return {
+    batch: '2B',
+    status: 'in-progress',
+    implementationPaths: [...batch2BImplementationPaths],
+    verificationPaths: [...batch2BVerificationPaths],
+    acceptanceMetadataPaths: [...batch2BAcceptanceMetadataPaths],
+    fixtureManifestHash: persistenceFixtureManifestHash,
+    legacySources: ['src/App.tsx'],
+    ownedScopes: [],
+    newOwners: ['packages/classification-core/src/persistence/contracts.ts'],
+    transformation: 'Batch 2B persistence contract fixture.',
+    behavior: 'no-production-runtime-change',
+    verification: [],
+    ...overrides,
+  }
+}
+
+function batch2BLedger(entry: Record<string, unknown> = batch2BEntry()) {
+  return {
+    schemaVersion: 1,
+    baseline: {
+      repository: 'AnsonHui6040/ramen-style-today',
+      commit: 'b'.repeat(40),
+    },
+    entries: [entry],
+  }
+}
+
+function completeBatch2B(overrides: Record<string, unknown> = {}) {
+  return batch2BEntry({
+    status: 'complete',
+    implementationSha: candidateSha,
+    verification: [
+      {
+        gate: 'batch2b-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'all Batch 2B offline verification gates passed',
+      },
+      {
+        gate: 'batch2b-remote-ci',
+        command: 'GitHub Actions CI / verify',
+        outcome: 'passed',
+        evidence: 'the exact implementation candidate passed CI',
+        commitSha: candidateSha,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+    ],
+    ...overrides,
+  })
+}
 
 function verifySuccessfulCiProof(
   proofInput: unknown,
@@ -766,6 +823,123 @@ describe('migration ledger repository checks', () => {
 
 })
 
+describe('Batch 2B ownership and acceptance invariants', () => {
+  test('accepts only the exact in-progress path groups without implementation evidence', () => {
+    expect(migrationLedgerSchema.safeParse(batch2BLedger()).success).toBe(true)
+
+    for (const overrides of [
+      { implementationPaths: batch2BImplementationPaths.slice(1) },
+      { verificationPaths: batch2BVerificationPaths.slice(1) },
+      { acceptanceMetadataPaths: batch2BAcceptanceMetadataPaths.slice(1) },
+      { implementationSha: candidateSha },
+      {
+        verification: [{
+          gate: 'batch2b-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'premature local evidence',
+        }],
+      },
+    ]) {
+      expect(migrationLedgerSchema.safeParse(batch2BLedger(
+        batch2BEntry(overrides),
+      )).success).toBe(false)
+    }
+  })
+
+  test('requires completed Batch 2B evidence to bind exact implementation and fixture identities', () => {
+    expect(migrationLedgerSchema.safeParse(batch2BLedger(completeBatch2B())).success)
+      .toBe(true)
+
+    const missingRemote = completeBatch2B({
+      verification: completeBatch2B().verification.slice(0, 1),
+    })
+    expect(migrationLedgerSchema.safeParse(batch2BLedger(missingRemote)).success)
+      .toBe(false)
+
+    const mismatchedRemote = structuredClone(completeBatch2B())
+    const verification = mismatchedRemote.verification as Array<{ commitSha?: string }>
+    verification[1]!.commitSha = 'e'.repeat(40)
+    expect(migrationLedgerSchema.safeParse(batch2BLedger(mismatchedRemote)).success)
+      .toBe(false)
+  })
+
+  test('allows only acceptance metadata after the Batch 2B implementation SHA', async () => {
+    const owner = 'packages/classification-core/src/persistence/contracts.ts'
+    const input = batch2BLedger(completeBatch2B())
+    const baseState = {
+      repoFiles: new Set([owner]),
+      existingFiles: new Set([owner]),
+      repoDirectories: parentDirectories(new Set([owner])),
+      currentMarkdown: undefined,
+      currentHeadSha: 'b'.repeat(40),
+      isCommitAncestor: async () => true,
+      questionSemanticHash: '',
+      classificationSemanticHash: '',
+      fixtureManifestHash: '',
+      classificationFixtureManifestHash: '',
+      persistenceFixtureManifestHash,
+      classificationPersistenceFixtureManifestHash: persistenceFixtureManifestHash,
+    }
+
+    const accepted = await checkLedgerOffline(input, {
+      ...baseState,
+      changedPathsBetween: async () => [...batch2BAcceptanceMetadataPaths],
+    })
+    expect(accepted.errors).toEqual([])
+
+    for (const [changedPath, expected] of [
+      [batch2BImplementationPaths[0]!.replace('/**', '/restore.ts'),
+        'Batch 2B implementation path changed after implementation SHA'],
+      ['tools/migration/ledger-check.ts',
+        'Batch 2B verification path changed after implementation SHA'],
+      ['README.md', 'Batch 2B metadata completion changed a non-metadata path'],
+    ] as const) {
+      const result = await checkLedgerOffline(input, {
+        ...baseState,
+        changedPathsBetween: async () => [changedPath],
+      })
+      expect(result.errors.some((error) => error.includes(expected))).toBe(true)
+    }
+  })
+
+  test('rejects persistence fixture identity drift in the ledger or classification manifest', async () => {
+    const owner = 'packages/classification-core/src/persistence/contracts.ts'
+    const input = batch2BLedger()
+    const baseState = {
+      repoFiles: new Set([owner]),
+      existingFiles: new Set([owner]),
+      repoDirectories: parentDirectories(new Set([owner])),
+      currentMarkdown: undefined,
+      currentHeadSha: 'b'.repeat(40),
+      isCommitAncestor: async () => true,
+      changedPathsBetween: async () => [],
+      questionSemanticHash: '',
+      classificationSemanticHash: '',
+      fixtureManifestHash: '',
+      classificationFixtureManifestHash: '',
+      persistenceFixtureManifestHash,
+      classificationPersistenceFixtureManifestHash: '0'.repeat(64),
+    }
+    const result = await checkLedgerOffline(input, baseState)
+
+    expect(result.errors).toContain(
+      'classification manifest persistence fixture manifest hash is inconsistent',
+    )
+
+    const ledgerDrift = await checkLedgerOffline(
+      batch2BLedger(batch2BEntry({ fixtureManifestHash: '1'.repeat(64) })),
+      {
+        ...baseState,
+        classificationPersistenceFixtureManifestHash: persistenceFixtureManifestHash,
+      },
+    )
+    expect(ledgerDrift.errors).toContain(
+      'Batch 2B fixture manifest hash is inconsistent with tracked bytes',
+    )
+  })
+})
+
 describe('Batch 2A offline acceptance invariants', () => {
   test('allows only approved in-progress maintenance paths', async () => {
     const input = inProgressMaintenanceLedger()
@@ -1076,6 +1250,7 @@ describe('local Git semantic changed-path collection', () => {
     const renamedTarget = 'docs/renamed.ts'
     const newlinePath = 'packages/classification-core/src/flow/line\nbreak.ts'
     const unstagedPath = 'packages/classification-core/src/flow/unstaged.ts'
+    const revertedPath = 'packages/classification-core/src/flow/reverted.ts'
     const committedPath = 'docs/committed.md'
     const baseContents = new Map([
       [hiddenPath, 'hidden base\n'],
@@ -1083,6 +1258,7 @@ describe('local Git semantic changed-path collection', () => {
       [renamedPath, 'renamed base\n'],
       [newlinePath, 'newline base\n'],
       [unstagedPath, 'unstaged base\n'],
+      [revertedPath, 'reverted base\n'],
       [committedPath, 'committed base\n'],
     ])
     try {
@@ -1097,6 +1273,15 @@ describe('local Git semantic changed-path collection', () => {
         cwd: repoRoot,
         encoding: 'utf8',
       }).trim()
+
+      writeFixtureFile(repoRoot, revertedPath, 'forbidden intermediate change\n')
+      execFileSync('git', ['add', '--', revertedPath], { cwd: repoRoot })
+      execFileSync('git', ['commit', '--quiet', '-m', 'forbidden change'], { cwd: repoRoot })
+      writeFixtureFile(repoRoot, revertedPath, baseContents.get(revertedPath)!)
+      execFileSync('git', ['add', '--', revertedPath], { cwd: repoRoot })
+      execFileSync('git', ['commit', '--quiet', '-m', 'revert forbidden change'], {
+        cwd: repoRoot,
+      })
 
       writeFixtureFile(repoRoot, committedPath, 'committed metadata\n')
       execFileSync('git', ['add', '--', committedPath], { cwd: repoRoot })
@@ -1132,8 +1317,9 @@ describe('local Git semantic changed-path collection', () => {
         renamedTarget,
         newlinePath,
         unstagedPath,
+        revertedPath,
       ]))
-      expect(changedPaths).toHaveLength(7)
+      expect(changedPaths).toHaveLength(8)
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
     }

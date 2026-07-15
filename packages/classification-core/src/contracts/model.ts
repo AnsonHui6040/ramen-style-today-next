@@ -1,5 +1,6 @@
-import type { DefinitionBundleSource } from '../compiler/source-schema.js'
 import type { CompiledQuestion } from './question-model.js'
+import type { ClassificationSourceProvenance } from './provenance.js'
+import type { DefinitionBundleSource } from '../compiler/source-schema.js'
 
 export type DeepReadonly<T> = T extends readonly (infer Item)[]
   ? readonly DeepReadonly<Item>[]
@@ -22,7 +23,7 @@ export interface ConceptRecord {
 export interface ClassificationModel {
   readonly modelVersion: string
   readonly dataVersion: string
-  readonly provenance: DeepReadonly<DefinitionBundleSource['provenance']>
+  readonly provenance: DeepReadonly<ClassificationSourceProvenance>
   readonly questions: DeepReadonly<readonly CompiledQuestion[]>
   readonly styles: DeepReadonly<DefinitionBundleSource['styles']>
   readonly policy: DeepReadonly<DefinitionBundleSource['policy']>

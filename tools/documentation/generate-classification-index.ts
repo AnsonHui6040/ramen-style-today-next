@@ -23,7 +23,10 @@ import {
   fixtureManifestSchema,
   questionParitySuiteVersion,
 } from '../parity/questions/contracts.js'
-import { buildDocumentation } from './build-index.js'
+import {
+  buildDocumentation,
+  type PersistenceDocumentationEvidence,
+} from './build-index.js'
 import {
   createDocumentationRelations,
   documentationDefinition,
@@ -180,6 +183,9 @@ export function repositoryFiles(repoRoot: string) {
 }
 
 const sha40Schema = z.string().regex(/^[0-9a-f]{40}$/)
+const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/)
+const persistenceFixtureManifestPath =
+  'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json' as const
 const acceptanceLedgerProjectionSchema = z.object({
   entries: z.array(z.unknown()),
 })
@@ -187,6 +193,17 @@ const acceptanceBatchEntryProjectionSchema = z.object({
   batch: z.literal('2A'),
   status: z.literal('complete'),
   implementationSha: sha40Schema,
+  verification: z.array(z.object({
+    gate: z.string(),
+    outcome: z.string(),
+    commitSha: sha40Schema.optional(),
+  })),
+})
+const acceptancePersistenceEntryProjectionSchema = z.object({
+  batch: z.literal('2B'),
+  status: z.literal('complete'),
+  implementationSha: sha40Schema,
+  fixtureManifestHash: sha256Schema,
   verification: z.array(z.object({
     gate: z.string(),
     outcome: z.string(),
@@ -229,6 +246,44 @@ export function projectQuestionParityVerification(
   }
 }
 
+export function projectPersistenceContractVerification(
+  validatedLedger: unknown,
+  identity: { fixtureManifestHash: string },
+) {
+  const ledger = acceptanceLedgerProjectionSchema.safeParse(validatedLedger)
+  if (!ledger.success) return undefined
+  const candidates = ledger.data.entries.filter((entry) => (
+    typeof entry === 'object'
+    && entry !== null
+    && 'batch' in entry
+    && entry.batch === '2B'
+  ))
+  if (candidates.length !== 1) return undefined
+  const projected = acceptancePersistenceEntryProjectionSchema.safeParse(candidates[0])
+  if (!projected.success) return undefined
+  const {
+    fixtureManifestHash,
+    implementationSha,
+    verification,
+  } = projected.data
+  if (fixtureManifestHash !== identity.fixtureManifestHash || verification.length !== 2) {
+    return undefined
+  }
+  const localGates = verification.filter(({ gate }) => gate === 'batch2b-local-verify')
+  const remoteGates = verification.filter(({ gate }) => gate === 'batch2b-remote-ci')
+  if (localGates.length !== 1
+    || remoteGates.length !== 1
+    || localGates[0]!.outcome !== 'passed'
+    || remoteGates[0]!.outcome !== 'passed'
+    || remoteGates[0]!.commitSha !== implementationSha) return undefined
+
+  return {
+    assurance: 'contract-verified' as const,
+    fixtureManifestHash,
+    implementationSha,
+  }
+}
+
 export function loadQuestionEvidence(
   repoRoot: string,
   questionMetadata: CompiledQuestionModelMetadata,
@@ -266,7 +321,59 @@ export function loadQuestionEvidence(
   }
 }
 
-function run() {
+export async function loadPersistenceEvidence(
+  repoRoot: string,
+): Promise<PersistenceDocumentationEvidence> {
+  const { persistenceFixtureManifestSchema } = await import(
+    '../parity/persistence/extractor.js'
+  )
+  const fixtureManifestBytes = readFileSync(resolve(repoRoot, persistenceFixtureManifestPath))
+  const fixtureManifest = persistenceFixtureManifestSchema.parse(
+    JSON.parse(fixtureManifestBytes.toString('utf8')) as unknown,
+  )
+  const validatedLedger = migrationLedgerSchema.parse(JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/migration/ledger.json'),
+    'utf8',
+  )) as unknown)
+  const fixtureManifestHash = createHash('sha256')
+    .update(fixtureManifestBytes)
+    .digest('hex')
+  const batch2BEntries = validatedLedger.entries.filter(({ batch }) => batch === '2B')
+  if (batch2BEntries.length !== 1
+    || batch2BEntries[0]!.fixtureManifestHash !== fixtureManifestHash) {
+    throw new Error('DOC_INDEX_DRIFT Batch 2B fixture manifest identity mismatch')
+  }
+  const verification = projectPersistenceContractVerification(validatedLedger, {
+    fixtureManifestHash,
+  })
+  const lineage = fixtureManifest.source
+
+  const evidence = {
+    origin: 'manually-authored',
+    schemaVersion: 1,
+    fixtureManifestPath: persistenceFixtureManifestPath,
+    fixtureManifestHash,
+    verificationScope: 'pure persistence restore and payload contracts',
+    legacyLineage: {
+      origin: 'legacy-production',
+      sourceRepository: lineage.repository,
+      sourceCommit: lineage.commit,
+      sourceTreeHash: lineage.treeHash,
+    },
+  } as const
+  return verification
+    ? {
+        ...evidence,
+        assurance: verification.assurance,
+        implementationSha: verification.implementationSha,
+      }
+    : {
+        ...evidence,
+        assurance: 'structurally-validated',
+      }
+}
+
+async function run() {
   const repoRoot = resolve(import.meta.dirname, '../..')
   const mode = process.argv[2]
   if (mode !== '--write' && mode !== '--check') throw new Error('Use --write or --check')
@@ -288,6 +395,17 @@ function run() {
   }
 
   const documentationRelations = createDocumentationRelations(compiled.model)
+  const ledgerInput = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/migration/ledger.json'),
+    'utf8',
+  )) as { entries?: unknown }
+  const hasBatch2BEntry = Array.isArray(ledgerInput.entries)
+    && ledgerInput.entries.some((entry) => (
+      typeof entry === 'object'
+      && entry !== null
+      && 'batch' in entry
+      && entry.batch === '2B'
+    ))
 
   const repoFiles = repositoryFiles(repoRoot)
   const existingPaths = new Set(documentationRelations.flatMap((item) => [
@@ -308,6 +426,9 @@ function run() {
     existingPaths,
     {
       questionEvidence: loadQuestionEvidence(repoRoot, compiledQuestions.model.metadata),
+      ...(hasBatch2BEntry
+        ? { persistenceEvidence: await loadPersistenceEvidence(repoRoot) }
+        : {}),
       detectedConsumerRegistry: documentationDetectedConsumers,
     },
   )
@@ -352,10 +473,8 @@ function run() {
 }
 
 if (process.argv[2] === '--write' || process.argv[2] === '--check') {
-  try {
-    run()
-  } catch (error) {
+  void run().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : String(error))
     process.exitCode = 1
-  }
+  })
 }

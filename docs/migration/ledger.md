@@ -246,10 +246,10 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `ecf9f5b4791862471d0898da7283ba4a40d3fbf9`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29311063386
 
-## Batch 2B — in-review
+## Batch 2B — in-progress
 
-- Behavior: `design-only-no-runtime-change`
-- Transformation: Consolidated the approved Batch 2B pure persistence, explicit migration, deterministic repair, legacy observation, provenance, readiness, and exact-SHA acceptance contracts; implementation has not started.
+- Behavior: `no-production-runtime-change`
+- Transformation: Implemented a pure bounded persistence core with explicit schema and question-model migration, deterministic submitted-state repair, stable resume resolution, frozen legacy observations, current contract verification, and pre-acceptance provenance and ownership wiring; storage integration and production cutover remain out of scope.
 
 ### Legacy sources
 
@@ -261,6 +261,83 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 - `docs/superpowers/plans/2026-07-14-batch-2b-persistence-repair.md`
 - `docs/superpowers/specs/2026-07-14-batch-2b-persistence-repair-design.md`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/persistence/contract-matrix.test.ts`
+- `packages/classification-core/src/persistence/contracts.test.ts`
+- `packages/classification-core/src/persistence/contracts.ts`
+- `packages/classification-core/src/persistence/create-payload.test.ts`
+- `packages/classification-core/src/persistence/create-payload.ts`
+- `packages/classification-core/src/persistence/decode-answers.test.ts`
+- `packages/classification-core/src/persistence/decode-answers.ts`
+- `packages/classification-core/src/persistence/decode-envelope.test.ts`
+- `packages/classification-core/src/persistence/decode-envelope.ts`
+- `packages/classification-core/src/persistence/decode-v1.test.ts`
+- `packages/classification-core/src/persistence/decode-v1.ts`
+- `packages/classification-core/src/persistence/determinism.test.ts`
+- `packages/classification-core/src/persistence/diagnostics.ts`
+- `packages/classification-core/src/persistence/fixed-point.test.ts`
+- `packages/classification-core/src/persistence/index.ts`
+- `packages/classification-core/src/persistence/invariant-error.ts`
+- `packages/classification-core/src/persistence/legacy-lineage.test.ts`
+- `packages/classification-core/src/persistence/legacy-lineage.ts`
+- `packages/classification-core/src/persistence/limits.ts`
+- `packages/classification-core/src/persistence/model-migrations.test.ts`
+- `packages/classification-core/src/persistence/model-migrations.ts`
+- `packages/classification-core/src/persistence/plain-data.test.ts`
+- `packages/classification-core/src/persistence/plain-data.ts`
+- `packages/classification-core/src/persistence/repair.test.ts`
+- `packages/classification-core/src/persistence/repair.ts`
+- `packages/classification-core/src/persistence/restore.test.ts`
+- `packages/classification-core/src/persistence/restore.ts`
+- `packages/classification-core/src/persistence/resume.test.ts`
+- `packages/classification-core/src/persistence/resume.ts`
+- `packages/classification-core/src/persistence/schema-migrations.test.ts`
+- `packages/classification-core/src/persistence/schema-migrations.ts`
+- `packages/classification-core/src/persistence/test-fixtures.ts`
+- `tools/parity/fixtures/persistence/legacy-unversioned/cases.json`
+- `tools/parity/fixtures/persistence/legacy-unversioned/manifest.json`
+- `tools/parity/persistence/contracts.test.ts`
+- `tools/parity/persistence/contracts.ts`
+- `tools/parity/persistence/extract.ts`
+- `tools/parity/persistence/extractor.test.ts`
+- `tools/parity/persistence/extractor.ts`
+- `tools/parity/persistence/instrumentation.test.ts`
+- `tools/parity/persistence/legacy-instrumentation.patch`
+- `tools/parity/persistence/migration-contract.test.ts`
+- `tools/parity/persistence/seeds.json`
+- `tools/parity/persistence/verify-fixtures.test.ts`
+- `tools/parity/persistence/verify-fixtures.ts`
+
+- Persistence fixture manifest hash: `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`
+
+### Implementation paths
+
+- `packages/classification-core/src/persistence/**`
+- `packages/classification-core/src/contracts/diagnostic-codes.ts`
+- `packages/classification-core/src/contracts/model.ts`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/index.ts`
+- `packages/classification-core/src/index.test.ts`
+- `tools/parity/persistence/**`
+- `tools/parity/fixtures/persistence/**`
+
+### Verification paths
+
+- `.github/workflows/ci.yml`
+- `package.json`
+- `package-lock.json`
+- `tools/acceptance/**`
+- `tools/documentation/**`
+- `tools/migration/**`
+- `tools/validation/check-runtime-imports.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+
+### Acceptance metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
 
 ### Verification
 

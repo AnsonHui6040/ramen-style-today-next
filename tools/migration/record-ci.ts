@@ -67,6 +67,35 @@ export function recordSuccessfulCi(
       } : entry),
     })
   }
+  if (batch === '2B') {
+    const target = ledger.entries.find((entry) => entry.batch === '2B')
+    if (!target) throw new Error('Unknown ledger batch 2B')
+    if (target.status !== 'in-progress') throw new Error('Batch 2B is not in progress')
+    return migrationLedgerSchema.parse({
+      ...ledger,
+      entries: ledger.entries.map((entry) => entry.batch === '2B' ? {
+        ...entry,
+        status: 'complete',
+        implementationSha: verifiedRun.sha,
+        verification: [
+          {
+            gate: 'batch2b-local-verify',
+            command: 'npm run verify',
+            outcome: 'passed',
+            evidence: 'all Batch 2B offline implementation and verification gates passed',
+          },
+          {
+            gate: 'batch2b-remote-ci',
+            command: 'GitHub Actions CI / verify',
+            outcome: 'passed',
+            evidence: 'the exact Batch 2B implementation candidate passed Node 24 CI',
+            commitSha: verifiedRun.sha,
+            runUrl: verifiedRun.runUrl,
+          },
+        ],
+      } : entry),
+    })
+  }
   const target = ledger.entries.find((entry) => entry.batch === batch)
   if (!target) throw new Error(`Unknown ledger batch ${batch}`)
   if (target.status !== 'in-review') throw new Error(`Batch ${batch} is not in review`)

@@ -42,6 +42,8 @@ export interface LedgerRepositoryState extends Omit<LedgerCheckInput, 'input'> {
   classificationSemanticHash: string
   fixtureManifestHash: string
   classificationFixtureManifestHash: string
+  persistenceFixtureManifestHash?: string
+  classificationPersistenceFixtureManifestHash?: string
   questionBaseline?: {
     readonly [Key in keyof typeof protectedQuestionBaseline]: string
   }
@@ -70,12 +72,12 @@ export function collectGitChangedPaths(
   const changedPaths = new Set<string>()
   const commands = [
     [
-      'diff',
+      'log',
+      '--format=',
       '--name-only',
       '--no-renames',
       '-z',
-      implementationSha,
-      currentHeadSha,
+      `${implementationSha}..${currentHeadSha}`,
       '--',
     ],
     [
@@ -154,6 +156,48 @@ export async function checkLedgerOffline(
     }
     if (state.fixtureManifestHash !== state.classificationFixtureManifestHash) {
       errors.push('classification manifest observable-trace fixture manifest hash is inconsistent')
+    }
+  }
+
+  const batch2B = base.ledger.entries.find(({ batch }) => batch === '2B')
+  if (batch2B) {
+    if (batch2B.fixtureManifestHash !== state.persistenceFixtureManifestHash) {
+      errors.push('Batch 2B fixture manifest hash is inconsistent with tracked bytes')
+    }
+    if (state.classificationPersistenceFixtureManifestHash
+      !== state.persistenceFixtureManifestHash) {
+      errors.push('classification manifest persistence fixture manifest hash is inconsistent')
+    }
+    if (batch2B.status === 'complete' && batch2B.implementationSha) {
+      if (!await state.isCommitAncestor(batch2B.implementationSha, state.currentHeadSha)) {
+        errors.push(
+          `Batch 2B implementation SHA ${batch2B.implementationSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+        )
+      } else {
+        const changedPaths = await state.changedPathsBetween(
+          batch2B.implementationSha,
+          state.currentHeadSha,
+        )
+        for (const file of changedPaths) {
+          if (batch2B.implementationPaths?.some((path) => matchesSemanticPath(file, path))) {
+            errors.push(`Batch 2B implementation path changed after implementation SHA: ${file}`)
+          } else if (batch2B.verificationPaths?.some(
+            (path) => matchesSemanticPath(file, path),
+          )) {
+            errors.push(`Batch 2B verification path changed after implementation SHA: ${file}`)
+          } else if (!batch2B.acceptanceMetadataPaths?.some(
+            (path) => matchesSemanticPath(file, path),
+          )) {
+            errors.push(`Batch 2B metadata completion changed a non-metadata path: ${file}`)
+          }
+        }
+        const expectedMetadataPaths = [...(batch2B.acceptanceMetadataPaths ?? [])]
+          .sort(compareCodePoints)
+        const actualMetadataPaths = [...changedPaths].sort(compareCodePoints)
+        if (JSON.stringify(actualMetadataPaths) !== JSON.stringify(expectedMetadataPaths)) {
+          errors.push('Batch 2B completion requires the exact acceptance metadata path set')
+        }
+      }
     }
   }
 

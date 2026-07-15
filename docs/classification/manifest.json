@@ -1801,6 +1801,24 @@
   ],
   "dataVersion": "196cb23d5c071452ad023c6702b2081578e70afdadfcc151fc7951bd34b17c1d",
   "modelVersion": "batch2a.1.0",
+  "persistence": {
+    "assurance": "structurally-validated",
+    "fixtureManifestHash": "6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226",
+    "fixtureManifestPath": "tools/parity/fixtures/persistence/legacy-unversioned/manifest.json",
+    "legacyLineage": {
+      "origin": "legacy-production",
+      "sourceCommit": "eebf00b7ddfbbe6f01ff598e57f1e17197068a37",
+      "sourceRepository": {
+        "host": "github.com",
+        "owner": "AnsonHui6040",
+        "repository": "ramen-style-today"
+      },
+      "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a"
+    },
+    "origin": "manually-authored",
+    "schemaVersion": 1,
+    "verificationScope": "pure persistence restore and payload contracts"
+  },
   "provenance": {
     "questions": {
       "assurance": "compiler-validated",
@@ -1841,10 +1859,11 @@
   },
   "readiness": {
     "blockers": [
-      "styles-not-migrated",
-      "scoring-not-migrated",
-      "persistence-not-migrated",
-      "runtime-not-cut-over"
+      "persistence-adapter-not-integrated",
+      "persisted-data-cutover-incomplete",
+      "styles-not-production-verified",
+      "scoring-not-production-verified",
+      "runtime-cutover-incomplete"
     ],
     "status": "migration-only"
   },

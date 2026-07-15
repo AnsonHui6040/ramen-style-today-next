@@ -7,6 +7,44 @@ import {
 } from '@ramen-style/classification-core/compiler'
 import type { DocumentationRelation } from './relations.js'
 
+const persistenceReadinessBlockers = [
+  'persistence-adapter-not-integrated',
+  'persisted-data-cutover-incomplete',
+  'styles-not-production-verified',
+  'scoring-not-production-verified',
+  'runtime-cutover-incomplete',
+] as const
+
+type PersistenceDocumentationEvidenceBase = {
+  origin: 'manually-authored'
+  schemaVersion: 1
+  fixtureManifestPath:
+    'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json'
+  fixtureManifestHash: string
+  verificationScope: 'pure persistence restore and payload contracts'
+  legacyLineage: {
+    origin: 'legacy-production'
+    sourceRepository: {
+      host: 'github.com'
+      owner: 'AnsonHui6040'
+      repository: 'ramen-style-today'
+    }
+    sourceCommit: string
+    sourceTreeHash: string
+  }
+}
+
+export type PersistenceDocumentationEvidence = PersistenceDocumentationEvidenceBase & (
+  | {
+      assurance: 'structurally-validated'
+      implementationSha?: never
+    }
+  | {
+      assurance: 'contract-verified'
+      implementationSha: string
+    }
+)
+
 export interface DocumentationBuild {
   manifest: string
   markdown: string
@@ -43,6 +81,7 @@ export interface QuestionDocumentationEvidence {
 
 export interface DocumentationBuildOptions {
   questionEvidence?: QuestionDocumentationEvidence
+  persistenceEvidence?: PersistenceDocumentationEvidence
   detectedConsumerRegistry?: readonly string[]
 }
 
@@ -229,12 +268,17 @@ export function buildDocumentation(
       assurance: 'structurally-validated',
     },
   }
-  const readinessBlockers = [
-    ...(model.provenance.styles.origin === 'synthetic' ? ['styles-not-migrated'] : []),
-    ...(model.provenance.scoringPolicy.origin === 'synthetic' ? ['scoring-not-migrated'] : []),
-    'persistence-not-migrated',
-    'runtime-not-cut-over',
-  ]
+  const persistence = options.persistenceEvidence
+  const readinessBlockers = persistence
+    ? [...persistenceReadinessBlockers]
+    : [
+        ...(model.provenance.styles.origin === 'synthetic' ? ['styles-not-migrated'] : []),
+        ...(model.provenance.scoringPolicy.origin === 'synthetic'
+          ? ['scoring-not-migrated']
+          : []),
+        'persistence-not-migrated',
+        'runtime-not-cut-over',
+      ]
   const readiness = {
     status: questionOrigin === 'legacy-production' ? 'migration-only' : 'development',
     blockers: readinessBlockers,
@@ -253,6 +297,25 @@ export function buildDocumentation(
     cell(concept.messageIds),
     `${cell(concept.tests)} |`,
   ].join(' | '))
+  const persistenceSummary = persistence
+    ? [
+        '## Persistence',
+        '',
+        `Persistence assurance: \`${persistence.assurance}\`<br>`,
+        `Persistence schema version: \`${persistence.schemaVersion}\`<br>`,
+        ...(persistence.assurance === 'contract-verified'
+          ? [`Persistence implementation SHA: \`${persistence.implementationSha}\`<br>`]
+          : []),
+        `Fixture manifest: \`${persistence.fixtureManifestPath}\`<br>`,
+        `Fixture manifest hash: \`${persistence.fixtureManifestHash}\`<br>`,
+        `Verification scope: \`${persistence.verificationScope}\`<br>`,
+        `Legacy source: \`${persistence.legacyLineage.sourceRepository.host}/${persistence.legacyLineage.sourceRepository.owner}/${persistence.legacyLineage.sourceRepository.repository}@${persistence.legacyLineage.sourceCommit}\`<br>`,
+        `Legacy source tree: \`${persistence.legacyLineage.sourceTreeHash}\`<br>`,
+        `Readiness: \`${readiness.status}\`<br>`,
+        `Readiness blockers: ${cell(readiness.blockers)}`,
+        '',
+      ]
+    : []
   const markdown = [
     '# Classification Index',
     '',
@@ -263,6 +326,7 @@ export function buildDocumentation(
     `Model version: \`${model.modelVersion}\`<br>`,
     `Data version: \`${model.dataVersion}\``,
     '',
+    ...persistenceSummary,
     '| Concept | Canonical source | Validators | Consumers | Migrations | Generated owners | Messages | Tests |',
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...rows,
@@ -275,6 +339,7 @@ export function buildDocumentation(
       synthetic: Object.values(model.provenance).every(({ origin }) => origin === 'synthetic'),
       modelVersion: model.modelVersion,
       dataVersion: model.dataVersion,
+      ...(persistence ? { persistence } : {}),
       provenance,
       readiness,
       concepts,

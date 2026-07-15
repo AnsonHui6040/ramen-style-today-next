@@ -16,6 +16,9 @@ import {
   batch2AIncidentPath,
   batch2AMaintenancePaths,
   batch2ASemanticPaths,
+  batch2BAcceptanceMetadataPaths,
+  batch2BImplementationPaths,
+  batch2BVerificationPaths,
   migrationLedgerSchema,
   protectedQuestionBaseline,
 } from './ledger-schema.js'
@@ -339,6 +342,69 @@ test('Batch 2A maintenance recording preserves semantic identity and records exa
       'batch2a-maintenance-local-verify',
       'batch2a-maintenance-remote-ci',
     ])
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
+test('Batch 2B promotion records exact implementation evidence and preserves fixture binding', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-record-2b-'))
+  try {
+    const sourceFile = join(repoRoot, 'docs/migration/ledger.json')
+    mkdirSync(dirname(sourceFile), { recursive: true })
+    const fixtureManifestHash = 'f'.repeat(64)
+    const input = migrationLedgerSchema.parse({
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: 'b'.repeat(40),
+      },
+      entries: [{
+        batch: '2B',
+        status: 'in-progress',
+        implementationPaths: [...batch2BImplementationPaths],
+        verificationPaths: [...batch2BVerificationPaths],
+        acceptanceMetadataPaths: [...batch2BAcceptanceMetadataPaths],
+        fixtureManifestHash,
+        legacySources: ['src/App.tsx'],
+        ownedScopes: [],
+        newOwners: ['packages/classification-core/src/persistence/contracts.ts'],
+        transformation: 'Authenticated Batch 2B recording fixture.',
+        behavior: 'no-production-runtime-change',
+        verification: [],
+      }],
+    })
+    writeFileSync(sourceFile, `${JSON.stringify(input, null, 2)}\n`)
+    const requestedUrls: string[] = []
+
+    await recordSuccessfulCiFile({
+      batch: '2B',
+      expectedCandidateSha: candidateSha,
+      fetchImplementation: authenticatedFetch(requestedUrls),
+      githubToken: 'github-token',
+      proofInput: {
+        schemaVersion: 1,
+        sha: candidateSha,
+        runId: 123,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+      repoRoot,
+      sourceFile,
+    })
+
+    const updated = migrationLedgerSchema.parse(JSON.parse(
+      readFileSync(sourceFile, 'utf8'),
+    ) as unknown)
+    expect(updated.entries[0]).toMatchObject({
+      status: 'complete',
+      implementationSha: candidateSha,
+      fixtureManifestHash,
+    })
+    expect(updated.entries[0]!.verification.map(({ gate }) => gate)).toEqual([
+      'batch2b-local-verify',
+      'batch2b-remote-ci',
+    ])
+    expect(requestedUrls).toEqual([runApiUrl, workflowApiUrl])
   } finally {
     rmSync(repoRoot, { recursive: true, force: true })
   }

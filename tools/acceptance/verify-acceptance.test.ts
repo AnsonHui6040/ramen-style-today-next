@@ -1,10 +1,17 @@
+import { readFileSync } from 'node:fs'
+
 import { expect, test, vi } from 'vitest'
 
 import {
   verifyAcceptance,
   verifySuccessfulCiProof,
 } from './verify-acceptance.js'
-import { batch2ASemanticPaths } from '../migration/ledger-schema.js'
+import {
+  batch2ASemanticPaths,
+  batch2BAcceptanceMetadataPaths,
+  batch2BImplementationPaths,
+  batch2BVerificationPaths,
+} from '../migration/ledger-schema.js'
 
 const candidateSha = 'a'.repeat(40)
 const githubToken = 'github-token'
@@ -104,6 +111,48 @@ function ledgerWithRecordedProof() {
   }
 }
 
+function ledgerWithBatch2BRecordedProof(status: 'in-progress' | 'complete' = 'complete') {
+  return {
+    schemaVersion: 1,
+    baseline: {
+      repository: 'AnsonHui6040/ramen-style-today',
+      commit: 'b'.repeat(40),
+    },
+    entries: [{
+      batch: '2B',
+      status,
+      ...(status === 'complete' ? { implementationSha: candidateSha } : {}),
+      implementationPaths: [...batch2BImplementationPaths],
+      verificationPaths: [...batch2BVerificationPaths],
+      acceptanceMetadataPaths: [...batch2BAcceptanceMetadataPaths],
+      fixtureManifestHash: 'f'.repeat(64),
+      legacySources: ['src/App.tsx'],
+      ownedScopes: [],
+      newOwners: ['packages/classification-core/src/persistence/contracts.ts'],
+      transformation: 'Acceptance fixture.',
+      behavior: 'no-production-runtime-change',
+      verification: status === 'complete'
+        ? [
+            {
+              gate: 'batch2b-local-verify',
+              command: 'npm run verify',
+              outcome: 'passed',
+              evidence: 'offline verification passed',
+            },
+            {
+              gate: 'batch2b-remote-ci',
+              command: 'GitHub Actions CI / verify',
+              outcome: 'passed',
+              evidence: 'authenticated remote verification passed',
+              commitSha: candidateSha,
+              runUrl,
+            },
+          ]
+        : [],
+    }],
+  }
+}
+
 test('online acceptance authenticates the fixed owner workflow and exact SHA', async () => {
   const fetchImplementation = githubFetch()
 
@@ -113,6 +162,38 @@ test('online acceptance authenticates the fixed owner workflow and exact SHA', a
     githubToken,
   )).resolves.toBeUndefined()
   expect(fetchImplementation).toHaveBeenCalledTimes(2)
+})
+
+test('online acceptance authenticates completed Batch 2B exact-SHA evidence', async () => {
+  const fetchImplementation = githubFetch()
+
+  await expect(verifyAcceptance(
+    ledgerWithBatch2BRecordedProof(),
+    fetchImplementation,
+    githubToken,
+  )).resolves.toBeUndefined()
+  expect(fetchImplementation).toHaveBeenCalledTimes(2)
+})
+
+test('in-progress Batch 2B has no remote proof and creates no online gate cycle', async () => {
+  const fetchImplementation = vi.fn()
+
+  await expect(verifyAcceptance(
+    ledgerWithBatch2BRecordedProof('in-progress'),
+    fetchImplementation as unknown as typeof fetch,
+  )).resolves.toBeUndefined()
+  expect(fetchImplementation).not.toHaveBeenCalled()
+})
+
+test('CI uses only committed verification and never invokes the persistence extractor', () => {
+  const workflow = readFileSync(
+    new URL('../../.github/workflows/ci.yml', import.meta.url),
+    'utf8',
+  )
+
+  expect(workflow).toContain('npm run verify')
+  expect(workflow).toContain('npm run verify:acceptance')
+  expect(workflow).not.toContain('parity:persistence:extract')
 })
 
 test('in-review ledger with zero recorded proofs succeeds without creating a circular gate', async () => {

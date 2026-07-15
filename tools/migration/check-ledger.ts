@@ -15,7 +15,10 @@ import {
   checkLedgerOffline,
   collectGitChangedPaths,
 } from './ledger-check.js'
-import { migrationLedgerSchema } from './ledger-schema.js'
+import {
+  migrationLedgerSchema,
+  persistenceFixtureManifestPath,
+} from './ledger-schema.js'
 import { recordSuccessfulCiFile } from './record-ci.js'
 
 const repoRoot = resolve(import.meta.dirname, '../..')
@@ -142,6 +145,27 @@ function readBatch2AIdentities(includeProtectedBaseline: boolean) {
       sourceCommit: fixtureManifest.source.commit,
       sourceTreeHash: fixtureManifest.source.treeHash,
     },
+  }
+}
+
+function readBatch2BIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    persistence?: { fixtureManifestHash?: unknown }
+  }
+  const classificationFixtureManifestHash = manifest.persistence?.fixtureManifestHash
+  if (typeof classificationFixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing persistence fixture identity')
+  }
+
+  return {
+    persistenceFixtureManifestHash: sha256File(resolve(
+      repoRoot,
+      persistenceFixtureManifestPath,
+    )),
+    classificationPersistenceFixtureManifestHash: classificationFixtureManifestHash,
   }
 }
 
@@ -296,6 +320,7 @@ async function run() {
   if (mode === '--check' && baseResult.ok) {
     const parsedLedger = migrationLedgerSchema.parse(input)
     const batch2AEntry = parsedLedger.entries.find(({ batch }) => batch === '2A')
+    const batch2BEntry = parsedLedger.entries.find(({ batch }) => batch === '2B')
     const batch2AIdentities = batch2AEntry
       ? readBatch2AIdentities(batch2AEntry.maintenance !== undefined)
       : {
@@ -322,6 +347,7 @@ async function run() {
         headSha,
       ),
       ...batch2AIdentities,
+      ...(batch2BEntry ? readBatch2BIdentities() : {}),
     })
   }
   if (!result.ok || result.markdown === undefined) {

@@ -4,6 +4,9 @@ import { describe, expect, test } from 'vitest'
 
 import {
   batch2AMaintenancePaths,
+  batch2BAcceptanceMetadataPaths,
+  batch2BImplementationPaths,
+  batch2BVerificationPaths,
   migrationLedgerSchema,
   protectedQuestionBaseline,
 } from './ledger-schema.js'
@@ -42,6 +45,29 @@ describe('migration ledger', () => {
       '- Historical Batch 2A semantic implementation remains unchanged.',
     )
     expect(rendered).not.toContain('- Maintenance SHA:')
+  })
+
+  test('renders Batch 2B evidence paths and pending acceptance without a false completion', () => {
+    const input = structuredClone(ledger)
+    const batch2B = input.entries.find(({ batch }) => batch === '2B')!
+    Object.assign(batch2B, {
+      status: 'in-progress',
+      implementationPaths: [...batch2BImplementationPaths],
+      verificationPaths: [...batch2BVerificationPaths],
+      acceptanceMetadataPaths: [...batch2BAcceptanceMetadataPaths],
+      fixtureManifestHash: 'f'.repeat(64),
+      verification: [],
+    })
+
+    const rendered = renderLedger(migrationLedgerSchema.parse(input))
+
+    expect(rendered).toContain('## Batch 2B — in-progress')
+    expect(rendered).toContain('### Implementation paths')
+    expect(rendered).toContain('`packages/classification-core/src/persistence/**`')
+    expect(rendered).toContain('### Verification paths')
+    expect(rendered).toContain('### Acceptance metadata paths')
+    expect(rendered).toContain(`- Persistence fixture manifest hash: \`${'f'.repeat(64)}\``)
+    expect(rendered).not.toContain('Batch 2B — complete')
   })
 
   test('rejects a duplicate batch independently', () => {

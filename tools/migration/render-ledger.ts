@@ -37,6 +37,28 @@ export function renderLedger(ledger: MigrationLedger) {
           : ['- None recorded.']),
         '',
       ] : []),
+      ...(entry.fixtureManifestHash ? [
+        `- Persistence fixture manifest hash: \`${entry.fixtureManifestHash}\``,
+        '',
+      ] : []),
+      ...(entry.implementationPaths?.length ? [
+        '### Implementation paths',
+        '',
+        ...entry.implementationPaths.map((path) => `- \`${path}\``),
+        '',
+      ] : []),
+      ...(entry.verificationPaths?.length ? [
+        '### Verification paths',
+        '',
+        ...entry.verificationPaths.map((path) => `- \`${path}\``),
+        '',
+      ] : []),
+      ...(entry.acceptanceMetadataPaths?.length ? [
+        '### Acceptance metadata paths',
+        '',
+        ...entry.acceptanceMetadataPaths.map((path) => `- \`${path}\``),
+        '',
+      ] : []),
       ...(entry.maintenance ? [
         '### Controlled maintenance',
         '',

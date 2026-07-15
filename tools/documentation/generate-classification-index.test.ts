@@ -24,7 +24,12 @@ import {
   repositoryFiles,
 } from './generate-classification-index.js'
 import * as generatorModule from './generate-classification-index.js'
-import { batch2ASemanticPaths } from '../migration/ledger-schema.js'
+import {
+  batch2ASemanticPaths,
+  batch2BAcceptanceMetadataPaths,
+  batch2BImplementationPaths,
+  batch2BVerificationPaths,
+} from '../migration/ledger-schema.js'
 import { scanCoreConsumers } from './scan-imports.js'
 
 const sourceRoot = resolve(import.meta.dirname, '../..')
@@ -92,6 +97,57 @@ function projectionFunction() {
   expect(project).toBeTypeOf('function')
   if (!project) throw new Error('projectQuestionParityVerification is unavailable')
   return project
+}
+
+function persistenceProjectionFunction() {
+  const project = (generatorModule as unknown as {
+    projectPersistenceContractVerification?: (
+      ledger: unknown,
+      identity: { fixtureManifestHash: string },
+    ) => unknown
+  }).projectPersistenceContractVerification
+  expect(project).toBeTypeOf('function')
+  if (!project) throw new Error('projectPersistenceContractVerification is unavailable')
+  return project
+}
+
+function batch2BEntry(
+  status: 'in-progress' | 'complete',
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    batch: '2B',
+    status,
+    ...(status === 'complete' ? { implementationSha } : {}),
+    implementationPaths: [...batch2BImplementationPaths],
+    verificationPaths: [...batch2BVerificationPaths],
+    acceptanceMetadataPaths: [...batch2BAcceptanceMetadataPaths],
+    fixtureManifestHash: currentFixtureManifestHash,
+    legacySources: ['src/App.tsx'],
+    ownedScopes: [],
+    newOwners: ['packages/classification-core/src/persistence/contracts.ts'],
+    transformation: 'Persistence documentation fixture.',
+    behavior: 'no-production-runtime-change',
+    verification: status === 'complete'
+      ? [
+          {
+            gate: 'batch2b-local-verify',
+            command: 'npm run verify',
+            outcome: 'passed',
+            evidence: 'offline verification passed',
+          },
+          {
+            gate: 'batch2b-remote-ci',
+            command: 'GitHub Actions CI / verify',
+            outcome: 'passed',
+            evidence: 'authenticated remote verification passed',
+            commitSha: implementationSha,
+            runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+          },
+        ]
+      : [],
+    ...overrides,
+  }
 }
 
 function writeRegisteredConsumers(repoRoot: string) {
@@ -271,6 +327,113 @@ test('projects one verification from a validated accepted Batch 2A ledger', () =
   })
 })
 
+test('projects persistence contract verification only from completed exact evidence', () => {
+  const project = persistenceProjectionFunction()
+
+  expect(project(validatedFutureLedger(batch2BEntry('complete')), {
+    fixtureManifestHash: currentFixtureManifestHash,
+  })).toEqual({
+    assurance: 'contract-verified',
+    fixtureManifestHash: currentFixtureManifestHash,
+    implementationSha,
+  })
+
+  expect(project(validatedFutureLedger(batch2BEntry('in-progress')), {
+    fixtureManifestHash: currentFixtureManifestHash,
+  })).toBeUndefined()
+  expect(project(validatedFutureLedger(batch2BEntry('complete', {
+    fixtureManifestHash: 'd'.repeat(64),
+  })), {
+    fixtureManifestHash: currentFixtureManifestHash,
+  })).toBeUndefined()
+})
+
+test('loads tracked persistence identity as structurally validated before acceptance', async () => {
+  const loadPersistenceEvidence = (generatorModule as unknown as {
+    loadPersistenceEvidence?: (repoRoot: string) => Promise<Record<string, unknown>>
+  }).loadPersistenceEvidence
+  expect(loadPersistenceEvidence).toBeTypeOf('function')
+  if (!loadPersistenceEvidence) throw new Error('loadPersistenceEvidence is unavailable')
+
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-persistence-evidence-'))
+  try {
+    const manifestPath = 'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json'
+    const manifestTarget = join(repoRoot, manifestPath)
+    mkdirSync(resolve(manifestTarget, '..'), { recursive: true })
+    cpSync(join(sourceRoot, manifestPath), manifestTarget)
+    const fixtureManifestHash = createHash('sha256')
+      .update(readFileSync(manifestTarget))
+      .digest('hex')
+    const ledgerPath = join(repoRoot, 'docs/migration/ledger.json')
+    mkdirSync(resolve(ledgerPath, '..'), { recursive: true })
+    writeFileSync(ledgerPath, `${JSON.stringify({
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: '0'.repeat(40),
+      },
+      entries: [batch2BEntry('in-progress', { fixtureManifestHash })],
+    }, null, 2)}\n`)
+
+    await expect(loadPersistenceEvidence(repoRoot)).resolves.toEqual({
+      origin: 'manually-authored',
+      assurance: 'structurally-validated',
+      schemaVersion: 1,
+      fixtureManifestPath: manifestPath,
+      fixtureManifestHash,
+      verificationScope: 'pure persistence restore and payload contracts',
+      legacyLineage: {
+        origin: 'legacy-production',
+        sourceRepository: {
+          host: 'github.com',
+          owner: 'AnsonHui6040',
+          repository: 'ramen-style-today',
+        },
+        sourceCommit: 'eebf00b7ddfbbe6f01ff598e57f1e17197068a37',
+        sourceTreeHash: '3e527de876cfeccfd3154ddc492830d71c4cfd9a',
+      },
+    })
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
+test('rejects a persistence fixture that fails its full manifest schema', async () => {
+  const loadPersistenceEvidence = (generatorModule as unknown as {
+    loadPersistenceEvidence?: (repoRoot: string) => unknown
+  }).loadPersistenceEvidence
+  expect(loadPersistenceEvidence).toBeTypeOf('function')
+  if (!loadPersistenceEvidence) throw new Error('loadPersistenceEvidence is unavailable')
+
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-persistence-evidence-invalid-'))
+  try {
+    const manifestPath = 'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json'
+    const manifestTarget = join(repoRoot, manifestPath)
+    mkdirSync(resolve(manifestTarget, '..'), { recursive: true })
+    const malformedManifest = JSON.parse(readFileSync(join(sourceRoot, manifestPath), 'utf8'))
+    malformedManifest.caseCount = 999
+    writeFileSync(manifestTarget, `${JSON.stringify(malformedManifest, null, 2)}\n`)
+    const fixtureManifestHash = createHash('sha256')
+      .update(readFileSync(manifestTarget))
+      .digest('hex')
+    const ledgerPath = join(repoRoot, 'docs/migration/ledger.json')
+    mkdirSync(resolve(ledgerPath, '..'), { recursive: true })
+    writeFileSync(ledgerPath, `${JSON.stringify({
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: '0'.repeat(40),
+      },
+      entries: [batch2BEntry('in-progress', { fixtureManifestHash })],
+    }, null, 2)}\n`)
+
+    await expect(Promise.resolve().then(() => loadPersistenceEvidence(repoRoot)))
+      .rejects.toThrow()
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
 test.each([
   ['not complete', () => acceptedBatch2AEntry({ status: 'in-review' })],
   ['missing implementation SHA', () => acceptedBatch2AEntry({
@@ -335,6 +498,8 @@ test('Task 14-shaped ledger roundtrip renders manifest-only bound verification',
       join(classificationRoot, 'manifest.json'),
       createPreAcceptanceManifestBytes(),
     )
+    const generatedPreAcceptance = runGenerator(repoRoot)
+    expect(generatedPreAcceptance.status, generatedPreAcceptance.stderr).toBe(0)
     const preAcceptanceManifestBytes = readFileSync(
       join(classificationRoot, 'manifest.json'),
       'utf8',

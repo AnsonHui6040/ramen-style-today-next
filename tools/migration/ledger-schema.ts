@@ -22,6 +22,38 @@ export const batch2AMaintenancePaths = [
   'tools/parity/fixtures/questions/legacy-v1/manifest.json',
 ] as const
 
+export const batch2BImplementationPaths = [
+  'packages/classification-core/src/persistence/**',
+  'packages/classification-core/src/contracts/diagnostic-codes.ts',
+  'packages/classification-core/src/contracts/model.ts',
+  'packages/classification-core/src/contracts/provenance.ts',
+  'packages/classification-core/src/index.ts',
+  'packages/classification-core/src/index.test.ts',
+  'tools/parity/persistence/**',
+  'tools/parity/fixtures/persistence/**',
+] as const
+
+export const batch2BVerificationPaths = [
+  '.github/workflows/ci.yml',
+  'package.json',
+  'package-lock.json',
+  'tools/acceptance/**',
+  'tools/documentation/**',
+  'tools/migration/**',
+  'tools/validation/check-runtime-imports.ts',
+  'tools/validation/check-runtime-imports.test.ts',
+] as const
+
+export const batch2BAcceptanceMetadataPaths = [
+  'docs/classification/index.md',
+  'docs/classification/manifest.json',
+  'docs/migration/ledger.json',
+  'docs/migration/ledger.md',
+] as const
+
+export const persistenceFixtureManifestPath =
+  'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json' as const
+
 export const protectedQuestionBaseline = {
   modelVersion: 'batch2a.1.0',
   semanticHash: 'd1bd2fcecabcfde8a7512b530d9cbec7f2fc0bb1d62ad65cbece2799be753c0d',
@@ -36,6 +68,9 @@ export const protectedQuestionBaseline = {
 
 const historicalBatch2AImplementationSha =
   'ecf9f5b4791862471d0898da7283ba4a40d3fbf9'
+
+const fullShaSchema = z.string().regex(/^[0-9a-f]{40}$/)
+const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/)
 
 export const repoPathSchema = z.string().min(1).refine(
   (value) => !value.startsWith('/')
@@ -148,16 +183,24 @@ const completionGatePolicies = new Map<string, ReadonlySet<string>>([
     'batch2a-local-verify',
     'batch2a-remote-ci',
   ])],
+  ['2B', new Set([
+    'batch2b-local-verify',
+    'batch2b-remote-ci',
+  ])],
 ])
 
 const entrySchema = z.strictObject({
   batch: z.string().min(1),
   status: z.enum(['in-review', 'in-progress', 'complete']),
-  foundationCommit: z.string().regex(/^[0-9a-f]{40}$/).optional(),
-  implementationSha: z.string().regex(/^[0-9a-f]{40}$/).optional(),
+  foundationCommit: fullShaSchema.optional(),
+  implementationSha: fullShaSchema.optional(),
   semanticPaths: z.array(z.string().min(1)).optional(),
   incidents: z.array(repoPathSchema).optional(),
   maintenance: batch2AMaintenanceSchema.optional(),
+  implementationPaths: z.array(repoPathSchema).optional(),
+  verificationPaths: z.array(repoPathSchema).optional(),
+  acceptanceMetadataPaths: z.array(repoPathSchema).optional(),
+  fixtureManifestHash: sha256Schema.optional(),
   legacySources: z.array(z.string().min(1)),
   ownedScopes: z.array(repoPathSchema).default([]),
   newOwners: z.array(repoPathSchema).min(1),
@@ -250,10 +293,10 @@ const entrySchema = z.strictObject({
       }
     }
   } else {
-    if (entry.implementationSha !== undefined) context.addIssue({
+    if (entry.batch !== '2B' && entry.implementationSha !== undefined) context.addIssue({
       code: 'custom',
       path: ['implementationSha'],
-      message: 'implementationSha is currently reserved for Batch 2A',
+      message: 'implementationSha is currently reserved for Batch 2A and completed Batch 2B',
     })
     if (entry.semanticPaths !== undefined) context.addIssue({
       code: 'custom',
@@ -270,6 +313,76 @@ const entrySchema = z.strictObject({
       path: ['maintenance'],
       message: 'maintenance is currently reserved for Batch 2A',
     })
+  }
+  if (entry.batch === '2B') {
+    const exactPathGroups = [
+      ['implementationPaths', entry.implementationPaths, batch2BImplementationPaths],
+      ['verificationPaths', entry.verificationPaths, batch2BVerificationPaths],
+      [
+        'acceptanceMetadataPaths',
+        entry.acceptanceMetadataPaths,
+        batch2BAcceptanceMetadataPaths,
+      ],
+    ] as const
+    for (const [field, actual, expected] of exactPathGroups) {
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) context.addIssue({
+        code: 'custom',
+        path: [field],
+        message: `Batch 2B requires exact ${field}: ${expected.join(', ')}`,
+      })
+    }
+    if (!entry.fixtureManifestHash) context.addIssue({
+      code: 'custom',
+      path: ['fixtureManifestHash'],
+      message: 'Batch 2B requires the persistence fixture manifest hash',
+    })
+    if (entry.status === 'in-review') context.addIssue({
+      code: 'custom',
+      path: ['status'],
+      message: 'Task 14 requires Batch 2B to be in-progress or complete',
+    })
+    if (entry.status === 'in-progress') {
+      if (entry.implementationSha !== undefined) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: 'in-progress Batch 2B must not record implementationSha',
+      })
+      if (entry.verification.length !== 0) context.addIssue({
+        code: 'custom',
+        path: ['verification'],
+        message: 'in-progress Batch 2B must not record acceptance evidence',
+      })
+    }
+    if (entry.status === 'complete') {
+      if (!entry.implementationSha) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: 'complete Batch 2B requires implementationSha',
+      })
+      const remoteGate = entry.verification.find(
+        ({ gate }) => gate === 'batch2b-remote-ci',
+      )
+      if (entry.implementationSha && remoteGate?.commitSha !== entry.implementationSha) {
+        context.addIssue({
+          code: 'custom',
+          path: ['verification'],
+          message: 'complete Batch 2B remote CI commit must match implementationSha',
+        })
+      }
+    }
+  } else {
+    for (const field of [
+      'implementationPaths',
+      'verificationPaths',
+      'acceptanceMetadataPaths',
+      'fixtureManifestHash',
+    ] as const) {
+      if (entry[field] !== undefined) context.addIssue({
+        code: 'custom',
+        path: [field],
+        message: `${field} is reserved for Batch 2B`,
+      })
+    }
   }
   if (entry.status === 'complete') {
     const requiredGates = completionGatePolicies.get(entry.batch)

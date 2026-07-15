@@ -17,6 +17,25 @@ const compiled = compileClassification(
 if (!compiled.ok) throw new Error('documentation model did not compile')
 const documentationRelations = createDocumentationRelations(compiled.model)
 
+const persistenceEvidenceBase = {
+  origin: 'manually-authored',
+  schemaVersion: 1,
+  fixtureManifestPath:
+    'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json',
+  fixtureManifestHash: 'a'.repeat(64),
+  verificationScope: 'pure persistence restore and payload contracts',
+  legacyLineage: {
+    origin: 'legacy-production',
+    sourceRepository: {
+      host: 'github.com',
+      owner: 'AnsonHui6040',
+      repository: 'ramen-style-today',
+    },
+    sourceCommit: 'b'.repeat(40),
+    sourceTreeHash: 'c'.repeat(40),
+  },
+} as const
+
 function deterministicSnapshot(locale: string) {
   const script = String.raw`
     import {
@@ -230,6 +249,83 @@ describe('classification documentation index', () => {
         'runtime-not-cut-over',
       ],
     })
+  })
+
+  test('renders truthful in-progress persistence provenance and readiness', () => {
+    const paths = new Set(documentationRelations.flatMap((item) => [
+      item.canonicalSource,
+      ...item.validators,
+      ...item.consumers,
+      ...item.tests,
+      ...item.migrations,
+    ]))
+    const options = {
+      persistenceEvidence: {
+        ...persistenceEvidenceBase,
+        assurance: 'structurally-validated',
+      },
+    } as Parameters<typeof buildDocumentation>[4]
+    const built = buildDocumentation(
+      compiled.model,
+      documentationRelations,
+      new Set(detectedCoreConsumers),
+      paths,
+      options,
+    )
+    const manifest = JSON.parse(built.manifest)
+
+    expect(manifest.persistence).toEqual({
+      ...persistenceEvidenceBase,
+      assurance: 'structurally-validated',
+    })
+    expect(manifest.persistence).not.toHaveProperty('implementationSha')
+    expect(built.markdown).toContain('Persistence assurance: `structurally-validated`')
+    expect(built.markdown).not.toContain('Persistence implementation SHA:')
+    expect(manifest.readiness).toEqual({
+      status: 'migration-only',
+      blockers: [
+        'persistence-adapter-not-integrated',
+        'persisted-data-cutover-incomplete',
+        'styles-not-production-verified',
+        'scoring-not-production-verified',
+        'runtime-cutover-incomplete',
+      ],
+    })
+  })
+
+  test('renders contract verification only from completed persistence evidence', () => {
+    const paths = new Set(documentationRelations.flatMap((item) => [
+      item.canonicalSource,
+      ...item.validators,
+      ...item.consumers,
+      ...item.tests,
+      ...item.migrations,
+    ]))
+    const options = {
+      persistenceEvidence: {
+        ...persistenceEvidenceBase,
+        assurance: 'contract-verified',
+        implementationSha: 'd'.repeat(40),
+      },
+    } as Parameters<typeof buildDocumentation>[4]
+    const built = buildDocumentation(
+      compiled.model,
+      documentationRelations,
+      new Set(detectedCoreConsumers),
+      paths,
+      options,
+    )
+    const manifest = JSON.parse(built.manifest)
+
+    expect(manifest.persistence).toEqual({
+      ...persistenceEvidenceBase,
+      assurance: 'contract-verified',
+      implementationSha: 'd'.repeat(40),
+    })
+    expect(built.markdown).toContain('Persistence assurance: `contract-verified`')
+    expect(built.markdown).toContain(
+      `Persistence implementation SHA: \`${'d'.repeat(40)}\``,
+    )
   })
 
   test('lists every production question and option with canonical owners', () => {
