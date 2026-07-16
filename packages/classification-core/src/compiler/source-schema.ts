@@ -1,26 +1,14 @@
 import { z } from 'zod'
 
-import { stableIdSchema, versionSchema } from '../contracts/ids.js'
+import { versionSchema } from '../contracts/ids.js'
 import { isRepositorySource } from '../contracts/source-path.js'
 import { questionDefinitionSourceSchema } from './questions/source-schema.js'
+import { styleDefinitionBundleSchema } from './styles/source-schema.js'
 
 const sourceFileSchema = z.string().min(1).refine(
   isRepositorySource,
   'definition sourceFile must be a repository-relative POSIX path',
 )
-
-export const styleSourceSchema = z.strictObject({
-  sourceFile: sourceFileSchema,
-  id: stableIdSchema,
-  messageId: stableIdSchema,
-  familyOptionId: z.strictObject({
-    questionId: stableIdSchema,
-    optionId: stableIdSchema,
-  }),
-  priority: z.number().int().nonnegative(),
-  intensities: z.array(stableIdSchema).min(1),
-  noodles: z.array(stableIdSchema).min(1),
-})
 
 export const policySourceSchema = z.strictObject({
   sourceFile: sourceFileSchema,
@@ -40,14 +28,14 @@ export const definitionBundleSchema = z.strictObject({
       origin: z.enum(['legacy-production', 'synthetic']),
     }),
     styles: z.strictObject({
-      origin: z.enum(['legacy-production', 'synthetic']),
+      origin: z.literal('legacy-production'),
     }),
     scoringPolicy: z.strictObject({
       origin: z.enum(['legacy-production', 'synthetic']),
     }),
   }),
   questions: z.array(questionDefinitionSourceSchema),
-  styles: z.array(styleSourceSchema),
+  styles: styleDefinitionBundleSchema,
   policy: policySourceSchema,
 })
 

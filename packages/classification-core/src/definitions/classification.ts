@@ -1,14 +1,15 @@
 import { questionDefinitions } from './questions.js'
-import { syntheticPolicy, syntheticStyles } from './synthetic.js'
+import { styleDefinitionBundle } from './styles/index.js'
+import { syntheticPolicy } from './synthetic.js'
 
 export const classificationDefinition = {
-  modelVersion: 'batch2a.1.0',
+  modelVersion: 'batch3a.1.0',
   provenance: {
     questions: { origin: 'legacy-production' },
-    styles: { origin: 'synthetic' },
+    styles: { origin: 'legacy-production' },
     scoringPolicy: { origin: 'synthetic' },
   },
   questions: questionDefinitions,
-  styles: syntheticStyles,
+  styles: styleDefinitionBundle,
   policy: syntheticPolicy,
 } as const

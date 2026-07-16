@@ -1022,6 +1022,8 @@ or question artifact drift.
 ### Task 11: Compose the style model into classification compilation
 
 **Files:**
+- Modify: `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+  (approved Task 11 allowlist amendment only)
 - Modify: `packages/classification-core/src/definitions/classification.ts`
 - Modify: `packages/classification-core/src/definitions/synthetic.ts`
 - Modify: `packages/classification-core/src/compiler/source-schema.ts`
@@ -1031,6 +1033,12 @@ or question artifact drift.
 - Modify: `packages/classification-core/src/compiler/compile.test.ts`
 - Modify: `packages/classification-core/src/contracts/model.ts`
 - Modify: `packages/classification-core/src/contracts/provenance.ts`
+- Modify: `tools/documentation/build-index.ts` (minimum type-compatibility
+  adapter only; Task 16 retains documentation/provenance/readiness ownership)
+- Modify: `tools/documentation/build-index.test.ts` (replace only the retired
+  synthetic compiler fixture and lock the pre-Task-16 readiness behavior)
+- Modify: `tools/documentation/generate-classification-index.test.ts` (add
+  compiled style source paths only to the isolated repository fixture)
 - Modify: `tools/validation/validate-classification.ts`
 
 **Interfaces:** Retires the compiler-only synthetic style source shape,
@@ -1060,7 +1068,11 @@ npx vitest run packages/classification-core/src/compiler/parse.test.ts \
 
 Remove only the synthetic style value; preserve the synthetic policy. Replace
 the local deep-freeze helper with the shared contract. Do not change question,
-flow, persistence, or scoring behavior.
+flow, persistence, or scoring behavior. Because the style provenance type is
+now correctly narrowed to `legacy-production`, route the pre-Task-16
+documentation builder's legacy synthetic-origin check through a typed
+compatibility predicate. Do not change its rendered output, readiness rules,
+assurance, evidence shape, or ownership; Task 16 retains those changes.
 
 - [ ] **Step 4: GREEN, classification validation, review, and commit**
 
@@ -1068,6 +1080,8 @@ flow, persistence, or scoring behavior.
 npx vitest run packages/classification-core/src/compiler/parse.test.ts \
   packages/classification-core/src/compiler/compile.test.ts \
   packages/classification-core/src/compiler/questions
+npx vitest run tools/documentation/build-index.test.ts \
+  tools/documentation/generate-classification-index.test.ts
 npm run classification:validate
 npm run questions:check
 npm run typecheck
@@ -1079,7 +1093,8 @@ git diff --name-status HEAD
 After independent composition/API review `PASS`:
 
 ```bash
-git add packages/classification-core/src/definitions/classification.ts \
+git add docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md \
+  packages/classification-core/src/definitions/classification.ts \
   packages/classification-core/src/definitions/synthetic.ts \
   packages/classification-core/src/compiler/source-schema.ts \
   packages/classification-core/src/compiler/parse.ts \
@@ -1088,13 +1103,17 @@ git add packages/classification-core/src/definitions/classification.ts \
   packages/classification-core/src/compiler/compile.test.ts \
   packages/classification-core/src/contracts/model.ts \
   packages/classification-core/src/contracts/provenance.ts \
+  tools/documentation/build-index.ts \
+  tools/documentation/build-index.test.ts \
+  tools/documentation/generate-classification-index.test.ts \
   tools/validation/validate-classification.ts
 git commit -m "Compose compiled styles into classification"
 ```
 
 **Stop conditions:** Changed question model/flow/persistence, retained ambiguous
-synthetic style input, created numeric policy, or style/question migration axes
-mixed with persisted data.
+synthetic style input, created numeric policy, style/question migration axes
+mixed with persisted data, or the compatibility adapter changes Task 16-owned
+documentation output, assurance, provenance evidence, or readiness behavior.
 
 ---
 

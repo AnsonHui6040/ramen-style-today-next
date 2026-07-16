@@ -18,6 +18,7 @@ import { join, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { z } from 'zod'
 
+import { styleDefinitions } from '@ramen-style/classification-core/compiler'
 import { questionModel } from '@ramen-style/classification-core/generated/question-model'
 import {
   installGeneratedOutputs,
@@ -200,6 +201,7 @@ function writeDocumentationFixture(repoRoot: string) {
     'packages/classification-core/src/compiler/compile.test.ts',
     'packages/classification-core/src/flow/evaluate.ts',
     'tools/parity/questions/parity.test.ts',
+    ...styleDefinitions.map((style) => style.sourceFile),
   ]) {
     const target = join(repoRoot, file)
     mkdirSync(resolve(target, '..'), { recursive: true })

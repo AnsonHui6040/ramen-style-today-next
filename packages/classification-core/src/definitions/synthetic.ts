@@ -1,17 +1,5 @@
 const sourceFile = 'packages/classification-core/src/definitions/synthetic.ts'
 
-export const syntheticStyles = [
-  {
-    sourceFile,
-    id: 'demo-shoyu',
-    messageId: 'style-demo-shoyu',
-    familyOptionId: { questionId: 'archetype', optionId: 'chintan' },
-    priority: 0,
-    intensities: ['standard'],
-    noodles: ['medium-thin-straight'],
-  },
-] as const
-
 export const syntheticPolicy = {
   sourceFile,
   exactRatio: 1,

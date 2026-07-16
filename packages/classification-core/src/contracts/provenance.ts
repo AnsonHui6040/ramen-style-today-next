@@ -11,9 +11,17 @@ export type Assurance = (typeof assuranceValues)[number]
 
 export type SourceOrigin = 'legacy-production' | 'synthetic'
 
+export interface ClassificationStyleProvenance {
+  readonly origin: 'legacy-production'
+  readonly modelVersion: string
+  readonly sourceHash: string
+  readonly semanticHash: string
+  readonly dataVersion: string
+}
+
 export interface ClassificationSourceProvenance {
   readonly questions: { readonly origin: SourceOrigin }
-  readonly styles: { readonly origin: SourceOrigin }
+  readonly styles: ClassificationStyleProvenance
   readonly scoringPolicy: { readonly origin: SourceOrigin }
 }
 

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 
+import { deepFreeze } from '../contracts/deep-freeze.js'
 import { compareDiagnostics, type Diagnostic } from '../contracts/diagnostic.js'
 import type {
   ClassificationModel,
@@ -16,18 +17,11 @@ import { parseDefinitionBundle } from './parse.js'
 import { compileQuestions } from './questions/compile.js'
 import { extractConditionReferences } from './questions/dependencies.js'
 import { stableJson } from './stable-json.js'
+import { compileStyles } from './styles/compile.js'
 
 export type CompileResult =
   | { ok: true; model: ClassificationModel; diagnostics: readonly Diagnostic[] }
   | { ok: false; diagnostics: readonly Diagnostic[] }
-
-function deepFreeze<T>(value: T): T {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value)
-    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child)
-  }
-  return value
-}
 
 function duplicateValues(values: readonly string[]) {
   const seen = new Set<string>()
@@ -52,6 +46,7 @@ type ParsedDefinition = NonNullable<ReturnType<typeof parseDefinitionBundle>['de
 function buildInventory(
   definition: ParsedDefinition,
   questions: readonly CompiledQuestion[],
+  styleModel: ClassificationModel['styleModel'],
   sourceFile: string,
 ) {
   const records: ConceptRecord[] = []
@@ -75,29 +70,7 @@ function buildInventory(
       })
     }
   }
-  for (const style of definition.styles) {
-    records.push({
-      key: inventoryKey('style', style.id),
-      kind: 'style',
-      id: style.id,
-      sourceFile: style.sourceFile,
-      messageIds: [style.messageId],
-    })
-    for (const intensity of style.intensities) records.push({
-      key: inventoryKey('intensity', `${style.id}:${intensity}`),
-      kind: 'intensity',
-      id: `${style.id}:${intensity}`,
-      sourceFile: style.sourceFile,
-      messageIds: [],
-    })
-    for (const noodle of style.noodles) records.push({
-      key: inventoryKey('noodle', `${style.id}:${noodle}`),
-      kind: 'noodle',
-      id: `${style.id}:${noodle}`,
-      sourceFile: style.sourceFile,
-      messageIds: [],
-    })
-  }
+  records.push(...styleModel.inventory)
   records.push({
     key: 'policy/default',
     kind: 'policy',
@@ -106,6 +79,35 @@ function buildInventory(
     messageIds: [],
   })
   return records.sort((left, right) => compareCodePoints(left.key, right.key))
+}
+
+function classificationDataProjection(
+  definition: ParsedDefinition,
+  questionModel: ReturnType<typeof compileQuestions> & { readonly ok: true },
+  styleModel: ReturnType<typeof compileStyles> & { readonly ok: true },
+) {
+  return {
+    modelVersion: definition.modelVersion,
+    questionModel: {
+      modelVersion: questionModel.model.metadata.modelVersion,
+      sourceHash: questionModel.model.metadata.sourceHash,
+      semanticHash: questionModel.model.metadata.semanticHash,
+    },
+    styleModel: {
+      modelVersion: styleModel.model.metadata.modelVersion,
+      semanticHash: styleModel.model.metadata.semanticHash,
+      dataVersion: styleModel.model.metadata.dataVersion,
+    },
+    scoringPolicy: {
+      exactRatio: definition.policy.exactRatio,
+      adjacentRatio: definition.policy.adjacentRatio,
+      partialRatio: definition.policy.partialRatio,
+      bonusCap: definition.policy.bonusCap,
+      penaltyCap: definition.policy.penaltyCap,
+      confidenceThreshold: definition.policy.confidenceThreshold,
+      tieGap: definition.policy.tieGap,
+    },
+  }
 }
 
 export function compileClassification(input: unknown, sourceFile: string): CompileResult {
@@ -120,9 +122,6 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
   for (const id of duplicateValues(definition.questions.map((item) => item.id))) {
     collector.error({ code: 'QUESTION_DUPLICATE_ID', sourceFile, path: '/questions', entityId: id, message: `Duplicate question ${id}` })
   }
-  const optionIdentities = definition.questions.flatMap((question) => question.options.map(
-    (item) => optionIdentity(question.id, item.id),
-  ))
   for (const [questionIndex, question] of definition.questions.entries()) {
     for (const id of duplicateValues(question.options.map((item) => item.id))) {
       const identity = optionIdentity(question.id, id)
@@ -135,10 +134,6 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
       })
     }
   }
-  for (const id of duplicateValues(definition.styles.map((item) => item.id))) {
-    collector.error({ code: 'STYLE_DUPLICATE_ID', sourceFile, path: '/styles', entityId: id, message: `Duplicate style ${id}` })
-  }
-
   const questionIds = new Set(definition.questions.map((item) => item.id))
   for (const reference of extractConditionReferences(definition.questions)) {
     if (!questionIds.has(reference.referencedQuestionId)) collector.error({
@@ -147,20 +142,6 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
       path: reference.path,
       entityId: reference.ownerQuestionId,
       message: `Unknown question dependency ${reference.referencedQuestionId}`,
-    })
-  }
-  const optionIdentitySet = new Set(optionIdentities)
-  for (const [index, style] of definition.styles.entries()) {
-    const identity = optionIdentity(
-      style.familyOptionId.questionId,
-      style.familyOptionId.optionId,
-    )
-    if (!optionIdentitySet.has(identity)) collector.error({
-      code: 'REFERENCE_UNKNOWN',
-      sourceFile: style.sourceFile,
-      path: `/styles/${index}/familyOptionId`,
-      entityId: style.id,
-      message: `Unknown family option ${identity}`,
     })
   }
   const totalWeight = definition.questions.reduce((sum, question) => sum + (question.weight ?? 0), 0)
@@ -172,37 +153,77 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
     expected: 100,
     received: totalWeight,
   })
+  if (definition.modelVersion !== definition.styles.modelVersion) collector.error({
+    code: 'STYLE_MODEL_VERSION_MISMATCH',
+    sourceFile,
+    path: '/modelVersion',
+    entityId: definition.modelVersion,
+    message: 'Classification and style model versions must match',
+    expected: definition.styles.modelVersion,
+    received: definition.modelVersion,
+  })
 
-  const inventory = questionCompilation.ok
-    ? buildInventory(definition, questionCompilation.model.questions, sourceFile)
-    : []
-  if (questionCompilation.ok) {
-    for (const key of duplicateValues(inventory.map((item) => item.key))) {
-      collector.error({
-        code: 'CONCEPT_DUPLICATE_KEY',
-        sourceFile,
-        path: '/inventory',
-        entityId: key,
-        message: `Duplicate concept key ${key}`,
-      })
-    }
-  }
-
-  const diagnostics = [
+  const questionDiagnostics = [
     ...collector.toArray(),
     ...questionCompilation.diagnostics,
   ].sort(compareDiagnostics)
-  if (collector.hasErrors() || !questionCompilation.ok) return { ok: false, diagnostics }
-  const dataVersion = createHash('sha256').update(stableJson({
-    ...definition,
-    questions: questionCompilation.model.questions,
-  })).digest('hex')
+  if (!questionCompilation.ok) {
+    return { ok: false, diagnostics: questionDiagnostics }
+  }
+
+  const styleCompilation = compileStyles(
+    definition.styles,
+    questionCompilation.model,
+    definition.styles.sourceFile,
+  )
+  const styleDiagnostics = [
+    ...questionDiagnostics,
+    ...styleCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (!styleCompilation.ok) return { ok: false, diagnostics: styleDiagnostics }
+
+  const inventory = buildInventory(
+    definition,
+    questionCompilation.model.questions,
+    styleCompilation.model,
+    sourceFile,
+  )
+  for (const key of duplicateValues(inventory.map((item) => item.key))) {
+    collector.error({
+      code: 'CONCEPT_DUPLICATE_KEY',
+      sourceFile,
+      path: '/inventory',
+      entityId: key,
+      message: `Duplicate concept key ${key}`,
+    })
+  }
+  const diagnostics = [
+    ...collector.toArray(),
+    ...questionCompilation.diagnostics,
+    ...styleCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (collector.hasErrors()) return { ok: false, diagnostics }
+
+  const dataVersion = createHash('sha256').update(stableJson(
+    classificationDataProjection(definition, questionCompilation, styleCompilation),
+  )).digest('hex')
+  const styleMetadata = styleCompilation.model.metadata
   const model = deepFreeze({
     modelVersion: definition.modelVersion,
     dataVersion,
-    provenance: definition.provenance,
+    provenance: {
+      questions: definition.provenance.questions,
+      styles: {
+        origin: definition.provenance.styles.origin,
+        modelVersion: styleMetadata.modelVersion,
+        sourceHash: styleMetadata.sourceHash,
+        semanticHash: styleMetadata.semanticHash,
+        dataVersion: styleMetadata.dataVersion,
+      },
+      scoringPolicy: definition.provenance.scoringPolicy,
+    },
     questions: questionCompilation.model.questions,
-    styles: definition.styles,
+    styleModel: styleCompilation.model,
     policy: definition.policy,
     inventory,
   } satisfies ClassificationModel)

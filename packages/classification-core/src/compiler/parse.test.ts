@@ -1,46 +1,130 @@
 import { describe, expect, test } from 'vitest'
 
+import { questionDefinitions } from '../definitions/questions.js'
+import { styleDefinitionBundle } from '../definitions/styles/index.js'
+import { syntheticPolicy } from '../definitions/synthetic.js'
 import { parseDefinitionBundle } from './parse.js'
+import type { DefinitionBundleSource } from './source-schema.js'
+
+const sourceFile = 'packages/classification-core/src/definitions/classification.ts'
+type Mutable<T> = T extends readonly (infer Item)[]
+  ? Mutable<Item>[]
+  : T extends object
+    ? { -readonly [Key in keyof T]: Mutable<T[Key]> }
+    : T
+
+function productionDefinition(): Mutable<DefinitionBundleSource> {
+  return structuredClone({
+    modelVersion: 'batch3a.1.0',
+    provenance: {
+      questions: { origin: 'legacy-production' },
+      styles: { origin: 'legacy-production' },
+      scoringPolicy: { origin: 'synthetic' },
+    },
+    questions: questionDefinitions,
+    styles: styleDefinitionBundle,
+    policy: syntheticPolicy,
+  }) as unknown as Mutable<DefinitionBundleSource>
+}
+
+function reverseObjectInsertion(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(reverseObjectInsertion)
+  if (typeof value !== 'object' || value === null) return value
+  return Object.fromEntries(
+    Object.entries(value)
+      .reverse()
+      .map(([key, nested]) => [key, reverseObjectInsertion(nested)]),
+  )
+}
 
 describe('definition bundle parsing', () => {
-  test('returns parsed data for a structurally valid bundle', () => {
-    const result = parseDefinitionBundle({
-      modelVersion: 'batch1.0.0',
+  test('accepts the strict production style bundle and preserves synthetic policy', () => {
+    const result = parseDefinitionBundle(productionDefinition(), sourceFile)
+
+    expect(result.diagnostics).toEqual([])
+    expect(result.definition).toMatchObject({
+      modelVersion: 'batch3a.1.0',
       provenance: {
-        questions: { origin: 'synthetic' },
-        styles: { origin: 'synthetic' },
+        styles: { origin: 'legacy-production' },
         scoringPolicy: { origin: 'synthetic' },
       },
-      questions: [],
-      styles: [],
-      policy: {
-        sourceFile: 'packages/classification-core/src/definitions/synthetic.ts',
-        exactRatio: 1,
-        adjacentRatio: 0.6,
-        partialRatio: 0.4,
-        bonusCap: 5,
-        penaltyCap: 15,
-        confidenceThreshold: 72,
-        tieGap: 5,
+      styles: {
+        modelVersion: 'batch3a.1.0',
+        definitions: expect.arrayContaining([
+          expect.objectContaining({ id: 'shoyu-chintan' }),
+        ]),
       },
-    }, 'packages/classification-core/src/definitions/synthetic.ts')
-
-    expect(result.definition?.modelVersion).toBe('batch1.0.0')
-    expect(result.diagnostics).toEqual([])
+      policy: syntheticPolicy,
+    })
   })
 
-  test('aggregates Zod issues as JSON Pointer diagnostics', () => {
-    const result = parseDefinitionBundle({
-      modelVersion: 'Bad Version',
-      provenance: {
-        questions: { origin: 'synthetic' },
-        styles: { origin: 'synthetic' },
-        scoringPolicy: { origin: 'synthetic' },
-      },
-      questions: [{ id: 'Bad ID' }],
-      styles: [],
-      policy: {},
-    }, 'packages/classification-core/src/definitions/synthetic.ts')
+  test('rejects the retired synthetic style source shape', () => {
+    const invalid = productionDefinition()
+    invalid.styles = [{
+      sourceFile: 'packages/classification-core/src/definitions/synthetic.ts',
+      id: 'demo-shoyu',
+      messageId: 'style-demo-shoyu',
+      familyOptionId: { questionId: 'archetype', optionId: 'chintan' },
+      priority: 0,
+      intensities: ['standard'],
+      noodles: ['medium-thin-straight'],
+    }] as unknown as typeof invalid.styles
+
+    const result = parseDefinitionBundle(invalid, sourceFile)
+
+    expect(result.definition).toBeUndefined()
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      code: 'STRUCTURE_INVALID',
+      path: '/styles',
+    }))
+  })
+
+  test('rejects missing and unknown style-bundle fields instead of converting them', () => {
+    const missing = productionDefinition() as { styles?: unknown }
+    delete missing.styles
+    const unknown = productionDefinition()
+    const unknownStyles = { ...unknown.styles, placeholderCount: 18 }
+
+    const missingResult = parseDefinitionBundle(missing, sourceFile)
+    const unknownResult = parseDefinitionBundle(
+      { ...unknown, styles: unknownStyles },
+      sourceFile,
+    )
+
+    expect(missingResult.definition).toBeUndefined()
+    expect(missingResult.diagnostics).toContainEqual(expect.objectContaining({
+      code: 'STRUCTURE_INVALID',
+      path: '/styles',
+    }))
+    expect(unknownResult.definition).toBeUndefined()
+    expect(unknownResult.diagnostics).toContainEqual(expect.objectContaining({
+      code: 'STRUCTURE_INVALID',
+      path: '/styles',
+    }))
+  })
+
+  test('reports malformed style fields deterministically across object insertion order', () => {
+    const malformed = productionDefinition()
+    malformed.styles.definitions[0]!.id = 'Bad ID'
+    const reversed = reverseObjectInsertion(malformed)
+
+    const first = parseDefinitionBundle(malformed, sourceFile)
+    const second = parseDefinitionBundle(reversed, sourceFile)
+
+    expect(first.definition).toBeUndefined()
+    expect(first.diagnostics).toEqual(second.diagnostics)
+    expect(first.diagnostics).toContainEqual(expect.objectContaining({
+      code: 'STRUCTURE_INVALID',
+      path: '/styles/definitions/0/id',
+    }))
+  })
+
+  test('aggregates top-level and question Zod issues as JSON Pointer diagnostics', () => {
+    const invalid = productionDefinition()
+    invalid.modelVersion = 'Bad Version'
+    invalid.questions = [{ id: 'Bad ID' }] as unknown as typeof invalid.questions
+
+    const result = parseDefinitionBundle(invalid, sourceFile)
 
     expect(result.definition).toBeUndefined()
     expect(result.diagnostics.length).toBeGreaterThan(1)
@@ -49,31 +133,15 @@ describe('definition bundle parsing', () => {
   })
 
   test('reports unstable definition and caller source paths without throwing', () => {
-    const invalidDefinition = {
-      modelVersion: 'batch1.0.0',
-      provenance: {
-        questions: { origin: 'synthetic' },
-        styles: { origin: 'synthetic' },
-        scoringPolicy: { origin: 'synthetic' },
-      },
-      questions: [],
-      styles: [],
-      policy: {
-        sourceFile: 'C:source.ts',
-        exactRatio: 1,
-        adjacentRatio: 0.6,
-        partialRatio: 0.4,
-        bonusCap: 5,
-        penaltyCap: 15,
-        confidenceThreshold: 72,
-        tieGap: 5,
-      },
-    }
-    expect(parseDefinitionBundle(invalidDefinition, 'packages/source.ts').diagnostics).not.toEqual([])
-    expect(parseDefinitionBundle(invalidDefinition, '/absolute/bundle.ts').diagnostics[0]).toMatchObject({
-      code: 'STRUCTURE_INVALID',
-      sourceFile: 'runtime://parse-definition-bundle',
-      path: '',
-    })
+    const invalidDefinition = productionDefinition()
+    invalidDefinition.policy.sourceFile = 'C:source.ts'
+
+    expect(parseDefinitionBundle(invalidDefinition, sourceFile).diagnostics).not.toEqual([])
+    expect(parseDefinitionBundle(invalidDefinition, '/absolute/bundle.ts').diagnostics[0])
+      .toMatchObject({
+        code: 'STRUCTURE_INVALID',
+        sourceFile: 'runtime://parse-definition-bundle',
+        path: '',
+      })
   })
 })

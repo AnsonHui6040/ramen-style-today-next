@@ -92,6 +92,13 @@ function isRepositoryPath(value: string) {
     && value.split('/').every((segment) => segment !== '.' && segment !== '..' && segment !== '')
 }
 
+function shouldReportStylesNotMigrated(
+  origin: 'legacy-production' | 'synthetic',
+) {
+  // Task 16 owns the documentation/readiness transition for compiled styles.
+  return origin === 'legacy-production' || origin === 'synthetic'
+}
+
 export function buildDocumentation(
   model: ClassificationModel,
   relations: readonly DocumentationRelation[],
@@ -272,7 +279,9 @@ export function buildDocumentation(
   const readinessBlockers = persistence
     ? [...persistenceReadinessBlockers]
     : [
-        ...(model.provenance.styles.origin === 'synthetic' ? ['styles-not-migrated'] : []),
+        ...(shouldReportStylesNotMigrated(model.provenance.styles.origin)
+          ? ['styles-not-migrated']
+          : []),
         ...(model.provenance.scoringPolicy.origin === 'synthetic'
           ? ['scoring-not-migrated']
           : []),

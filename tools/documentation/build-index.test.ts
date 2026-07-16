@@ -39,84 +39,15 @@ const persistenceEvidenceBase = {
 function deterministicSnapshot(locale: string) {
   const script = String.raw`
     import {
+      classificationDefinition,
       compileClassification,
       DiagnosticCollector,
       stableJson,
     } from '@ramen-style/classification-core/compiler'
     import { buildDocumentation } from './tools/documentation/build-index.ts'
 
-    const sourceFile = 'packages/classification-core/src/definitions/synthetic.ts'
-    const definition = {
-      modelVersion: 'locale-probe',
-      provenance: {
-        questions: { origin: 'synthetic' },
-        styles: { origin: 'synthetic' },
-        scoringPolicy: { origin: 'synthetic' },
-      },
-      questions: [
-        {
-          id: 'y-demo',
-          order: 0,
-          messageIds: {
-            title: 'question-y-demo-title',
-            description: 'question-y-demo-description',
-          },
-          selection: { type: 'single', min: 1, max: 1 },
-          weight: 50,
-          options: [{
-            id: 'y-option',
-            order: 0,
-            messageIds: { label: 'option-y-demo-label' },
-          }],
-        },
-        {
-          id: 'j-demo',
-          order: 1,
-          messageIds: {
-            title: 'question-j-demo-title',
-            description: 'question-j-demo-description',
-          },
-          selection: { type: 'single', min: 1, max: 1 },
-          weight: 50,
-          options: [{
-            id: 'j-option',
-            order: 0,
-            messageIds: { label: 'option-j-demo-label' },
-          }],
-        },
-      ],
-      styles: [
-        {
-          sourceFile,
-          id: 'y-style',
-          messageId: 'style-y-demo',
-          familyOptionId: { questionId: 'y-demo', optionId: 'y-option' },
-          priority: 0,
-          intensities: ['y-intensity', 'j-intensity'],
-          noodles: ['y-noodle', 'j-noodle'],
-        },
-        {
-          sourceFile,
-          id: 'j-style',
-          messageId: 'style-j-demo',
-          familyOptionId: { questionId: 'j-demo', optionId: 'j-option' },
-          priority: 1,
-          intensities: ['y-intensity', 'j-intensity'],
-          noodles: ['y-noodle', 'j-noodle'],
-        },
-      ],
-      policy: {
-        sourceFile,
-        exactRatio: 1,
-        adjacentRatio: 0.6,
-        partialRatio: 0.4,
-        bonusCap: 5,
-        penaltyCap: 15,
-        confidenceThreshold: 72,
-        tieGap: 5,
-      },
-    }
-    const compiled = compileClassification(definition, sourceFile)
+    const sourceFile = 'packages/classification-core/src/definitions/classification.ts'
+    const compiled = compileClassification(classificationDefinition, sourceFile)
     if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics))
 
     const collector = new DiagnosticCollector()
@@ -141,7 +72,12 @@ function deterministicSnapshot(locale: string) {
       compiled.model,
       relations,
       new Set(),
-      new Set([sourceFile, 'packages/y-demo.ts', 'packages/j-demo.ts']),
+      new Set([
+        sourceFile,
+        'packages/y-demo.ts',
+        'packages/j-demo.ts',
+        ...compiled.model.inventory.map((concept) => concept.sourceFile),
+      ]),
     )
     if (documentation.diagnostics.length) {
       throw new Error(JSON.stringify(documentation.diagnostics))

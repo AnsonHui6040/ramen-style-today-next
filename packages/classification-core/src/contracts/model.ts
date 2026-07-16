@@ -1,12 +1,10 @@
+import type { DeepReadonly } from './deep-freeze.js'
 import type { CompiledQuestion } from './question-model.js'
 import type { ClassificationSourceProvenance } from './provenance.js'
+import type { CompiledStyleModel } from './style-model.js'
 import type { DefinitionBundleSource } from '../compiler/source-schema.js'
 
-export type DeepReadonly<T> = T extends readonly (infer Item)[]
-  ? readonly DeepReadonly<Item>[]
-  : T extends object
-    ? { readonly [Key in keyof T]: DeepReadonly<T[Key]> }
-    : T
+export type { DeepReadonly } from './deep-freeze.js'
 
 export type ConceptKind = 'question' | 'option' | 'style' | 'intensity' | 'noodle' | 'policy'
 export type ConceptKey = `${ConceptKind}/${string}`
@@ -25,7 +23,7 @@ export interface ClassificationModel {
   readonly dataVersion: string
   readonly provenance: DeepReadonly<ClassificationSourceProvenance>
   readonly questions: DeepReadonly<readonly CompiledQuestion[]>
-  readonly styles: DeepReadonly<DefinitionBundleSource['styles']>
+  readonly styleModel: CompiledStyleModel
   readonly policy: DeepReadonly<DefinitionBundleSource['policy']>
   readonly inventory: readonly ConceptRecord[]
 }
