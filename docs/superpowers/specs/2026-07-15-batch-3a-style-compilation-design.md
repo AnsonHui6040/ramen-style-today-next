@@ -1537,7 +1537,8 @@ resulting SHA is recorded as its execution base.
 The implementation plan must freeze exact Batch 3A path groups:
 
 - implementation paths for style definitions, contracts, compiler, generated
-  artifact, exports, parity implementation, and frozen fixtures;
+  artifact, the hand-written `packages/classification-core/src/style-model.ts`
+  runtime facade, exports, parity implementation, and frozen fixtures;
 - verification paths for scripts and repository gates needed to prove the
   implementation; and
 - acceptance metadata paths consisting only of:

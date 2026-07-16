@@ -1707,6 +1707,59 @@ independent `CHANGES_REQUIRED`.
 
 ---
 
+### Task 16B: Register the Task 12 runtime facade in exact ownership
+
+**Files:**
+- Modify only:
+  `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- Modify only:
+  `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+
+**Interfaces:** Corrects the reviewed Batch 3A ownership inventory for the
+already implemented and independently reviewed Task 12 public runtime facade.
+It does not modify the facade, public API, runtime imports, artifact, ledger,
+metadata, assurance, readiness, or any Batch 2A/2B path.
+
+- [ ] **Step 1: Prove the historical ownership gap**
+
+Require commit `1ef7d8f332d50d5aae330c605d594d5321bb24a3` to be the commit that
+adds `packages/classification-core/src/style-model.ts`. Prove that no existing
+Batch 0/1/2A/2B owner or approved maintenance owns this path, and that it is not
+covered by any existing Batch 3A implementation glob.
+
+- [ ] **Step 2: Add the exact path only**
+
+Add `packages/classification-core/src/style-model.ts` to the Batch 3A
+`implementationPaths` immediately after
+`packages/classification-core/src/index.test.ts`. Preserve every other path and
+its ordering. Do not add a broader `packages/classification-core/src/**` glob or
+move the facade into verification/acceptance metadata.
+
+- [ ] **Step 3: Prove complete historical coverage and review**
+
+Recompute Task 4–16B historical paths. The result must have no cross-group
+overlap and no unowned path: the three shared-authoring paths remain Batch 2A
+maintenance, the persistence manifest remains the exact Batch 2B identity
+maintenance payload, and every other historical path is covered by the exact
+Batch 3A groups. After independent path/ownership review `PASS`:
+
+```bash
+git diff --check
+test "$(git diff --name-only HEAD | sort)" = \
+  $'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md\ndocs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md'
+git add docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md \
+  docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md
+git commit -m "Own Batch 3A runtime facade"
+```
+
+Do not push. Task 17 may resume only from the clean reviewed amendment commit.
+
+**Stop conditions:** Any added path other than the exact facade, reordered
+existing group, overlap, remaining unowned historical path, public API change,
+or independent `CHANGES_REQUIRED`.
+
+---
+
 ### Task 17: Wire Batch 3A ownership and create the local candidate
 
 **Files:**
@@ -1756,6 +1809,7 @@ implementationPaths:
   packages/classification-core/src/generated/style-model.ts
   packages/classification-core/src/index.ts
   packages/classification-core/src/index.test.ts
+  packages/classification-core/src/style-model.ts
   tools/parity/styles/**
   tools/parity/fixtures/styles/**
   tools/styles/**
@@ -2047,11 +2101,11 @@ dirty/upstream-divergent final state, or unreviewed metadata.
 
 ## Execution handoff
 
-This plan is complete only when all eighteen tasks remain in this order and all
-independent plan reviews are `PASS`. The checkboxes are an immutable execution
-specification, not tracked progress; record task state under ignored
-`.superpowers/sdd/**` so the plan file does not drift after its approved
-checkpoint.
+This plan is complete only when Tasks 1–18 and the approved lettered maintenance
+tasks remain in this order and all independent plan reviews are `PASS`. The
+checkboxes are an immutable execution specification, not tracked progress;
+record task state under ignored `.superpowers/sdd/**` so the plan file does not
+drift after its approved checkpoint.
 
 Plan approval authorizes only the ordered actions and pushes explicitly named
 above. It authorizes formal attribution of the immutable Task 16A payload but
