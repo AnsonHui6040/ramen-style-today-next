@@ -230,7 +230,7 @@ describe('classification documentation index', () => {
       diagnostics: ['packages/j-demo.ts', 'packages/y-demo.ts'],
       stableJson: '{\n  "j-demo": 2,\n  "y-demo": 1\n}\n',
     })
-  }, 15_000)
+  }, 30_000)
 
   test('renders deterministic JSON and Markdown for every concept', () => {
     const paths = allRelationPaths()

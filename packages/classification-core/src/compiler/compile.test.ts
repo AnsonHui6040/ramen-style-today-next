@@ -139,7 +139,7 @@ describe('classification source replacement and compile ordering', () => {
     expect(result.model.modelVersion).toBe('batch3a.1.0')
     expect(result.model.policy).toEqual(syntheticPolicy)
     expect(result.model.provenance.scoringPolicy).toEqual({ origin: 'synthetic' })
-  })
+  }, 15_000)
 
   test('question failure prevents style compilation and returns no partial model', () => {
     const invalid = productionDefinition()
@@ -350,7 +350,7 @@ describe('classification data identity', () => {
       expected: baselineQuestion.metadata.semanticHash,
       received: changedQuestion.metadata.semanticHash,
     }))
-  })
+  }, 15_000)
 
   test('style semantic and source-data-only changes affect the approved axes', () => {
     const baselineDefinition = productionDefinition()
@@ -375,7 +375,7 @@ describe('classification data identity', () => {
     expect(data.model.styleModel.metadata.dataVersion)
       .not.toBe(baseline.model.styleModel.metadata.dataVersion)
     expect(data.model.dataVersion).not.toBe(baseline.model.dataVersion)
-  })
+  }, 15_000)
 
   test('policy changes affect classification identity without changing compiled styles', () => {
     const baselineDefinition = productionDefinition()

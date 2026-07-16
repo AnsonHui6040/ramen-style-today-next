@@ -46,6 +46,7 @@ interface FakeManifest {
 }
 
 const roots: string[] = []
+const originalTrustedTools = { ...trustedTools }
 const commit = 'a'.repeat(40)
 const treeHash = 'b'.repeat(40)
 const originalApp = 'export default function App() { return null }\n'
@@ -171,6 +172,17 @@ function fakeCopyValidatedFixture(input: {
 } = {}): CopyValidatedFixture {
   const root = mkdtempSync(join(process.cwd(), '.shared-authoring-copy-test-'))
   roots.push(root)
+  const sharedToolPaths = {
+    git: join(root, 'tools/git'),
+    node: join(root, 'tools/node'),
+    npmCli: join(root, 'tools/npm-cli.js'),
+    sandboxExec: join(root, 'tools/sandbox-exec'),
+  }
+  for (const path of Object.values(sharedToolPaths)) {
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, '#!/bin/sh\nexit 1\n', { mode: 0o700 })
+  }
+  Object.assign(trustedTools, sharedToolPaths)
   const legacyRoot = join(root, 'legacy')
   const toolRoot = join(root, 'authoring')
   const destination = join(toolRoot, 'fixtures/fake-v1')
@@ -188,7 +200,7 @@ function fakeCopyValidatedFixture(input: {
     ? join(root, `tools/substitute-${input.substitutedTool}`)
     : undefined
   const toolPaths = {
-    ...trustedTools,
+    ...sharedToolPaths,
     ...(input.substitutedTool && substitutePath
       ? { [input.substitutedTool]: substitutePath }
       : {}),
@@ -466,6 +478,7 @@ function fakeAdapter(
 }
 
 afterEach(() => {
+  Object.assign(trustedTools, originalTrustedTools)
   while (roots.length > 0) rmSync(roots.pop()!, { recursive: true, force: true })
 })
 
@@ -688,6 +701,18 @@ test('uses a generic added observation target with copy-validated dependencies',
   }
   expect(fullSuite.environment.RAMEN_PARITY_SEED).toBe('')
   expect(extraction.environment.RAMEN_PARITY_SEED).toMatch(/capability-[a-f0-9]+\.json$/)
+})
+
+test('uses isolated regular-file trusted tool doubles for copy-validated fixtures', () => {
+  const fixture = fakeCopyValidatedFixture()
+  const root = dirname(fixture.legacyRoot)
+
+  for (const tool of Object.values(fixture.environment.tools)) {
+    expect(tool.startsWith(`${root}/`)).toBe(true)
+    const stats = lstatSync(tool)
+    expect(stats.isFile()).toBe(true)
+    expect(stats.isSymbolicLink()).toBe(false)
+  }
 })
 
 test('rejects unsafe, duplicate, or undeclared instrumentation paths', () => {
