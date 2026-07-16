@@ -4,7 +4,7 @@
 
 ## Current status
 
-Batch 0 已完成並獲核准：repository 已建立架構設計、舊版基準與維護規則，尚未搬入應用程式或正式分類資料。Batch 1 implementation plan 已完成可執行性審閱，下一步會在獨立分支建立 contracts、diagnostics、compiler shell 與初始索引工具。
+Batch 1 已完成：repository 現在具備 strict TypeScript contracts、structured diagnostics、deterministic compiler shell、雙向檢查的分類索引、migration ledger validator 和 CI。所有分類內容仍是 synthetic proof inventory；正式 questions 與 flow 只會由 Batch 2A 開始遷移。
 
 舊版 production 與行為基準仍在 [`AnsonHui6040/ramen-style-today`](https://github.com/AnsonHui6040/ramen-style-today)，凍結比較基準為 commit `eebf00b`。
 
@@ -24,7 +24,7 @@ docs/                             架構、分類、決策與遷移文件
 - [Architecture design](docs/superpowers/specs/2026-07-11-classification-architecture-design.md)
 - [Batch 1 implementation plan](docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md)
 - [Legacy baseline](docs/migration/baseline.md)
-- [Migration ledger](docs/migration/ledger.json)
+- [Migration ledger](docs/migration/ledger.md) ([machine source](docs/migration/ledger.json))
 - [Repository rules](AGENTS.md)
 - [Rights notice](RIGHTS.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)

@@ -6,7 +6,7 @@ This monorepo replaces the low-level architecture of `ramen-style-today` through
 
 ## Current phase
 
-Batch 0 is approved and contains design and migration-baseline documents only. Batch 1 has a reviewed plan at `docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md` but has not created repository tooling or a synthetic classification index yet; until it does, use the approved design and `docs/migration/baseline.md` for navigation. Batch 2A replaces that synthetic inventory with migrated question concepts. Do not invent commands, packages, generated artifacts, or source paths that have not been created yet.
+Batch 1 is complete. The repository has strict contracts, structured diagnostics, a deterministic compiler shell, checked classification indexes, migration-ledger validation, and CI; all current classification definitions remain synthetic proof data. Run `npm run verify` before every handoff. Batch 2A may replace the synthetic question inventory only under its separately approved plan; no production scoring, persistence, catalog, Finder, or React behavior is owned here yet.
 
 ## Source-of-truth hierarchy
 

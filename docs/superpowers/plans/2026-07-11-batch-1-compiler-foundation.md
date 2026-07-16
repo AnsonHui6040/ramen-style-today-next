@@ -65,6 +65,8 @@ tools/
   migration/render-ledger.test.ts                schema and rendering tests
   migration/ledger-check.ts                      pure repository ownership checks
   migration/ledger-check.test.ts                 missing-owner, scope, and drift tests
+  migration/record-ci.ts                         authenticated atomic CI recorder
+  migration/record-ci.test.ts                    successful authenticated file recording test
   migration/check-ledger.ts                      validation/check CLI
 docs/classification/change-map.md                hand-authored change workflow
 docs/classification/index.md                     generated synthetic navigation
@@ -858,6 +860,7 @@ git commit -m "Define compiler source contracts"
 - Create: `packages/classification-core/src/compiler/index.ts`
 - Create: `packages/classification-core/src/definitions/synthetic.ts`
 - Create: `tools/validation/validate-classification.ts`
+- Modify: `packages/classification-core/tsconfig.json`
 - Modify: `packages/classification-core/src/index.ts`
 - Modify: `package.json`
 
@@ -959,6 +962,22 @@ npx vitest run packages/classification-core/src/compiler/compile.test.ts
 Expected: FAIL because compiler and synthetic definitions do not exist.
 
 - [ ] **Step 3: Add compiled model contracts and stable JSON**
+
+Update `packages/classification-core/tsconfig.json`:
+
+```json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"]
+}
+```
 
 Create `packages/classification-core/src/contracts/model.ts`:
 
@@ -1363,7 +1382,7 @@ Expected: four compiler tests pass; CLI prints `"mode":"synthetic"`; all checks 
 - [ ] **Step 8: Commit the compiler shell**
 
 ```bash
-git add package.json packages/classification-core/src tools/validation
+git add docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md package.json packages/classification-core/tsconfig.json packages/classification-core/src tools/validation
 git commit -m "Compile synthetic classification model"
 ```
 
@@ -1378,13 +1397,14 @@ git commit -m "Compile synthetic classification model"
 - Create: `tools/documentation/build-index.ts`
 - Create: `tools/documentation/build-index.test.ts`
 - Create: `tools/documentation/generate-classification-index.ts`
+- Create: `tools/documentation/generate-classification-index.test.ts`
 - Create: `docs/classification/change-map.md`
 - Create: `docs/classification/index.md` via generator
 - Create: `docs/classification/manifest.json` via generator
 - Modify: `package.json`
 
 **Interfaces:**
-- Produces: typed `DocumentationRelation[]`, `buildDocumentation(model, relations, detectedConsumers, existingPaths)`, and write/check CLI.
+- Produces: typed `DocumentationRelation[]`, `buildDocumentation(model, relations, detectedConsumers, existingPaths)`, `scanCoreConsumers(repoRoot, roots, eligibleFiles)`, and a write/check CLI that validates every owned-directory entry before writing.
 - Manifest schema: `{ schemaVersion: 1, synthetic, modelVersion, dataVersion, concepts }`.
 
 - [ ] **Step 1: Write failing index completeness tests**
@@ -1531,13 +1551,149 @@ describe('core consumer scanner', () => {
         "import '@ramen-style/classification-core/compiler'\n",
       )
 
-      expect([...scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'])]).toEqual([
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps', 'packages', 'tools'],
+        new Set([
+          'apps/web/consumer.ts',
+          'apps/web/consumer.test.ts',
+          'packages/classification-core/src/internal.ts',
+          'tools/documentation/generator.ts',
+        ]),
+      )]).toEqual([
         'apps/web/consumer.ts',
       ])
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
     }
   })
+
+  test('finds CommonJS package imports in cts consumers', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-'))
+    try {
+      mkdirSync(join(repoRoot, 'apps/web'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'apps/web/commonjs.cts'),
+        "const core = require('@ramen-style/classification-core/compiler')\n",
+      )
+
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps'],
+        new Set(['apps/web/commonjs.cts']),
+      )]).toEqual(['apps/web/commonjs.cts'])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('excludes consumers outside the eligible repository inventory', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-'))
+    try {
+      mkdirSync(join(repoRoot, 'apps/web'), { recursive: true })
+      writeFileSync(
+        join(repoRoot, 'apps/web/eligible.ts'),
+        "import '@ramen-style/classification-core'\n",
+      )
+      writeFileSync(
+        join(repoRoot, 'apps/web/ignored-local.ts'),
+        "import '@ramen-style/classification-core'\n",
+      )
+
+      expect([...scanCoreConsumers(
+        repoRoot,
+        ['apps'],
+        new Set(['apps/web/eligible.ts']),
+      )]).toEqual(['apps/web/eligible.ts'])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+})
+```
+
+Create `tools/documentation/generate-classification-index.test.ts`:
+
+```ts
+import { execFileSync, spawnSync } from 'node:child_process'
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+
+import { expect, test } from 'vitest'
+
+const sourceRoot = resolve(import.meta.dirname, '../..')
+
+test('write mode rejects an owned output symlink before changing any output', () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
+  const externalRoot = mkdtempSync(join(tmpdir(), 'ramen-index-outside-'))
+  try {
+    const documentationRoot = join(repoRoot, 'tools/documentation')
+    mkdirSync(documentationRoot, { recursive: true })
+    for (const file of [
+      'build-index.ts',
+      'generate-classification-index.ts',
+      'relations.ts',
+      'scan-imports.ts',
+    ]) {
+      cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
+    }
+
+    for (const file of [
+      'packages/classification-core/src/definitions/synthetic.ts',
+      'packages/classification-core/src/compiler/source-schema.ts',
+      'packages/classification-core/src/compiler/compile.ts',
+      'packages/classification-core/src/compiler/compile.test.ts',
+    ]) {
+      const target = join(repoRoot, file)
+      mkdirSync(resolve(target, '..'), { recursive: true })
+      writeFileSync(target, '')
+    }
+    const validation = join(repoRoot, 'tools/validation/validate-classification.ts')
+    mkdirSync(resolve(validation, '..'), { recursive: true })
+    writeFileSync(validation, "import '@ramen-style/classification-core/compiler'\n")
+
+    writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
+    symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
+    execFileSync('git', ['init', '--quiet'], { cwd: repoRoot })
+
+    const classificationRoot = join(repoRoot, 'docs/classification')
+    mkdirSync(classificationRoot, { recursive: true })
+    writeFileSync(join(classificationRoot, 'change-map.md'), '# Change map\n')
+    const manifest = join(classificationRoot, 'manifest.json')
+    writeFileSync(manifest, 'manifest remains unchanged\n')
+    const externalTarget = join(externalRoot, 'outside.md')
+    writeFileSync(externalTarget, 'outside remains unchanged\n')
+    symlinkSync(externalTarget, join(classificationRoot, 'index.md'))
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        join(sourceRoot, 'node_modules/tsx/dist/cli.mjs'),
+        join(documentationRoot, 'generate-classification-index.ts'),
+        '--write',
+      ],
+      { cwd: repoRoot, encoding: 'utf8' },
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(
+      'DOC_INDEX_DRIFT unexpected owned-path entry docs/classification/index.md',
+    )
+    expect(readFileSync(externalTarget, 'utf8')).toBe('outside remains unchanged\n')
+    expect(readFileSync(manifest, 'utf8')).toBe('manifest remains unchanged\n')
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+    rmSync(externalRoot, { recursive: true, force: true })
+  }
 })
 ```
 
@@ -1546,7 +1702,7 @@ describe('core consumer scanner', () => {
 Run:
 
 ```bash
-npx vitest run tools/documentation/build-index.test.ts tools/documentation/scan-imports.test.ts
+npx vitest run tools/documentation/build-index.test.ts tools/documentation/scan-imports.test.ts tools/documentation/generate-classification-index.test.ts
 ```
 
 Expected: FAIL because documentation tooling does not exist.
@@ -1654,7 +1810,11 @@ function isInfrastructureOrTest(relativePath: string) {
     || relativePath.endsWith('.test.cts')
 }
 
-export function scanCoreConsumers(repoRoot: string, roots: readonly string[]): Set<string> {
+export function scanCoreConsumers(
+  repoRoot: string,
+  roots: readonly string[],
+  eligibleFiles: ReadonlySet<string>,
+): Set<string> {
   const consumers = new Set<string>()
 
   const visit = (absolutePath: string) => {
@@ -1670,7 +1830,8 @@ export function scanCoreConsumers(repoRoot: string, roots: readonly string[]): S
       if (!entry.isFile() || !['.ts', '.tsx', '.mts', '.cts'].some((suffix) => entry.name.endsWith(suffix))) {
         continue
       }
-      const imports = ts.preProcessFile(readFileSync(child, 'utf8')).importedFiles
+      if (!eligibleFiles.has(relativePath)) continue
+      const imports = ts.preProcessFile(readFileSync(child, 'utf8'), true, true).importedFiles
       if (imports.some(({ fileName }) => fileName === corePackage || fileName.startsWith(`${corePackage}/`))) {
         consumers.add(relativePath)
       }
@@ -1859,7 +2020,7 @@ export function buildDocumentation(
     '',
     '> Synthetic inventory — not production classification data.',
     '',
-    `Model version: \`${model.modelVersion}\`  `,
+    `Model version: \`${model.modelVersion}\`<br>`,
     `Data version: \`${model.dataVersion}\``,
     '',
     '| Concept | Canonical source | Validators | Consumers | Migrations | Generated owners | Messages | Tests |',
@@ -1931,7 +2092,7 @@ const existingPaths = new Set(documentationRelations.flatMap((item) => [
   const absolute = resolve(repoRoot, file)
   return repoFiles.has(file) && existsSync(absolute) && statSync(absolute).isFile()
 }))
-const detected = scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'])
+const detected = scanCoreConsumers(repoRoot, ['apps', 'packages', 'tools'], repoFiles)
 const built = buildDocumentation(compiled.model, documentationRelations, detected, existingPaths)
 if (built.diagnostics.length) {
   console.error(JSON.stringify(built.diagnostics, null, 2))
@@ -1946,13 +2107,15 @@ const allowedClassificationFiles = new Set([
   ...outputs.keys(),
   'docs/classification/change-map.md',
 ])
+let hasInvalidOwnedEntry = false
 for (const entry of readdirSync(resolve(repoRoot, 'docs/classification'), { withFileTypes: true })) {
   const relative = `docs/classification/${entry.name}`
   if (!entry.isFile() || !allowedClassificationFiles.has(relative)) {
     console.error(`DOC_INDEX_DRIFT unexpected owned-path entry ${relative}`)
-    process.exitCode = 1
+    hasInvalidOwnedEntry = true
   }
 }
+if (hasInvalidOwnedEntry) process.exit(1)
 for (const [relative, content] of outputs) {
   const file = resolve(repoRoot, relative)
   if (mode === '--write') {
@@ -1977,14 +2140,14 @@ Add these root scripts:
 Run:
 
 ```bash
-npx vitest run tools/documentation/build-index.test.ts tools/documentation/scan-imports.test.ts
+npx vitest run tools/documentation/build-index.test.ts tools/documentation/scan-imports.test.ts tools/documentation/generate-classification-index.test.ts
 npm run classification:index
 npm run classification:index:check
 npm run lint
 npm run typecheck
 ```
 
-Expected: five documentation tests pass; generated files state synthetic status; check mode exits 0 without modifying files.
+Expected: eight documentation tests pass; generated files state synthetic status; check mode exits 0 without modifying files, and write mode rejects owned-output symlinks before changing any output.
 
 - [ ] **Step 7: Commit index tooling**
 
@@ -2003,6 +2166,8 @@ git commit -m "Generate checked classification index"
 - Create: `tools/migration/render-ledger.test.ts`
 - Create: `tools/migration/ledger-check.ts`
 - Create: `tools/migration/ledger-check.test.ts`
+- Create: `tools/migration/record-ci.ts`
+- Create: `tools/migration/record-ci.test.ts`
 - Create: `tools/migration/check-ledger.ts`
 - Create: `docs/migration/ledger.md` via generator
 - Modify: `docs/migration/ledger.json`
@@ -2528,6 +2693,7 @@ repository-wide ownership check:
     "packages/classification-core/tsconfig.json",
     "tools/documentation/build-index.test.ts",
     "tools/documentation/build-index.ts",
+    "tools/documentation/generate-classification-index.test.ts",
     "tools/documentation/generate-classification-index.ts",
     "tools/documentation/relations.ts",
     "tools/documentation/scan-imports.test.ts",
@@ -2537,6 +2703,8 @@ repository-wide ownership check:
     "tools/migration/ledger-check.test.ts",
     "tools/migration/ledger-check.ts",
     "tools/migration/ledger-schema.ts",
+    "tools/migration/record-ci.test.ts",
+    "tools/migration/record-ci.ts",
     "tools/migration/render-ledger.test.ts",
     "tools/migration/render-ledger.ts",
     "tools/tsconfig.json",
@@ -2556,14 +2724,14 @@ repository-wide ownership check:
 Run:
 
 ```bash
-npx vitest run tools/migration/render-ledger.test.ts tools/migration/ledger-check.test.ts
+npx vitest run tools/migration/render-ledger.test.ts tools/migration/ledger-check.test.ts tools/migration/record-ci.test.ts
 npm run migration:ledger
 npm run migration:ledger:check
 npm run lint
 npm run typecheck
 ```
 
-Expected: six tests pass; generated Markdown lists Batch 0 as complete and Batch 1 as in progress; every unignored repository file has exactly one ledger owner; checks exit 0.
+Expected: all focused ledger tests pass; generated Markdown lists Batch 0 as complete and Batch 1 as in progress; every unignored repository file has exactly one ledger owner; checks exit 0.
 
 - [ ] **Step 7: Link human-readable ledger and commit**
 
@@ -2596,6 +2764,22 @@ git commit -m "Validate migration ledger"
 **Interfaces:**
 - Produces: root `npm run verify` and identical GitHub Actions execution on Node 24.18.0.
 - Acceptance: Batch 1 contains infrastructure and synthetic inventory only.
+
+**Task 6 review integration correction:** remote promotion accepts only
+`--record-ci <batch> <verified-ci-proof-json-file>`. The proof is a strict JSON
+object containing schema version 1, the candidate SHA, numeric run ID, and
+repository run URL. Task 7 creates this ignored temporary proof only after its
+workflow-list precheck. At record time, the ledger CLI independently fetches the
+hard-coded GitHub API run and `ci.yml` workflow resources for
+`AnsonHui6040/ramen-style-today-next`, rejects redirects, requires the run's
+immutable `workflow_id` to match the canonical workflow resource ID, and checks
+the exact workflow path/ref form. Ambiguous `head_branch` values containing `@`
+or control characters and suffixes containing an extra `@` are rejected before
+constructing allowed branch, `refs/heads`, tag, or SHA forms. The recorder also
+checks the repository, `push` event, current candidate/head SHA, run ID, run URL,
+completed status, and successful conclusion before any ledger write.
+The shell precheck is defense-in-depth, not the mutation trust boundary; callers
+cannot promote a batch with a fabricated internally consistent proof.
 
 - [ ] **Step 1: Prove the aggregate gate is absent, then add it**
 
@@ -2684,6 +2868,7 @@ expanded inventory after creating the workflow file:
     "packages/classification-core/tsconfig.json",
     "tools/documentation/build-index.test.ts",
     "tools/documentation/build-index.ts",
+    "tools/documentation/generate-classification-index.test.ts",
     "tools/documentation/generate-classification-index.ts",
     "tools/documentation/relations.ts",
     "tools/documentation/scan-imports.test.ts",
@@ -2693,6 +2878,8 @@ expanded inventory after creating the workflow file:
     "tools/migration/ledger-check.test.ts",
     "tools/migration/ledger-check.ts",
     "tools/migration/ledger-schema.ts",
+    "tools/migration/record-ci.test.ts",
+    "tools/migration/record-ci.ts",
     "tools/migration/render-ledger.test.ts",
     "tools/migration/render-ledger.ts",
     "tools/tsconfig.json",
@@ -2789,8 +2976,12 @@ exits non-zero.
 ```bash
 set -e
 CANDIDATE_SHA="$(git rev-parse HEAD)"
-CANDIDATE_RUN_URL="$(node --input-type=module -e '
-const sha = process.argv[1]
+CI_PROOF_FILE=".superpowers/sdd/batch1-verified-ci-proof.json"
+rm -f "$CI_PROOF_FILE"
+trap 'rm -f "$CI_PROOF_FILE"' EXIT
+node --input-type=module -e '
+import { writeFile } from "node:fs/promises"
+const [sha, proofFile] = process.argv.slice(1)
 const response = await fetch("https://api.github.com/repos/AnsonHui6040/ramen-style-today-next/actions/workflows/ci.yml/runs?branch=codex%2Fbatch-1-compiler-foundation&event=push&per_page=20", {
   headers: { Accept: "application/vnd.github+json", "User-Agent": "ramen-style-today-next" },
 })
@@ -2799,14 +2990,25 @@ const payload = await response.json()
 const run = payload.workflow_runs.find((item) => item.head_sha === sha && item.event === "push")
 if (!run) throw new Error(`No GitHub Actions run found for ${sha}`)
 if (run.status !== "completed" || run.conclusion !== "success") process.exit(1)
-console.log(run.html_url)
-' "$CANDIDATE_SHA")"
-npm run migration:ledger:record-ci -- 1 "$CANDIDATE_SHA" "$CANDIDATE_RUN_URL"
+const proof = {
+  schemaVersion: 1,
+  sha,
+  runId: run.id,
+  runUrl: run.html_url,
+}
+await writeFile(proofFile, `${JSON.stringify(proof, null, 2)}\n`, { flag: "wx" })
+' "$CANDIDATE_SHA" "$CI_PROOF_FILE"
+npm run migration:ledger:record-ci -- 1 "$CI_PROOF_FILE"
 ```
 
 Expected: the workflow-specific endpoint confirms a successful `push` run for
-the exact candidate SHA, then the ledger tool atomically records that SHA and
-run URL and promotes Batch 1 to `complete`.
+the exact candidate SHA and writes a structured proof. The ledger tool then
+independently fetches the fixed repository run resource, requires it to match
+the current Git HEAD and every proof/workflow success field, fetches the fixed
+canonical workflow resource, matches its immutable ID and exact path/ref form,
+atomically records the SHA and run URL, and promotes Batch 1 to `complete`. A
+nonexistent run, API failure, malformed or redirected response, mismatch, or
+non-success fails closed without writing. Direct SHA and URL arguments are rejected.
 
 - [ ] **Step 9: Replace candidate-facing copy after evidence is recorded**
 

@@ -86,6 +86,86 @@
           "evidence": "all execution, type, ownership, index completeness, and CI evidence blockers were resolved before the plan commit"
         }
       ]
+    },
+    {
+      "batch": "1",
+      "status": "complete",
+      "legacySources": [],
+      "ownedScopes": [
+        ".github/workflows",
+        "docs/classification",
+        "packages/classification-core",
+        "tools"
+      ],
+      "newOwners": [
+        ".github/workflows/ci.yml",
+        ".nvmrc",
+        "eslint.config.js",
+        "package-lock.json",
+        "package.json",
+        "packages/classification-core/package.json",
+        "packages/classification-core/src/compiler/collector.test.ts",
+        "packages/classification-core/src/compiler/collector.ts",
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/index.ts",
+        "packages/classification-core/src/compiler/parse.test.ts",
+        "packages/classification-core/src/compiler/parse.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/compiler/stable-json.ts",
+        "packages/classification-core/src/contracts/diagnostic-codes.ts",
+        "packages/classification-core/src/contracts/diagnostic.ts",
+        "packages/classification-core/src/contracts/ids.ts",
+        "packages/classification-core/src/contracts/model.ts",
+        "packages/classification-core/src/contracts/source-path.ts",
+        "packages/classification-core/src/definitions/synthetic.ts",
+        "packages/classification-core/src/index.test.ts",
+        "packages/classification-core/src/index.ts",
+        "packages/classification-core/tsconfig.json",
+        "tools/documentation/build-index.test.ts",
+        "tools/documentation/build-index.ts",
+        "tools/documentation/generate-classification-index.test.ts",
+        "tools/documentation/generate-classification-index.ts",
+        "tools/documentation/relations.ts",
+        "tools/documentation/scan-imports.test.ts",
+        "tools/documentation/scan-imports.ts",
+        "tools/index.ts",
+        "tools/migration/check-ledger.ts",
+        "tools/migration/ledger-check.test.ts",
+        "tools/migration/ledger-check.ts",
+        "tools/migration/ledger-schema.ts",
+        "tools/migration/record-ci.test.ts",
+        "tools/migration/record-ci.ts",
+        "tools/migration/render-ledger.test.ts",
+        "tools/migration/render-ledger.ts",
+        "tools/tsconfig.json",
+        "tools/validation/validate-classification.ts",
+        "tsconfig.base.json",
+        "tsconfig.json",
+        "vitest.config.ts",
+        "docs/classification/change-map.md",
+        "docs/classification/index.md",
+        "docs/classification/manifest.json",
+        "docs/migration/ledger.md"
+      ],
+      "transformation": "Created new monorepo contracts, diagnostics, compiler, synthetic inventory, checked documentation index, ledger tooling, and CI without migrating legacy production behavior.",
+      "behavior": "no-production-runtime-change",
+      "verification": [
+        {
+          "gate": "batch1-local-verify",
+          "command": "npm run verify",
+          "outcome": "passed",
+          "evidence": "lint, tests, typecheck, build, synthetic validation, index drift, and ledger drift checks passed on the acceptance candidate"
+        },
+        {
+          "gate": "batch1-remote-ci",
+          "command": "GitHub Actions CI / verify",
+          "outcome": "passed",
+          "evidence": "the pushed acceptance candidate completed the Node 24 verify job successfully",
+          "commitSha": "3cd7ac638f650d783b33f27feb993fbadf35493f",
+          "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883"
+        }
+      ]
     }
   ]
 }
