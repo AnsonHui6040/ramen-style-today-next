@@ -1473,6 +1473,16 @@ or any manually edited fixture byte.
 
 ### Task 15: Prove compiled style inventory parity
 
+Before Task 15 implementation, one focused directory-inventory maintenance
+transaction modifies only this plan and
+`tools/parity/styles/extractor.test.ts`. The existing Task 13 guard must accept
+exactly either the reviewed pre-Task-15 file set or that same set plus the
+complete `parity.ts` and `parity.test.ts` pair. It rejects either file appearing
+alone and every other extra or missing entry. This maintenance does not reopen
+the extractor, fixture, contracts, verifier, or authoring semantics, requires
+an independent test-contract review, and is committed separately. Once Task 15
+is present, its focused gate exercises the complete pair.
+
 **Files:**
 - Create: `tools/parity/styles/parity.ts`
 - Create: `tools/parity/styles/parity.test.ts`
