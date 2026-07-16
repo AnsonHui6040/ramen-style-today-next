@@ -168,7 +168,7 @@ describe('style extractor identity and instrumentation', () => {
     expect(source).not.toContain('LegacyStyleObservation')
   })
 
-  test('contains exactly the seven Task 13 authoring files and no fixture corpus', () => {
+  test('retains the seven Task 13 files beside the exact Task 14 verifier pair', () => {
     expect(readdirSync(resolve(process.cwd(), 'tools/parity/styles')).sort()).toEqual([
       'contracts.test.ts',
       'contracts.ts',
@@ -177,11 +177,18 @@ describe('style extractor identity and instrumentation', () => {
       'extractor.ts',
       'legacy-instrumentation.patch',
       'seeds.json',
+      'verify-fixtures.test.ts',
+      'verify-fixtures.ts',
     ])
-    expect(existsSync(resolve(
+    const fixtureRoot = resolve(
       process.cwd(),
       'tools/parity/fixtures/styles/legacy-v1',
-    ))).toBe(false)
+    )
+    expect(existsSync(fixtureRoot)).toBe(true)
+    expect(readdirSync(fixtureRoot).sort()).toEqual([
+      'cases.json',
+      'manifest.json',
+    ])
   })
 })
 
