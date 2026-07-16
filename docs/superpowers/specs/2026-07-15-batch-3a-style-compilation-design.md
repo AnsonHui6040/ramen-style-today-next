@@ -1084,6 +1084,101 @@ Style fixture authoring reuses `tools/parity/shared/**` without modification.
 The style adapter supplies only style-specific seeds, instrumentation patch,
 schema, normalization, manifest builder, and verification.
 
+### 13.1 Shared-authoring generalization precondition
+
+Before Task 13 begins, one separately reviewed maintenance transaction makes
+the already accepted shared authoring core domain-neutral without changing the
+question or persistence adapters or their frozen fixtures. The maintenance is
+not Task 13 implementation and does not authorize style observations, fixture
+publication, or Task 14.
+
+The shared environment accepts an explicit immutable instrumentation
+transaction descriptor containing:
+
+- the exact ordered repository-relative patch targets and expected Git status
+  (` M` for a tracked modification or `??` for an added observation file);
+- the exact repository-relative Vitest extraction entrypoint, which must be one
+  of the descriptor's added observation files; and
+- an explicit dependency-provisioning policy.
+
+The current question and persistence adapters retain their accepted behavior
+through a compatibility default for their existing two patch targets and
+question extraction entrypoint. Every new adapter, beginning with styles, must
+supply an explicit descriptor. The shared core validates safe relative paths,
+the patch's exact target/status set, old/new Git blob identities, post-apply
+changed files, and the extraction entrypoint. It never infers a domain from a
+filename and never lets an adapter supply arbitrary command arguments.
+
+Dependency evidence is a closed discriminated union. The existing `npm-ci`
+compatibility arm retains the exact Node and npm runtime versions required by
+the accepted question and persistence adapters. The `copy-validated` arm used
+by styles contains the exact Node runtime version, the legacy lockfile hash, the
+SHA-256 of `node_modules/.package-lock.json`, and the hash of a canonical
+recursive dependency-tree manifest; it contains no npm runtime version and may
+not run the `npm-version` or `npm-ci` roles. The shared generic types preserve
+the old arm as their compatibility default so no accepted adapter or fixture
+changes in this maintenance transaction.
+
+The `copy-validated` source `node_modules` root must be a physical directory.
+Before copying, shared authoring builds a code-point-sorted recursive manifest:
+every entry records a safe relative path and type; a regular file additionally
+records its SHA-256; a symbolic link records its literal link text. Sockets,
+FIFOs, devices, other unsupported entries, broken or cyclic links, absolute
+links, and links that resolve outside the source root are rejected. The
+canonical manifest hash and installed-lock hash must equal the policy evidence.
+The dependency tree is copied without dereferencing links into the isolated
+worktree. The destination root must also be physical; every copied link must
+resolve within that destination root; and its independently recomputed
+manifest must equal the source manifest byte-for-byte. A mismatch aborts before
+legacy code runs.
+
+Shared authoring recomputes the source manifest and installed-lock identity
+after the copy, after each sandboxed command, and once in the failure-or-success
+cleanup path before the temporary worktree is removed. Any source drift fails
+the transaction; it never mutates or repairs the neighboring checkout. The
+copied destination is disposable local authoring input and is not committed or
+recorded with an absolute path.
+
+Under `copy-validated`, both legacy commands have fixed shared-owned forms,
+with no adapter-supplied arguments and the isolated worktree as `cwd`:
+
+```text
+/usr/bin/sandbox-exec -p '(version 1)(allow default)(deny network*)' <absolute trusted node> <absolute copied vitest/vitest.mjs> run
+/usr/bin/sandbox-exec -p '(version 1)(allow default)(deny network*)' <absolute trusted node> <absolute copied vitest/vitest.mjs> run <exact descriptor extraction entrypoint>
+```
+
+Each command receives exactly `CI`, `GIT_CONFIG_NOSYSTEM`, `HOME`, `LANG`,
+`LC_ALL`, `PATH`, `RAMEN_PARITY_SEED`, `TMPDIR`, and `TZ`: the two flags are
+`1`, both locale values are `C.UTF-8`, `TZ` is `UTC`, `HOME` and `TMPDIR` are
+shared-owned directories under the extraction root, and no `NPM_CONFIG_*` key
+is present. `PATH` is exactly the trusted Node directory plus `/usr/bin:/bin`;
+shared authoring rejects the copy policy if any of those directories exposes an
+executable `npm` or `npx` entry. The full-suite seed is empty and the extraction
+seed is the exact capability path. Each command has a non-configurable 120,000
+ms deadline. On expiry the shared runner terminates the sandbox process group
+with `SIGTERM`, escalates to `SIGKILL` after a fixed 2,000 ms grace period,
+emits a bounded failure, and executes the ordinary source-revalidation and
+cleanup path. The sandbox rejects HTTP, HTTPS, DNS, and socket access even if
+instrumentation attempts an absolute executable. A network attempt likewise
+fails the transaction and cleans up. The existing `npm-ci` policy remains
+unchanged for the accepted adapters and is not permitted for styles.
+
+The maintenance allowlist is exactly:
+
+```text
+docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md
+docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md
+tools/parity/shared/contracts.ts
+tools/parity/shared/authoring.ts
+tools/parity/shared/authoring.test.ts
+```
+
+It requires focused RED/GREEN tests, the complete shared/question/persistence
+authoring regressions, typecheck, lint, `git diff --check`, an independent
+shared-transaction/security review, and one focused commit. Task 13 starts only
+from that clean reviewed commit and still treats `tools/parity/shared/**` as
+read-only.
+
 The authoring transaction must:
 
 1. verify the legacy remote, exact HEAD, exact tree, and clean tracked status;
@@ -1111,8 +1206,10 @@ templates, but do not claim translated-content parity.
 
 The manifest binds source repository, commit, tree, tracked source hashes,
 lockfile hash, patch hash, seeds hash, extractor and instrumentation hashes,
-authoring source hashes, Node/npm evidence required by the shared contract,
-ordered entity IDs, fixture-content hash, and canonical corpus hash.
+authoring source hashes, policy-specific dependency evidence, ordered entity
+IDs, fixture-content hash, and canonical corpus hash. Style evidence contains
+the exact Node runtime version, installed-lock hash, and dependency-tree
+manifest hash, and does not claim an npm runtime version.
 
 Ordinary CI never accesses a neighboring checkout, the network, an absolute
 local path, or untracked evidence. Live extraction is an explicit authoring

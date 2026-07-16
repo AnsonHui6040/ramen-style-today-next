@@ -1208,6 +1208,110 @@ three stale pre-Task-12 assertions, or new scorer/eligibility/storage export.
 
 ---
 
+### Task 12A: Generalize shared fixture authoring for style extraction
+
+**Files:**
+- Modify: `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- Modify: `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+- Modify: `tools/parity/shared/contracts.ts`
+- Modify: `tools/parity/shared/authoring.ts`
+- Modify: `tools/parity/shared/authoring.test.ts`
+
+**Interfaces:** This is a separately reviewed pre-Task-13 maintenance
+transaction. It adds an explicit domain-neutral instrumentation descriptor and
+a `copy-validated` dependency policy while preserving the accepted question and
+persistence adapters and fixtures without modification.
+
+- [ ] **Step 1: Amend and independently review the maintenance contract**
+
+The descriptor declares exact safe repository-relative patch targets with
+expected ` M`/`??` statuses plus one exact added Vitest extraction entrypoint.
+Shared authoring validates patch blob identities, exact post-apply files, and
+the entrypoint. New adapters must provide the descriptor; the existing
+question/persistence behavior remains available only as a compatibility
+default.
+
+Dependency evidence is discriminated: the compatibility `npm-ci` arm retains
+exact Node/npm runtime versions, while `copy-validated` records exact Node,
+legacy lockfile, installed-lock, and canonical dependency-tree-manifest hashes,
+with no npm version. It rejects the `npm-version` and `npm-ci` roles.
+
+For `copy-validated`, build a code-point-sorted recursive source manifest of
+safe relative path, entry type, regular-file SHA-256, or literal symlink target.
+Reject special entries, broken/cyclic/absolute links, and links resolving
+outside the source root. Copy without dereferencing links; require a physical
+destination root, links resolving within that root, and an exactly equal
+destination manifest. Revalidate the source manifest and installed lock after
+copy, after both sandbox commands, and in success-or-failure cleanup.
+
+Both commands use exact shared-owned argv: `/usr/bin/sandbox-exec -p
+'(version 1)(allow default)(deny network*)' <node> <vitest> run`, with only the
+exact descriptor extraction entrypoint appended to the extraction command.
+Adapters supply no arguments. Their environment keys are exactly `CI`,
+`GIT_CONFIG_NOSYSTEM`, `HOME`, `LANG`, `LC_ALL`, `PATH`,
+`RAMEN_PARITY_SEED`, `TMPDIR`, and `TZ`: flags are `1`, locales are `C.UTF-8`,
+`TZ` is `UTC`, `HOME`/`TMPDIR` are shared-owned below the extraction root, and
+no `NPM_CONFIG_*` key is present. `PATH` is exactly the trusted Node directory
+plus `/usr/bin:/bin` and must expose no executable npm/npx. Each command has a
+fixed 120,000 ms deadline, `SIGTERM` plus a fixed 2,000 ms `SIGKILL` escalation,
+bounded failure, source revalidation, and cleanup.
+
+- [ ] **Step 2: Write and confirm focused RED shared tests**
+
+Test generic patch targets and extraction entrypoint, unsafe/duplicate/missing
+targets, patch/status drift, installed-lock and manifest-hash drift, safe
+physical dependency copy, escaping/broken/absolute links, special files,
+destination-manifest mismatch, post-copy/post-command/failure-path source drift,
+and preservation of the compatibility default. For both legacy roles assert the
+exact sandbox profile, fixed argv, exact environment-key set and `PATH`, no
+`npm-version`/`npm-ci` role, 120,000 ms deadline, timeout termination/escalation,
+bounded failure, full-suite-before-extraction, and cleanup.
+
+```bash
+npx vitest run tools/parity/shared/authoring.test.ts \
+  > .superpowers/sdd/batch-3a/task-12a-red.txt 2>&1
+```
+
+- [ ] **Step 3: Implement the minimal shared generalization**
+
+Do not modify question or persistence adapters, fixtures, manifests, package
+scripts, locks, production packages, or Task 13 files. Do not duplicate the
+shared transaction. The copied dependency tree is local authoring input, never
+committed observation data or manifest path metadata.
+
+- [ ] **Step 4: GREEN, regression review, and focused commit**
+
+```bash
+npx vitest run \
+  tools/parity/shared/authoring.test.ts \
+  tools/parity/questions/extractor.test.ts \
+  tools/parity/persistence/extractor.test.ts
+npm run typecheck
+npm run lint
+git diff --check
+git diff --name-status HEAD
+```
+
+After independent shared-transaction/security review `PASS`:
+
+```bash
+git add \
+  docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md \
+  docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md \
+  tools/parity/shared/contracts.ts \
+  tools/parity/shared/authoring.ts \
+  tools/parity/shared/authoring.test.ts
+git commit -m "Generalize shared fixture authoring"
+```
+
+**Stop conditions:** Any question/persistence adapter or fixture change,
+neighboring-checkout mutation, network-enabled style execution, unbound copied
+dependency identity, arbitrary command/target injection, unsafe symlink copy,
+publication semantic change, allowlist expansion, or independent review
+`CHANGES_REQUIRED`.
+
+---
+
 ### Task 13: Define legacy style observations and extraction instrumentation
 
 **Files:**
@@ -1222,6 +1326,10 @@ three stale pre-Task-12 assertions, or new scorer/eligibility/storage export.
 **Interfaces:** Adds a style-specific adapter over unchanged
 `tools/parity/shared/**` for exact legacy identity, observation schema,
 instrumentation, canonicalization, coverage, and manifest construction.
+Task 13 supplies the reviewed explicit style instrumentation descriptor and
+`copy-validated` dependency identity; it may not use the compatibility default
+or `npm-ci` policy. Its patch adds only the declared style observation test and
+does not modify `src/App.tsx` or any legacy behavior source.
 Its CLI is exact:
 
 ```text
@@ -1234,9 +1342,10 @@ The observation must cover ordered style/core/subtype IDs and parents; family,
 accent, intensity/noodle matrices and priorities; every rule target/tier;
 adjustment IDs/kinds/priorities/operands/conditions; per-style tags; copy source
 roles; and the observed repeated-adjustment copies. Test exact legacy HEAD/tree,
-tracked source hashes, lockfile/patch/seeds/authoring hashes, Node/npm identity,
-network denial, full legacy suite, shared lock/fingerprints/atomic publication,
-bounded errors, and cleanup/recovery.
+tracked source hashes, lockfile/patch/seeds/authoring hashes, the exact Node
+runtime plus installed-lock and dependency-tree-manifest hashes without npm
+runtime evidence, network denial, full legacy suite, shared
+lock/fingerprints/atomic publication, bounded errors, and cleanup/recovery.
 
 - [ ] **Step 2: Confirm RED**
 

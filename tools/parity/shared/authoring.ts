@@ -1,12 +1,15 @@
 import { createHash, randomBytes } from 'node:crypto'
 import {
+  accessSync,
   closeSync,
   constants,
+  cpSync,
   createReadStream,
   lstatSync,
   mkdirSync,
   openSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   realpathSync,
   renameSync,
@@ -20,12 +23,15 @@ import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } fr
 
 import {
   type AuthoringEnvironment,
+  type AuthoringExpectedLineage,
+  type CopyValidatedDependencyProvisioning,
   type CreateAuthoringEnvironmentInput,
   type ExtractorTools,
   type FixtureAuthoringAdapter,
   type FixtureAuthoringCommandResult,
   type FixtureAuthoringResult,
   type IgnoredPathFingerprint,
+  type InstrumentationTransactionDescriptor,
   type ManifestBuildInput,
   type NpmConfigIdentity,
   type PublicationCleanupWarning,
@@ -102,6 +108,8 @@ interface FileIdentity {
 }
 
 const sandboxProfile = '(version 1)(allow default)(deny network*)'
+const copyValidatedCommandDeadlineMs = 120_000
+const copyValidatedTerminationGraceMs = 2_000
 const maximumExternalMessageLength = 300
 const publicationCleanupAttemptLimit = 3
 const publicationCleanupWarningMessage =
@@ -163,11 +171,16 @@ function bytesEqual(left: Uint8Array | string, right: Uint8Array | string) {
   return Buffer.from(left).equals(Buffer.from(right))
 }
 
-function validateFixtureDirectoryOnDisk<Seed, Case, Manifest>(
+function validateFixtureDirectoryOnDisk<
+  Seed,
+  Case,
+  Manifest,
+  Expected extends AuthoringExpectedLineage,
+>(
   directory: string,
   directoryIdentity: FileIdentity,
   expected: ExpectedFixtureFiles,
-  adapter: FixtureAuthoringAdapter<Seed, Case, Manifest>,
+  adapter: FixtureAuthoringAdapter<Seed, Case, Manifest, Expected>,
   seeds: readonly Seed[],
   manifest: Manifest,
 ) {
@@ -367,12 +380,130 @@ function gitBlobHash(bytes: Uint8Array) {
 }
 
 interface InstrumentationPatchTarget {
-  readonly path: 'src/App.tsx' | 'src/parity-question-extractor.test.tsx'
+  readonly path: string
+  readonly status: ' M' | '??'
   readonly oldHash: string
   readonly newHash: string
 }
 
-function parseInstrumentationPatchTargets(bytes: Buffer): readonly InstrumentationPatchTarget[] {
+const compatibilityInstrumentation = {
+  targets: [
+    { path: 'src/App.tsx', status: ' M' as const },
+    { path: 'src/parity-question-extractor.test.tsx', status: '??' as const },
+  ],
+  extractionTestPath: 'src/parity-question-extractor.test.tsx',
+  dependencyProvisioning: { kind: 'npm-ci' as const },
+}
+
+function assertSafeInstrumentationPath(path: string) {
+  if (
+    path.length === 0
+    || path.length > 240
+    || isAbsolute(path)
+    || path.includes('\\')
+    || !/^[A-Za-z0-9._/-]+$/.test(path)
+    || path.split('/').some((segment) => !segment || segment === '.' || segment === '..')
+  ) throw new Error('invalid instrumentation descriptor path')
+}
+
+function assertExactOwnKeys(
+  value: object,
+  expectedKeys: readonly string[],
+  label: string,
+) {
+  const receivedKeys = Object.keys(value).sort(codePointCompare)
+  const canonicalExpectedKeys = [...expectedKeys].sort(codePointCompare)
+  if (JSON.stringify(receivedKeys) !== JSON.stringify(canonicalExpectedKeys)) {
+    throw new Error(`invalid ${label} keys`)
+  }
+}
+
+function validateInstrumentationDescriptor(
+  descriptor: CreateAuthoringEnvironmentInput<AuthoringExpectedLineage>['instrumentation'],
+  expected: AuthoringExpectedLineage,
+) {
+  const received = descriptor ?? compatibilityInstrumentation
+  assertExactOwnKeys(
+    received,
+    ['targets', 'extractionTestPath', 'dependencyProvisioning'],
+    'instrumentation descriptor',
+  )
+  if (received.targets.length === 0 || received.targets.length > 16) {
+    throw new Error('invalid instrumentation descriptor targets')
+  }
+  const seen = new Set<string>()
+  const targets = received.targets.map((target) => {
+    assertExactOwnKeys(target, ['path', 'status'], 'instrumentation target')
+    assertSafeInstrumentationPath(target.path)
+    if ((target.status !== ' M' && target.status !== '??') || seen.has(target.path)) {
+      throw new Error('invalid instrumentation descriptor targets')
+    }
+    seen.add(target.path)
+    return Object.freeze({ path: target.path, status: target.status })
+  })
+  assertSafeInstrumentationPath(received.extractionTestPath)
+  if (
+    !/\.test\.tsx?$/.test(received.extractionTestPath)
+    || !targets.some(({ path, status }) => (
+      path === received.extractionTestPath && status === '??'
+    ))
+  ) throw new Error('invalid instrumentation descriptor extraction entrypoint')
+
+  const dependencyProvisioningValue: unknown = received.dependencyProvisioning
+  if (
+    !dependencyProvisioningValue
+    || typeof dependencyProvisioningValue !== 'object'
+    || Array.isArray(dependencyProvisioningValue)
+  ) throw new Error('invalid instrumentation descriptor dependency policy')
+  const dependencyProvisioning = dependencyProvisioningValue as
+    InstrumentationTransactionDescriptor['dependencyProvisioning']
+  let canonicalDependencyProvisioning: InstrumentationTransactionDescriptor['dependencyProvisioning']
+  if (dependencyProvisioning.kind === 'npm-ci') {
+    assertExactOwnKeys(dependencyProvisioning, ['kind'], 'npm-ci dependency policy')
+    if (typeof (expected as { readonly npmVersion?: unknown }).npmVersion !== 'string') {
+      throw new Error('invalid instrumentation descriptor dependency evidence')
+    }
+    canonicalDependencyProvisioning = Object.freeze({ kind: 'npm-ci' })
+  } else if (dependencyProvisioning.kind === 'copy-validated') {
+    assertExactOwnKeys(
+      dependencyProvisioning,
+      [
+        'kind',
+        'sourcePath',
+        'installedLockfilePath',
+        'installedLockfileHash',
+        'dependencyTreeHash',
+      ],
+      'copy-validated dependency policy',
+    )
+    if (
+      (expected as { readonly npmVersion?: unknown }).npmVersion !== undefined
+      || dependencyProvisioning.sourcePath !== 'node_modules'
+      || dependencyProvisioning.installedLockfilePath !== 'node_modules/.package-lock.json'
+      || !/^[a-f0-9]{64}$/.test(dependencyProvisioning.installedLockfileHash)
+      || !/^[a-f0-9]{64}$/.test(dependencyProvisioning.dependencyTreeHash)
+    ) throw new Error('invalid instrumentation descriptor dependency evidence')
+    canonicalDependencyProvisioning = Object.freeze({
+      kind: 'copy-validated',
+      sourcePath: dependencyProvisioning.sourcePath,
+      installedLockfilePath: dependencyProvisioning.installedLockfilePath,
+      installedLockfileHash: dependencyProvisioning.installedLockfileHash,
+      dependencyTreeHash: dependencyProvisioning.dependencyTreeHash,
+    })
+  } else {
+    throw new Error('invalid instrumentation descriptor dependency policy')
+  }
+  return Object.freeze({
+    targets: Object.freeze(targets),
+    extractionTestPath: received.extractionTestPath,
+    dependencyProvisioning: canonicalDependencyProvisioning,
+  })
+}
+
+function parseInstrumentationPatchTargets(
+  bytes: Buffer,
+  expectedTargets: readonly { readonly path: string; readonly status: ' M' | '??' }[],
+): readonly InstrumentationPatchTarget[] {
   const lines = bytes.toString('utf8').split('\n')
   const targets: Array<{ path: string; oldHash?: string; newHash?: string }> = []
   for (const line of lines) {
@@ -390,22 +521,29 @@ function parseInstrumentationPatchTargets(bytes: Buffer): readonly Instrumentati
       target.newHash = index[2]!
     }
   }
-  const expectedPaths = [
-    'src/App.tsx',
-    'src/parity-question-extractor.test.tsx',
-  ]
   if (
-    targets.length !== expectedPaths.length
+    targets.length !== expectedTargets.length
     || targets.some((target, index) => (
-      target.path !== expectedPaths[index]
+      target.path !== expectedTargets[index]?.path
       || target.oldHash === undefined
       || target.newHash === undefined
       || target.newHash === '0'.repeat(40)
-      || (index === 0 && target.oldHash === '0'.repeat(40))
-      || (index === 1 && target.oldHash !== '0'.repeat(40))
+      || (
+        expectedTargets[index]?.status === ' M'
+        && target.oldHash === '0'.repeat(40)
+      )
+      || (
+        expectedTargets[index]?.status === '??'
+        && target.oldHash !== '0'.repeat(40)
+      )
     ))
   ) throw new Error('instrumentation patch content mismatch')
-  return targets as InstrumentationPatchTarget[]
+  return targets.map((target, index) => ({
+    path: target.path,
+    status: expectedTargets[index]!.status,
+    oldHash: target.oldHash!,
+    newHash: target.newHash!,
+  }))
 }
 
 function revalidateBoundPatch(
@@ -456,6 +594,191 @@ function verifyInstrumentationPatchResult(
       throw new Error('instrumentation patch content mismatch')
     }
   }
+}
+
+type DependencyTreeManifestEntry =
+  | {
+      readonly path: string
+      readonly type: 'directory'
+    }
+  | {
+      readonly path: string
+      readonly type: 'regular-file'
+      readonly sha256: string
+    }
+  | {
+      readonly path: string
+      readonly type: 'symbolic-link'
+      readonly target: string
+    }
+
+interface DependencyTreeSnapshot {
+  readonly manifest: readonly DependencyTreeManifestEntry[]
+  readonly manifestJson: string
+  readonly manifestHash: string
+}
+
+interface CopyValidatedSourceIdentity {
+  readonly source: string
+  readonly tree: DependencyTreeSnapshot
+  readonly installedLockfile: string
+  readonly installedLockfileIdentity: FileIdentity
+  readonly installedLockfileHash: string
+}
+
+function assertSafeDependencyRelativePath(path: string) {
+  let containsControlCharacter = false
+  for (const character of path) {
+    const codePoint = character.codePointAt(0)!
+    if (codePoint <= 31 || codePoint === 127) {
+      containsControlCharacter = true
+      break
+    }
+  }
+  if (
+    !path
+    || path.length > 1_024
+    || isAbsolute(path)
+    || path.includes('\\')
+    || containsControlCharacter
+    || path.split('/').some((segment) => !segment || segment === '.' || segment === '..')
+  ) throw new Error('unsafe dependency entry path')
+}
+
+function snapshotDependencyTree(root: string): DependencyTreeSnapshot {
+  assertNoFollowPath(root, { kind: 'directory', allowMissingLeaf: false })
+  const entries: DependencyTreeManifestEntry[] = []
+  const visit = (directory: string, prefix: string) => {
+    const directoryIdentity = snapshotRegularDirectory(directory, 'dependency directory')
+    const names = readdirSync(directory).sort(codePointCompare)
+    revalidateRegularDirectory(directory, directoryIdentity, 'dependency directory')
+    for (const name of names) {
+      const relativePath = prefix ? `${prefix}/${name}` : name
+      assertSafeDependencyRelativePath(relativePath)
+      const path = join(directory, name)
+      const stats = lstatSync(path)
+      const identity = statsIdentity(stats)
+      if (stats.isDirectory() && !stats.isSymbolicLink()) {
+        entries.push({ path: relativePath, type: 'directory' })
+        visit(path, relativePath)
+        continue
+      }
+      if (stats.isFile() && !stats.isSymbolicLink()) {
+        const bytes = readNoFollowFile(path, `dependency file ${relativePath}`)
+        entries.push({
+          path: relativePath,
+          type: 'regular-file',
+          sha256: sha256Bytes(bytes),
+        })
+        continue
+      }
+      if (stats.isSymbolicLink()) {
+        const target = readlinkSync(path)
+        if (isAbsolute(target)) throw new Error('dependency symbolic link is absolute')
+        const lexicalTarget = resolve(dirname(path), target)
+        if (!pathIsWithinOrEqual(lexicalTarget, root)) {
+          throw new Error('dependency symbolic link escapes its root')
+        }
+        let resolvedTarget: string
+        try {
+          resolvedTarget = realpathSync(path)
+        } catch {
+          throw new Error('dependency symbolic link is broken or cyclic')
+        }
+        if (!pathIsWithinOrEqual(resolvedTarget, root)) {
+          throw new Error('dependency symbolic link escapes its root')
+        }
+        const received = lstatSync(path)
+        if (!received.isSymbolicLink() || !identitiesEqual(identity, statsIdentity(received))) {
+          throw new Error('dependency symbolic link identity changed')
+        }
+        if (readlinkSync(path) !== target) {
+          throw new Error('dependency symbolic link identity changed')
+        }
+        entries.push({ path: relativePath, type: 'symbolic-link', target })
+        continue
+      }
+      throw new Error('unsupported dependency entry')
+    }
+    revalidateRegularDirectory(directory, directoryIdentity, 'dependency directory')
+  }
+  visit(root, '')
+  const manifestJson = stableJson(entries)
+  return {
+    manifest: entries,
+    manifestJson,
+    manifestHash: sha256Bytes(manifestJson),
+  }
+}
+
+function snapshotCopyValidatedSource(
+  legacyRoot: string,
+  policy: CopyValidatedDependencyProvisioning,
+): CopyValidatedSourceIdentity {
+  const source = resolve(legacyRoot, policy.sourcePath)
+  assertDescendant(source, legacyRoot, 'source dependency tree')
+  const tree = snapshotDependencyTree(source)
+  if (tree.manifestHash !== policy.dependencyTreeHash) {
+    throw new Error('dependency tree hash mismatch')
+  }
+  const installedLockfile = resolve(legacyRoot, policy.installedLockfilePath)
+  assertDescendant(installedLockfile, source, 'installed dependency lockfile')
+  const installed = readNoFollowFileWithIdentity(
+    installedLockfile,
+    'installed dependency lockfile',
+  )
+  const installedLockfileHash = sha256Bytes(installed.bytes)
+  if (installedLockfileHash !== policy.installedLockfileHash) {
+    throw new Error('dependency lock hash mismatch')
+  }
+  return {
+    source,
+    tree,
+    installedLockfile,
+    installedLockfileIdentity: installed.identity,
+    installedLockfileHash,
+  }
+}
+
+function revalidateCopyValidatedSource(identity: CopyValidatedSourceIdentity) {
+  const received = snapshotDependencyTree(identity.source)
+  if (received.manifestJson !== identity.tree.manifestJson) {
+    throw new Error('source dependency tree changed')
+  }
+  revalidateRegularFile(
+    identity.installedLockfile,
+    identity.installedLockfileIdentity,
+    'installed dependency lockfile',
+  )
+  const lockHash = sha256Bytes(readNoFollowFile(
+    identity.installedLockfile,
+    'installed dependency lockfile',
+  ))
+  if (lockHash !== identity.installedLockfileHash) {
+    throw new Error('source dependency lock changed')
+  }
+}
+
+function copyValidatedDependencies(
+  identity: CopyValidatedSourceIdentity,
+  destination: string,
+  hook?: AuthoringEnvironment<AuthoringExpectedLineage>['hooks']['afterDependencyCopy'],
+) {
+  assertNoFollowPath(destination, { kind: 'directory', allowMissingLeaf: true })
+  cpSync(identity.source, destination, {
+    dereference: false,
+    errorOnExist: true,
+    force: false,
+    preserveTimestamps: true,
+    recursive: true,
+    verbatimSymlinks: true,
+  })
+  hook?.({ source: identity.source, destination })
+  const copied = snapshotDependencyTree(destination)
+  if (copied.manifestJson !== identity.tree.manifestJson) {
+    throw new Error('destination dependency manifest mismatch')
+  }
+  revalidateCopyValidatedSource(identity)
 }
 
 async function sha256RegularFile(path: string, expected: FileIdentity) {
@@ -548,37 +871,90 @@ export function normalizeGithubRepository(remote: string) {
   throw new Error('unsupported legacy repository remote')
 }
 
-async function defaultSpawn(request: SpawnRequest): Promise<SpawnResult> {
+export async function spawnAuthoringCommand(request: SpawnRequest): Promise<SpawnResult> {
   return await new Promise((resolvePromise, reject) => {
     const child = spawn(request.executable, [...request.args], {
       cwd: request.cwd,
       env: { ...request.environment },
+      detached: request.deadlineMs !== undefined,
       shell: false,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let stdout = ''
     let stderr = ''
+    let timedOut = false
+    let settled = false
+    let deadline: ReturnType<typeof setTimeout> | undefined
+    let escalation: ReturnType<typeof setTimeout> | undefined
     const appendBounded = (current: string, chunk: Buffer) => (
       `${current}${chunk.toString('utf8')}`.slice(-65_536)
     )
+    const clearTimers = () => {
+      if (deadline) clearTimeout(deadline)
+      if (escalation) clearTimeout(escalation)
+    }
+    const signalProcessGroup = (signal: NodeJS.Signals) => {
+      if (child.pid === undefined) return
+      try {
+        process.kill(-child.pid, signal)
+      } catch {
+        try {
+          child.kill(signal)
+        } catch {
+          // The close/error handlers own the bounded result.
+        }
+      }
+    }
     child.stdout.on('data', (chunk: Buffer) => {
       stdout = appendBounded(stdout, chunk)
     })
     child.stderr.on('data', (chunk: Buffer) => {
       stderr = appendBounded(stderr, chunk)
     })
-    child.on('error', reject)
-    child.on('close', (exitCode) => resolvePromise({
-      stdout,
-      stderr,
-      exitCode: exitCode ?? 1,
-    }))
+    child.on('error', (error) => {
+      if (settled) return
+      settled = true
+      clearTimers()
+      reject(error)
+    })
+    child.on('close', (exitCode) => {
+      if (settled) return
+      settled = true
+      clearTimers()
+      if (timedOut) {
+        reject(new Error(`${request.role} exceeded ${request.deadlineMs} ms deadline`))
+        return
+      }
+      resolvePromise({ stdout, stderr, exitCode: exitCode ?? 1 })
+    })
+    if (request.deadlineMs !== undefined) {
+      deadline = setTimeout(() => {
+        timedOut = true
+        signalProcessGroup('SIGTERM')
+        escalation = setTimeout(
+          () => signalProcessGroup('SIGKILL'),
+          request.terminationGraceMs ?? 0,
+        )
+      }, request.deadlineMs)
+    }
   })
 }
 
-export function createAuthoringEnvironment(
-  input: CreateAuthoringEnvironmentInput,
-): AuthoringEnvironment {
+export function createAuthoringEnvironment<Expected extends AuthoringExpectedLineage>(
+  input: CreateAuthoringEnvironmentInput<Expected>,
+): AuthoringEnvironment<Expected> {
+  const instrumentation = validateInstrumentationDescriptor(
+    input.instrumentation,
+    input.expected,
+  )
+  const tools = input.tools ?? trustedTools
+  if (
+    instrumentation.dependencyProvisioning.kind === 'copy-validated'
+    && (
+      tools.node !== trustedTools.node
+      || tools.sandboxExec !== trustedTools.sandboxExec
+    )
+  ) throw new Error('copy-validated requires shared trusted executables')
   return {
     inheritedEnvironment: input.inheritedEnvironment ?? {},
     legacyRoot: resolve(input.legacyRoot),
@@ -590,9 +966,10 @@ export function createAuthoringEnvironment(
       relativePath: source.relativePath,
       path: resolve(source.path),
     })),
-    tools: input.tools ?? trustedTools,
+    tools,
     expected: input.expected,
-    spawn: input.spawn ?? defaultSpawn,
+    instrumentation,
+    spawn: input.spawn ?? spawnAuthoringCommand,
     randomToken: input.randomToken ?? (() => randomBytes(16).toString('hex')),
     ...(input.onRunPaths ? { onRunPaths: input.onRunPaths } : {}),
     hooks: input.hooks ?? {},
@@ -628,8 +1005,46 @@ function makeChildEnvironment(
   } as const
 }
 
+function makeCopyValidatedChildEnvironment(
+  extractionRoot: string,
+  seedCapability: string,
+  tools: ExtractorTools,
+) {
+  const home = join(extractionRoot, '.home')
+  const temporary = join(extractionRoot, '.tmp')
+  for (const directory of [home, temporary]) {
+    assertDescendant(directory, extractionRoot, 'isolated runtime directory')
+    ensureSafeDirectory(directory)
+  }
+  const pathDirectories = [dirname(tools.node), '/usr/bin', '/bin']
+  for (const directory of pathDirectories) {
+    for (const command of ['npm', 'npx']) {
+      try {
+        accessSync(join(directory, command), constants.X_OK)
+        throw new Error('copy-validated PATH exposes npm or npx')
+      } catch (error) {
+        if (
+          !(error instanceof Error && 'code' in error)
+          || (error.code !== 'ENOENT' && error.code !== 'EACCES')
+        ) throw error
+      }
+    }
+  }
+  return {
+    CI: '1',
+    GIT_CONFIG_NOSYSTEM: '1',
+    HOME: home,
+    LANG: 'C.UTF-8',
+    LC_ALL: 'C.UTF-8',
+    PATH: pathDirectories.join(':'),
+    RAMEN_PARITY_SEED: seedCapability,
+    TMPDIR: temporary,
+    TZ: 'UTC',
+  } as const
+}
+
 function validateNpmConfigFiles(
-  environment: AuthoringEnvironment,
+  environment: AuthoringEnvironment<AuthoringExpectedLineage>,
   extractionRoot: string,
   npmConfigs: { readonly userConfig: string; readonly globalConfig: string },
   identities: { readonly userConfig: FileIdentity; readonly globalConfig: FileIdentity },
@@ -693,7 +1108,7 @@ function validateNpmConfigFiles(
 }
 
 async function execute(
-  environment: AuthoringEnvironment,
+  environment: AuthoringEnvironment<AuthoringExpectedLineage>,
   request: Omit<SpawnRequest, 'environment'> & {
     readonly environment: Readonly<Record<string, string>>
   },
@@ -737,7 +1152,7 @@ function assertExpectedValue(actual: string, expected: string, label: string) {
 }
 
 async function verifyOriginalCheckoutIdentity(
-  environment: AuthoringEnvironment,
+  environment: AuthoringEnvironment<AuthoringExpectedLineage>,
   childEnvironment: Readonly<Record<string, string>>,
   expectedRootIdentity: FileIdentity,
 ) {
@@ -964,9 +1379,40 @@ function combineErrors(primary: unknown, secondary: readonly unknown[]) {
     : new Error(message)
 }
 
-export async function runFixtureAuthoring<Seed, Case, Manifest>(
-  environment: AuthoringEnvironment,
-  adapter: FixtureAuthoringAdapter<Seed, Case, Manifest>,
+async function executeWithSourceRevalidation(
+  environment: AuthoringEnvironment<AuthoringExpectedLineage>,
+  request: Omit<SpawnRequest, 'environment'> & {
+    readonly environment: Readonly<Record<string, string>>
+  },
+  sourceIdentity: CopyValidatedSourceIdentity,
+) {
+  let output: string | undefined
+  let commandError: unknown
+  try {
+    output = await execute(environment, request)
+  } catch (error) {
+    commandError = error
+  }
+  let identityError: unknown
+  try {
+    revalidateCopyValidatedSource(sourceIdentity)
+  } catch (error) {
+    identityError = error
+  }
+  if (commandError && identityError) throw combineErrors(commandError, [identityError])
+  if (commandError) throw commandError
+  if (identityError) throw identityError
+  return output!
+}
+
+export async function runFixtureAuthoring<
+  Seed,
+  Case,
+  Manifest,
+  Expected extends AuthoringExpectedLineage,
+>(
+  environment: AuthoringEnvironment<Expected>,
+  adapter: FixtureAuthoringAdapter<Seed, Case, Manifest, Expected>,
   options: RunFixtureAuthoringOptions,
 ): Promise<FixtureAuthoringResult<Case, Manifest>> {
   const outputParent = dirname(environment.destination)
@@ -1014,6 +1460,7 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
   let seeds: readonly Seed[] = []
   let cases: readonly Case[] = []
   let manifest: Manifest | undefined
+  let copyValidatedSourceIdentity: CopyValidatedSourceIdentity | undefined
 
   const releaseLock = (invokePostInstallHook: boolean): LockReleaseResult => {
     if (lockDescriptor === undefined && !lockIdentity) return { state: 'released' }
@@ -1074,7 +1521,10 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
     )
     const verifiedPatchHash = sha256Bytes(patchBytes)
     assertExpectedValue(verifiedPatchHash, environment.expected.patchHash, 'patch hash')
-    const patchTargets = parseInstrumentationPatchTargets(patchBytes)
+    const patchTargets = parseInstrumentationPatchTargets(
+      patchBytes,
+      environment.instrumentation.targets,
+    )
     const seedBytes = readNoFollowFile(
       environment.seedsPath,
       'seed source',
@@ -1142,14 +1592,20 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
       environment: childEnvironment,
     })).replace(/^v/, '')
     assertExpectedValue(nodeVersion, environment.expected.nodeVersion, 'Node version')
-    const npmVersion = exactLine(await execute(environment, {
-      role: 'npm-version',
-      executable: environment.tools.node,
-      args: [environment.tools.npmCli, '--version'],
-      cwd: environment.legacyRoot,
-      environment: childEnvironment,
-    }))
-    assertExpectedValue(npmVersion, environment.expected.npmVersion, 'npm version')
+    if (environment.instrumentation.dependencyProvisioning.kind === 'npm-ci') {
+      const npmVersion = exactLine(await execute(environment, {
+        role: 'npm-version',
+        executable: environment.tools.node,
+        args: [environment.tools.npmCli, '--version'],
+        cwd: environment.legacyRoot,
+        environment: childEnvironment,
+      }))
+      assertExpectedValue(
+        npmVersion,
+        (environment.expected as { readonly npmVersion: string }).npmVersion,
+        'npm version',
+      )
+    }
 
     const remote = normalizeGithubRepository(exactLine(await execute(environment, {
       role: 'legacy-remote',
@@ -1243,43 +1699,77 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
       cwd: worktree,
       environment: childEnvironment,
     })).sort((left, right) => codePointCompare(left.path, right.path))
-    const expectedChangedFiles = [
-      { status: ' M', path: 'src/App.tsx' },
-      { status: '??', path: 'src/parity-question-extractor.test.tsx' },
-    ]
+    const expectedChangedFiles = environment.instrumentation.targets
+      .map(({ status, path }) => ({ status, path }))
+      .sort((left, right) => codePointCompare(left.path, right.path))
     if (JSON.stringify(changedFiles) !== JSON.stringify(expectedChangedFiles)) {
       throw new Error('instrumentation patch drift')
     }
 
-    environment.hooks.beforeNpmInvocation?.(npmConfigs)
-    const npmConfigIdentity = validateNpmConfigFiles(
-      environment,
-      paths.extractionRoot,
-      npmConfigs,
-      npmConfigIdentities,
-    )
-    await execute(environment, {
-      role: 'npm-ci',
-      executable: environment.tools.node,
-      args: [environment.tools.npmCli, 'ci', '--ignore-scripts'],
-      cwd: worktree,
-      environment: childEnvironment,
-      npmConfigIdentity,
-    })
     const physicalNodeModules = join(worktree, 'node_modules')
     assertDescendant(physicalNodeModules, paths.extractionRoot, 'temporary node_modules')
+    const dependencyProvisioning = environment.instrumentation.dependencyProvisioning
+    if (dependencyProvisioning.kind === 'npm-ci') {
+      environment.hooks.beforeNpmInvocation?.(npmConfigs)
+      const npmConfigIdentity = validateNpmConfigFiles(
+        environment,
+        paths.extractionRoot,
+        npmConfigs,
+        npmConfigIdentities,
+      )
+      await execute(environment, {
+        role: 'npm-ci',
+        executable: environment.tools.node,
+        args: [environment.tools.npmCli, 'ci', '--ignore-scripts'],
+        cwd: worktree,
+        environment: childEnvironment,
+        npmConfigIdentity,
+      })
+    } else {
+      copyValidatedSourceIdentity = snapshotCopyValidatedSource(
+        environment.legacyRoot,
+        dependencyProvisioning,
+      )
+      copyValidatedDependencies(
+        copyValidatedSourceIdentity,
+        physicalNodeModules,
+        environment.hooks.afterDependencyCopy,
+      )
+    }
     assertNoFollowPath(physicalNodeModules, { kind: 'directory', allowMissingLeaf: false })
     const vitest = join(physicalNodeModules, 'vitest/vitest.mjs')
     assertNoFollowPath(vitest, { kind: 'file', allowMissingLeaf: false })
-    ensureSafeDirectory(join(physicalNodeModules, '.tmp'))
-
-    await execute(environment, {
-      role: 'legacy-full-suite',
-      executable: environment.tools.node,
-      args: [vitest, 'run'],
-      cwd: worktree,
-      environment: childEnvironment,
-    })
+    if (dependencyProvisioning.kind === 'npm-ci') {
+      ensureSafeDirectory(join(physicalNodeModules, '.tmp'))
+      await execute(environment, {
+        role: 'legacy-full-suite',
+        executable: environment.tools.node,
+        args: [vitest, 'run'],
+        cwd: worktree,
+        environment: childEnvironment,
+      })
+    } else {
+      const copyEnvironment = makeCopyValidatedChildEnvironment(
+        paths.extractionRoot,
+        '',
+        environment.tools,
+      )
+      await executeWithSourceRevalidation(environment, {
+        role: 'legacy-full-suite',
+        executable: environment.tools.sandboxExec,
+        args: [
+          '-p',
+          sandboxProfile,
+          environment.tools.node,
+          vitest,
+          'run',
+        ],
+        cwd: worktree,
+        environment: copyEnvironment,
+        deadlineMs: copyValidatedCommandDeadlineMs,
+        terminationGraceMs: copyValidatedTerminationGraceMs,
+      }, copyValidatedSourceIdentity!)
+    }
 
     writeExclusive(capability, stableJson({
       schemaVersion: 1,
@@ -1289,14 +1779,20 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
     }))
     const capabilityIdentity = snapshotRegularFile(capability, 'raw output capability')
     revalidateRegularFile(capability, capabilityIdentity, 'raw output capability')
-    const extractionEnvironment = makeChildEnvironment(
-      paths.extractionRoot,
-      capability,
-      environment.tools,
-      npmConfigs,
-    )
-    await execute(environment, {
-      role: 'legacy-network-denied-extraction',
+    const extractionEnvironment = dependencyProvisioning.kind === 'copy-validated'
+      ? makeCopyValidatedChildEnvironment(
+        paths.extractionRoot,
+        capability,
+        environment.tools,
+      )
+      : makeChildEnvironment(
+        paths.extractionRoot,
+        capability,
+        environment.tools,
+        npmConfigs,
+      )
+    const extractionRequest = {
+      role: 'legacy-network-denied-extraction' as const,
       executable: environment.tools.sandboxExec,
       args: [
         '-p',
@@ -1304,11 +1800,26 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
         environment.tools.node,
         vitest,
         'run',
-        'src/parity-question-extractor.test.tsx',
+        environment.instrumentation.extractionTestPath,
       ],
       cwd: worktree,
       environment: extractionEnvironment,
-    })
+      ...(dependencyProvisioning.kind === 'copy-validated'
+        ? {
+            deadlineMs: copyValidatedCommandDeadlineMs,
+            terminationGraceMs: copyValidatedTerminationGraceMs,
+          }
+        : {}),
+    }
+    if (dependencyProvisioning.kind === 'copy-validated') {
+      await executeWithSourceRevalidation(
+        environment,
+        extractionRequest,
+        copyValidatedSourceIdentity!,
+      )
+    } else {
+      await execute(environment, extractionRequest)
+    }
     environment.hooks.afterExtraction?.()
     const rawIdentity = snapshotRegularFile(rawOutput, 'raw output')
     environment.hooks.beforeReadRaw?.(rawOutput)
@@ -1327,13 +1838,14 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
     if (JSON.stringify(revalidatedAuthoringSourceIdentity) !== JSON.stringify(authoringSourceIdentity)) {
       throw new Error('authoring source identity changed during extraction')
     }
-    const manifestInput: ManifestBuildInput<Case> = {
+    const manifestInput = {
       cases,
       fixtureContentHash: sha256Bytes(casesJson),
       expected: environment.expected,
+      dependencyProvisioning: environment.instrumentation.dependencyProvisioning,
       authoringSources: authoringSourceIdentity,
       instrumentationHash: verifiedPatchHash,
-    }
+    } as ManifestBuildInput<Case, Expected>
     manifest = adapter.buildManifest(manifestInput)
     const manifestJson = adapter.serializeManifest(manifest)
 
@@ -1369,6 +1881,15 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
     }
   } catch (error) {
     primaryError = error
+  }
+
+  if (copyValidatedSourceIdentity) {
+    try {
+      revalidateCopyValidatedSource(copyValidatedSourceIdentity)
+    } catch (error) {
+      if (!primaryError) primaryError = error
+      else cleanupErrors.push(error)
+    }
   }
 
   if (worktreeAttempted) {
@@ -1682,9 +2203,14 @@ export async function runFixtureAuthoring<Seed, Case, Manifest>(
   throw new Error('publication did not reach its commit point')
 }
 
-export async function runFixtureAuthoringCommand<Seed, Case, Manifest>(
-  environment: AuthoringEnvironment,
-  adapter: FixtureAuthoringAdapter<Seed, Case, Manifest>,
+export async function runFixtureAuthoringCommand<
+  Seed,
+  Case,
+  Manifest,
+  Expected extends AuthoringExpectedLineage,
+>(
+  environment: AuthoringEnvironment<Expected>,
+  adapter: FixtureAuthoringAdapter<Seed, Case, Manifest, Expected>,
   options: RunFixtureAuthoringOptions,
 ): Promise<FixtureAuthoringCommandResult<Case, Manifest>> {
   try {

@@ -44,6 +44,8 @@ export interface SpawnRequest {
   readonly cwd: string
   readonly environment: Readonly<Record<string, string>>
   readonly npmConfigIdentity?: NpmConfigIdentity
+  readonly deadlineMs?: number
+  readonly terminationGraceMs?: number
 }
 
 export interface SpawnResult {
@@ -52,7 +54,7 @@ export interface SpawnResult {
   readonly exitCode?: number
 }
 
-export interface ExpectedExtractorLineage {
+interface ExpectedExtractorLineageBase {
   readonly identity: {
     readonly host: 'github.com'
     readonly owner: string
@@ -66,7 +68,48 @@ export interface ExpectedExtractorLineage {
   readonly patchHash: string
   readonly seedsHash: string
   readonly nodeVersion: string
+}
+
+export interface ExpectedExtractorLineage extends ExpectedExtractorLineageBase {
   readonly npmVersion: string
+}
+
+export interface CopyValidatedExpectedExtractorLineage
+  extends ExpectedExtractorLineageBase {
+  readonly npmVersion?: never
+}
+
+export type AuthoringExpectedLineage =
+  | ExpectedExtractorLineage
+  | CopyValidatedExpectedExtractorLineage
+
+export type InstrumentationPatchStatus = ' M' | '??'
+
+export interface InstrumentationPatchTargetSpec {
+  readonly path: string
+  readonly status: InstrumentationPatchStatus
+}
+
+export interface NpmCiDependencyProvisioning {
+  readonly kind: 'npm-ci'
+}
+
+export interface CopyValidatedDependencyProvisioning {
+  readonly kind: 'copy-validated'
+  readonly sourcePath: 'node_modules'
+  readonly installedLockfilePath: 'node_modules/.package-lock.json'
+  readonly installedLockfileHash: string
+  readonly dependencyTreeHash: string
+}
+
+export type DependencyProvisioning =
+  | NpmCiDependencyProvisioning
+  | CopyValidatedDependencyProvisioning
+
+export interface InstrumentationTransactionDescriptor {
+  readonly targets: readonly InstrumentationPatchTargetSpec[]
+  readonly extractionTestPath: string
+  readonly dependencyProvisioning: DependencyProvisioning
 }
 
 export interface RunPaths {
@@ -87,6 +130,10 @@ export interface AuthoringHooks {
     readonly userConfig: string
     readonly globalConfig: string
   }) => void
+  afterDependencyCopy?: (paths: {
+    readonly source: string
+    readonly destination: string
+  }) => void
   afterExtraction?: () => void
   beforePublishStaging?: (path: string) => void
   afterPublishStaging?: (path: string) => void
@@ -101,7 +148,9 @@ export interface AuthoringSource {
   readonly path: string
 }
 
-export interface AuthoringEnvironment {
+export interface AuthoringEnvironment<
+  Expected extends AuthoringExpectedLineage = ExpectedExtractorLineage,
+> {
   readonly inheritedEnvironment: Readonly<Record<string, string | undefined>>
   readonly legacyRoot: string
   readonly toolRoot: string
@@ -110,14 +159,17 @@ export interface AuthoringEnvironment {
   readonly seedsPath: string
   readonly authoringSources: readonly AuthoringSource[]
   readonly tools: ExtractorTools
-  readonly expected: ExpectedExtractorLineage
+  readonly expected: Expected
+  readonly instrumentation: InstrumentationTransactionDescriptor
   readonly spawn: (request: SpawnRequest) => Promise<SpawnResult>
   readonly randomToken: () => string
   readonly onRunPaths?: (paths: RunPaths) => void
   readonly hooks: AuthoringHooks
 }
 
-export interface CreateAuthoringEnvironmentInput {
+export interface CreateAuthoringEnvironmentInput<
+  Expected extends AuthoringExpectedLineage = ExpectedExtractorLineage,
+> {
   readonly inheritedEnvironment?: Readonly<Record<string, string | undefined>>
   readonly legacyRoot: string
   readonly toolRoot: string
@@ -126,7 +178,8 @@ export interface CreateAuthoringEnvironmentInput {
   readonly seedsPath: string
   readonly authoringSources: readonly AuthoringSource[]
   readonly tools?: ExtractorTools
-  readonly expected: ExpectedExtractorLineage
+  readonly expected: Expected
+  readonly instrumentation?: InstrumentationTransactionDescriptor
   readonly spawn?: (request: SpawnRequest) => Promise<SpawnResult>
   readonly randomToken?: () => string
   readonly onRunPaths?: (paths: RunPaths) => void
@@ -147,10 +200,11 @@ export interface IgnoredPathFingerprint<Path extends string = string> {
   readonly sha256: string | null
 }
 
-export interface ManifestBuildInput<Case> {
+interface ManifestBuildInputBase<
+  Case,
+> {
   readonly cases: readonly Case[]
   readonly fixtureContentHash: string
-  readonly expected: ExpectedExtractorLineage
   readonly authoringSources: readonly {
     readonly path: string
     readonly hash: string
@@ -158,11 +212,25 @@ export interface ManifestBuildInput<Case> {
   readonly instrumentationHash: string
 }
 
-export interface FixtureAuthoringAdapter<Seed, Case, Manifest> {
+export type ManifestBuildInput<
+  Case,
+  Expected extends AuthoringExpectedLineage = ExpectedExtractorLineage,
+> = ManifestBuildInputBase<Case> & {
+  readonly expected: Expected
+} & (Expected extends CopyValidatedExpectedExtractorLineage
+  ? { readonly dependencyProvisioning: CopyValidatedDependencyProvisioning }
+  : { readonly dependencyProvisioning?: DependencyProvisioning })
+
+export interface FixtureAuthoringAdapter<
+  Seed,
+  Case,
+  Manifest,
+  Expected extends AuthoringExpectedLineage = ExpectedExtractorLineage,
+> {
   readonly parseSeeds: (input: unknown) => readonly Seed[]
   readonly parseRawCases: (input: unknown) => readonly Case[]
   readonly validateCases: (cases: readonly Case[], seeds: readonly Seed[]) => readonly Case[]
-  readonly buildManifest: (input: ManifestBuildInput<Case>) => Manifest
+  readonly buildManifest: (input: ManifestBuildInput<Case, Expected>) => Manifest
   readonly serializeCases: (cases: readonly Case[]) => Buffer
   readonly serializeManifest: (manifest: Manifest) => Buffer
 }
