@@ -17,12 +17,18 @@ import {
   compileClassification,
   compileQuestions,
   type CompiledQuestionModelMetadata,
+  type CompiledStyleModelMetadata,
 } from '@ramen-style/classification-core/compiler'
 import { migrationLedgerSchema } from '../migration/ledger-schema.js'
 import {
   fixtureManifestSchema,
   questionParitySuiteVersion,
 } from '../parity/questions/contracts.js'
+import { styleFixtureManifestSchema } from '../parity/styles/contracts.js'
+import {
+  styleFixtureAuthoringSourcePaths,
+  verifyStyleFixtureSet,
+} from '../parity/styles/verify-fixtures.js'
 import {
   buildDocumentation,
   type PersistenceDocumentationEvidence,
@@ -186,6 +192,27 @@ const sha40Schema = z.string().regex(/^[0-9a-f]{40}$/)
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/)
 const persistenceFixtureManifestPath =
   'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json' as const
+const styleFixtureManifestPath =
+  'tools/parity/fixtures/styles/legacy-v1/manifest.json' as const
+const styleFixtureCasesPath =
+  'tools/parity/fixtures/styles/legacy-v1/cases.json' as const
+const styleInstrumentationPath =
+  'tools/parity/styles/legacy-instrumentation.patch' as const
+const styleSeedsPath = 'tools/parity/styles/seeds.json' as const
+const styleArtifactPath =
+  'packages/classification-core/src/generated/style-model.ts' as const
+const expectedStyleManifestHash =
+  'fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b'
+const expectedStyleArtifactHash =
+  '46a63367179ce8874b10f2c6fc828a5816460bf463abac9d087ec77d8acfad3e'
+const expectedStyleSourceHash =
+  '1ed1b65c6279edb23965965437dc7ef3ca1196e95e2cbf45347ec0d88d303eff'
+const expectedStyleSemanticHash =
+  '9fb9832c434b22fcd8397809b14117a47c358a266694df24ba68fd290fc5f585'
+const expectedStyleDataVersion =
+  'c5b3b3353b42618875f1c20d64449ec513601b60215351f757dbd1e48d1fee28'
+const expectedLegacyStyleCommit = 'eebf00b7ddfbbe6f01ff598e57f1e17197068a37'
+const expectedLegacyStyleTree = '3e527de876cfeccfd3154ddc492830d71c4cfd9a'
 const acceptanceLedgerProjectionSchema = z.object({
   entries: z.array(z.unknown()),
 })
@@ -210,6 +237,19 @@ const acceptancePersistenceEntryProjectionSchema = z.object({
     commitSha: sha40Schema.optional(),
   })),
 })
+const acceptanceStyleEntryProjectionSchema = z.object({
+  batch: z.literal('3A'),
+  status: z.literal('complete'),
+  implementationSha: sha40Schema,
+  fixtureManifestHash: sha256Schema,
+  verification: z.array(z.object({
+    gate: z.string(),
+    command: z.string(),
+    outcome: z.string(),
+    commitSha: sha40Schema.optional(),
+    runUrl: z.string().url().optional(),
+  }).passthrough()),
+}).passthrough()
 
 export function projectQuestionParityVerification(
   validatedLedger: unknown,
@@ -280,6 +320,56 @@ export function projectPersistenceContractVerification(
   return {
     assurance: 'contract-verified' as const,
     fixtureManifestHash,
+    implementationSha,
+  }
+}
+
+export function projectStyleParityVerification(
+  validatedLedger: unknown,
+  identity: {
+    fixtureManifestHash: string
+    semanticHash: string
+    dataVersion: string
+  },
+) {
+  const ledger = acceptanceLedgerProjectionSchema.safeParse(validatedLedger)
+  if (!ledger.success) return undefined
+  const candidates = ledger.data.entries.filter((entry) => (
+    typeof entry === 'object'
+    && entry !== null
+    && 'batch' in entry
+    && entry.batch === '3A'
+  ))
+  if (candidates.length !== 1) return undefined
+  const projected = acceptanceStyleEntryProjectionSchema.safeParse(candidates[0])
+  if (!projected.success) return undefined
+  const {
+    fixtureManifestHash,
+    implementationSha,
+    verification,
+  } = projected.data
+  if (fixtureManifestHash !== identity.fixtureManifestHash || verification.length !== 2) {
+    return undefined
+  }
+  const localGates = verification.filter(({ gate }) => gate === 'batch3a-local-verify')
+  const remoteGates = verification.filter(({ gate }) => gate === 'batch3a-remote-ci')
+  if (
+    localGates.length !== 1
+    || remoteGates.length !== 1
+    || localGates[0]!.command !== 'npm run verify'
+    || localGates[0]!.outcome !== 'passed'
+    || remoteGates[0]!.command !== 'GitHub Actions CI / verify'
+    || remoteGates[0]!.outcome !== 'passed'
+    || remoteGates[0]!.commitSha !== implementationSha
+    || !remoteGates[0]!.runUrl
+  ) return undefined
+
+  return {
+    assurance: 'parity-verified' as const,
+    parityScope: 'legacy-compiled-style-projection' as const,
+    fixtureManifestHash,
+    verifiedSemanticHash: identity.semanticHash,
+    verifiedDataVersion: identity.dataVersion,
     implementationSha,
   }
 }
@@ -373,6 +463,70 @@ export async function loadPersistenceEvidence(
       }
 }
 
+function readRequiredBytes(repoRoot: string, repositoryRelative: string) {
+  return readFileSync(resolve(repoRoot, repositoryRelative))
+}
+
+export function loadStyleEvidence(
+  repoRoot: string,
+  styleMetadata: CompiledStyleModelMetadata,
+  validatedLedger: unknown,
+) {
+  const manifestBytes = readRequiredBytes(repoRoot, styleFixtureManifestPath)
+  const manifest = styleFixtureManifestSchema.parse(
+    JSON.parse(manifestBytes.toString('utf8')) as unknown,
+  )
+  const verificationResult = verifyStyleFixtureSet({
+    casesBytes: readRequiredBytes(repoRoot, styleFixtureCasesPath),
+    manifestBytes,
+    instrumentationBytes: readRequiredBytes(repoRoot, styleInstrumentationPath),
+    seedBytes: readRequiredBytes(repoRoot, styleSeedsPath),
+    authoringSources: styleFixtureAuthoringSourcePaths.map((path) => ({
+      path,
+      bytes: readRequiredBytes(repoRoot, path),
+    })),
+  })
+  const artifactHash = createHash('sha256')
+    .update(readRequiredBytes(repoRoot, styleArtifactPath))
+    .digest('hex')
+  if (
+    verificationResult.manifestHash !== expectedStyleManifestHash
+    || artifactHash !== expectedStyleArtifactHash
+    || styleMetadata.sourceHash !== expectedStyleSourceHash
+    || styleMetadata.semanticHash !== expectedStyleSemanticHash
+    || styleMetadata.dataVersion !== expectedStyleDataVersion
+    || manifest.source.commit !== expectedLegacyStyleCommit
+    || manifest.source.treeHash !== expectedLegacyStyleTree
+  ) throw new Error('DOC_INDEX_DRIFT style fixture or artifact identity mismatch')
+  const verification = projectStyleParityVerification(validatedLedger, {
+    fixtureManifestHash: verificationResult.manifestHash,
+    semanticHash: styleMetadata.semanticHash,
+    dataVersion: styleMetadata.dataVersion,
+  })
+  return {
+    sourceRepository: manifest.source.repository,
+    sourceCommit: manifest.source.commit,
+    sourceTreeHash: manifest.source.treeHash,
+    fixtureManifestPath: styleFixtureManifestPath,
+    fixtureManifestHash: verificationResult.manifestHash,
+    fixtureSchemaVersion: String(manifest.fixtureSchemaVersion),
+    fixtureCasesHash: verificationResult.casesHash,
+    fixtureContentHash: verificationResult.fixtureContentHash,
+    extractorVersion: String(manifest.extractor.version),
+    extractorHash: verificationResult.authoringHash,
+    instrumentationVersion: String(manifest.instrumentation.version),
+    instrumentationHash: verificationResult.instrumentationHash,
+    seedsHash: verificationResult.seedsHash,
+    artifactPath: styleArtifactPath,
+    artifactHash,
+    sourceHash: styleMetadata.sourceHash,
+    semanticHash: styleMetadata.semanticHash,
+    dataVersion: styleMetadata.dataVersion,
+    coverage: verificationResult.coverage,
+    ...(verification ? { verification } : {}),
+  }
+}
+
 async function run() {
   const repoRoot = resolve(import.meta.dirname, '../..')
   const mode = process.argv[2]
@@ -399,6 +553,7 @@ async function run() {
     resolve(repoRoot, 'docs/migration/ledger.json'),
     'utf8',
   )) as { entries?: unknown }
+  const validatedLedger = migrationLedgerSchema.parse(ledgerInput)
   const hasBatch2BEntry = Array.isArray(ledgerInput.entries)
     && ledgerInput.entries.some((entry) => (
       typeof entry === 'object'
@@ -410,10 +565,14 @@ async function run() {
   const repoFiles = repositoryFiles(repoRoot)
   const existingPaths = new Set(documentationRelations.flatMap((item) => [
     item.canonicalSource,
+    ...(item.provenanceSources ?? []),
     ...item.validators,
     ...item.consumers,
     ...item.tests,
     ...item.migrations,
+    ...(item.generatedArtifacts ?? []),
+    ...(item.messageSources ?? []),
+    ...(item.evidence ?? []),
   ]).filter((file) => {
     const absolute = resolve(repoRoot, file)
     return repoFiles.has(file) && existsSync(absolute) && lstatSync(absolute).isFile()
@@ -426,6 +585,11 @@ async function run() {
     existingPaths,
     {
       questionEvidence: loadQuestionEvidence(repoRoot, compiledQuestions.model.metadata),
+      styleEvidence: loadStyleEvidence(
+        repoRoot,
+        compiled.model.styleModel.metadata,
+        validatedLedger,
+      ),
       ...(hasBatch2BEntry
         ? { persistenceEvidence: await loadPersistenceEvidence(repoRoot) }
         : {}),

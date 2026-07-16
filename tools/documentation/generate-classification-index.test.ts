@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   cpSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -20,6 +21,7 @@ import { z } from 'zod'
 
 import { styleDefinitions } from '@ramen-style/classification-core/compiler'
 import { questionModel } from '@ramen-style/classification-core/generated/question-model'
+import { styleModel } from '@ramen-style/classification-core/generated/style-model'
 import {
   installGeneratedOutputs,
   repositoryFiles,
@@ -32,11 +34,13 @@ import {
   batch2BVerificationPaths,
 } from '../migration/ledger-schema.js'
 import { scanCoreConsumers } from './scan-imports.js'
+import { documentationDetectedConsumers } from './relations.js'
 
 const sourceRoot = resolve(import.meta.dirname, '../..')
 const implementationSha = 'a'.repeat(40)
 const currentSemanticHash = 'b'.repeat(64)
 const currentFixtureManifestHash = 'c'.repeat(64)
+const currentStyleDataVersion = styleModel.metadata.dataVersion
 
 const futureVerificationSchema = z.object({
   gate: z.string(),
@@ -112,6 +116,55 @@ function persistenceProjectionFunction() {
   return project
 }
 
+function styleProjectionFunction() {
+  const project = (generatorModule as unknown as {
+    projectStyleParityVerification?: (
+      ledger: unknown,
+      identity: {
+        fixtureManifestHash: string
+        semanticHash: string
+        dataVersion: string
+      },
+    ) => unknown
+  }).projectStyleParityVerification
+  expect(project).toBeTypeOf('function')
+  if (!project) throw new Error('projectStyleParityVerification is unavailable')
+  return project
+}
+
+function batch3AEntry(overrides: Record<string, unknown> = {}) {
+  return {
+    batch: '3A',
+    status: 'complete',
+    implementationSha,
+    fixtureManifestHash: currentFixtureManifestHash,
+    verification: [
+      {
+        gate: 'batch3a-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'full offline verification including style parity passed',
+      },
+      {
+        gate: 'batch3a-remote-ci',
+        command: 'GitHub Actions CI / verify',
+        outcome: 'passed',
+        evidence: 'authenticated exact-SHA remote verification passed',
+        commitSha: implementationSha,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+    ],
+    ...overrides,
+  }
+}
+
+function validatedBatch3ALedger(entry: Record<string, unknown> = batch3AEntry()) {
+  return futureLedgerSchema.parse({
+    schemaVersion: 1,
+    entries: [entry],
+  })
+}
+
 function batch2BEntry(
   status: 'in-progress' | 'complete',
   overrides: Record<string, unknown> = {},
@@ -155,7 +208,9 @@ function writeRegisteredConsumers(repoRoot: string) {
   for (const [file, importedPackage] of [
     ['tools/parity/questions/observable-trace.ts', '@ramen-style/classification-core/compiler'],
     ['tools/parity/questions/parity.ts', '@ramen-style/classification-core/compiler'],
+    ['tools/parity/styles/parity.ts', '@ramen-style/classification-core/compiler'],
     ['tools/questions/generate-question-model.ts', '@ramen-style/classification-core/compiler'],
+    ['tools/styles/generate-style-model.ts', '@ramen-style/classification-core/compiler'],
     ['tools/validation/validate-classification.ts', '@ramen-style/classification-core/compiler'],
   ] as const) {
     const target = join(repoRoot, file)
@@ -183,6 +238,24 @@ function writeDocumentationFixture(repoRoot: string) {
   const fixtureManifestTarget = join(repoRoot, fixtureManifest)
   mkdirSync(resolve(fixtureManifestTarget, '..'), { recursive: true })
   cpSync(join(sourceRoot, fixtureManifest), fixtureManifestTarget)
+
+  for (const file of [
+    'tools/parity/shared/contracts.ts',
+    'tools/parity/shared/authoring.ts',
+    'tools/parity/styles/contracts.ts',
+    'tools/parity/styles/verify-fixtures.ts',
+    'tools/parity/styles/extractor.ts',
+    'tools/parity/styles/extract.ts',
+    'tools/parity/styles/legacy-instrumentation.patch',
+    'tools/parity/styles/seeds.json',
+    'tools/parity/fixtures/styles/legacy-v1/cases.json',
+    'tools/parity/fixtures/styles/legacy-v1/manifest.json',
+    'packages/classification-core/src/generated/style-model.ts',
+  ]) {
+    const target = join(repoRoot, file)
+    mkdirSync(resolve(target, '..'), { recursive: true })
+    cpSync(join(sourceRoot, file), target)
+  }
   const ledgerSchema = 'tools/migration/ledger-schema.ts'
   const ledgerSchemaTarget = join(repoRoot, ledgerSchema)
   mkdirSync(resolve(ledgerSchemaTarget, '..'), { recursive: true })
@@ -192,6 +265,7 @@ function writeDocumentationFixture(repoRoot: string) {
     'packages/classification-core/src/definitions/questions.ts',
     'packages/classification-core/src/definitions/questions.test.ts',
     'packages/classification-core/src/definitions/synthetic.ts',
+    'packages/classification-core/src/definitions/styles/definitions.test.ts',
     'packages/classification-core/src/compiler/questions/source-schema.ts',
     'packages/classification-core/src/compiler/questions/compile.ts',
     'packages/classification-core/src/compiler/questions/proof.ts',
@@ -199,13 +273,26 @@ function writeDocumentationFixture(repoRoot: string) {
     'packages/classification-core/src/compiler/source-schema.ts',
     'packages/classification-core/src/compiler/compile.ts',
     'packages/classification-core/src/compiler/compile.test.ts',
+    'packages/classification-core/src/compiler/styles/source-schema.ts',
+    'packages/classification-core/src/compiler/styles/compile.ts',
+    'packages/classification-core/src/compiler/styles/proof.ts',
+    'packages/classification-core/src/compiler/styles/source-schema.test.ts',
+    'packages/classification-core/src/compiler/styles/compile.test.ts',
+    'packages/classification-core/src/compiler/styles/proof.test.ts',
+    'packages/classification-core/src/compiler/styles/serialize.test.ts',
     'packages/classification-core/src/flow/evaluate.ts',
+    'packages/classification-core/src/style-model.ts',
+    'packages/classification-core/src/index.ts',
+    'packages/classification-core/src/definitions/styles/taxonomy.ts',
     'tools/parity/questions/parity.test.ts',
+    'tools/parity/styles/parity.ts',
+    'tools/parity/styles/parity.test.ts',
+    'tools/styles/generate-style-model.test.ts',
     ...styleDefinitions.map((style) => style.sourceFile),
   ]) {
     const target = join(repoRoot, file)
     mkdirSync(resolve(target, '..'), { recursive: true })
-    writeFileSync(target, '')
+    if (!existsSync(target)) writeFileSync(target, '')
   }
   writeRegisteredConsumers(repoRoot)
 }
@@ -348,6 +435,161 @@ test('projects persistence contract verification only from completed exact evide
   })), {
     fixtureManifestHash: currentFixtureManifestHash,
   })).toBeUndefined()
+})
+
+test('projects style parity verification only from completed exact candidate evidence', () => {
+  const project = styleProjectionFunction()
+  expect(project(validatedBatch3ALedger(), {
+    fixtureManifestHash: currentFixtureManifestHash,
+    semanticHash: currentSemanticHash,
+    dataVersion: currentStyleDataVersion,
+  })).toEqual({
+    assurance: 'parity-verified',
+    parityScope: 'legacy-compiled-style-projection',
+    fixtureManifestHash: currentFixtureManifestHash,
+    verifiedSemanticHash: currentSemanticHash,
+    verifiedDataVersion: currentStyleDataVersion,
+    implementationSha,
+  })
+})
+
+test.each([
+  ['in progress', { status: 'in-progress', implementationSha: undefined, verification: [] }],
+  ['missing implementation SHA', { implementationSha: undefined }],
+  ['wrong fixture manifest hash', { fixtureManifestHash: 'd'.repeat(64) }],
+  ['missing local evidence', { verification: batch3AEntry().verification.slice(1) }],
+  ['missing remote evidence', { verification: batch3AEntry().verification.slice(0, 1) }],
+  ['failed local evidence', {
+    verification: batch3AEntry().verification.map((item) => (
+      item.gate === 'batch3a-local-verify' ? { ...item, outcome: 'failed' } : item
+    )),
+  }],
+  ['failed remote evidence', {
+    verification: batch3AEntry().verification.map((item) => (
+      item.gate === 'batch3a-remote-ci' ? { ...item, outcome: 'failed' } : item
+    )),
+  }],
+  ['wrong remote SHA', {
+    verification: batch3AEntry().verification.map((item) => (
+      item.gate === 'batch3a-remote-ci'
+        ? { ...item, commitSha: 'd'.repeat(40) }
+        : item
+    )),
+  }],
+] as const)('rejects style parity verification with %s', (_label, overrides) => {
+  const project = styleProjectionFunction()
+  expect(project(validatedBatch3ALedger(batch3AEntry(overrides)), {
+    fixtureManifestHash: currentFixtureManifestHash,
+    semanticHash: currentSemanticHash,
+    dataVersion: currentStyleDataVersion,
+  })).toBeUndefined()
+})
+
+test('loads the full committed style fixture and artifact identity without live extraction', () => {
+  const loadStyleEvidence = (generatorModule as unknown as {
+    loadStyleEvidence?: (
+      repoRoot: string,
+      metadata: typeof styleModel.metadata,
+      validatedLedger: unknown,
+    ) => Record<string, unknown>
+  }).loadStyleEvidence
+  expect(loadStyleEvidence).toBeTypeOf('function')
+  if (!loadStyleEvidence) throw new Error('loadStyleEvidence is unavailable')
+
+  const evidence = loadStyleEvidence(sourceRoot, styleModel.metadata, {
+    schemaVersion: 1,
+    entries: [],
+  })
+  expect(evidence).toMatchObject({
+    fixtureManifestHash: 'fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b',
+    fixtureCasesHash: 'cd48d42b596e1d7d71757a8cec109f7787d21596a8905a06c505fefbd0f93517',
+    fixtureContentHash: 'd33119e4d36a8b37314805dc8e439f724a37bf62b91fd3288a780ad67c2c3028',
+    instrumentationVersion: '1',
+    artifactHash: '46a63367179ce8874b10f2c6fc828a5816460bf463abac9d087ec77d8acfad3e',
+    sourceHash: styleModel.metadata.sourceHash,
+    semanticHash: styleModel.metadata.semanticHash,
+    dataVersion: styleModel.metadata.dataVersion,
+    coverage: {
+      styles: 18,
+      cores: 54,
+      subtypes: 270,
+      rules: 378,
+      bonusCopies: 54,
+      conflictCopies: 21,
+      exclusionTags: 6,
+      copyRoles: 8,
+    },
+  })
+  expect(evidence).not.toHaveProperty('verification')
+  expect(loadStyleEvidence.toString()).not.toMatch(
+    /execFile|spawn|fetch|writeFile|rename|legacyCheckout/u,
+  )
+})
+
+test('registers every detected classification-core consumer', () => {
+  const detected = scanCoreConsumers(
+    sourceRoot,
+    ['apps', 'packages', 'tools'],
+    repositoryFiles(sourceRoot),
+  )
+  expect([...detected]).toEqual([...documentationDetectedConsumers])
+})
+
+test.each([
+  ['manifest coverage drift', (repoRoot: string) => {
+    const path = join(repoRoot, 'tools/parity/fixtures/styles/legacy-v1/manifest.json')
+    const manifest = JSON.parse(readFileSync(path, 'utf8'))
+    manifest.coverage.rules = 377
+    writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`)
+  }],
+  ['raw cases drift', (repoRoot: string) => {
+    const path = join(repoRoot, 'tools/parity/fixtures/styles/legacy-v1/cases.json')
+    writeFileSync(path, `${readFileSync(path, 'utf8')} `)
+  }],
+  ['missing fixture', (repoRoot: string) => {
+    rmSync(join(repoRoot, 'tools/parity/fixtures/styles/legacy-v1/cases.json'))
+  }],
+] as const)('rejects style evidence with %s', (_label, mutate) => {
+  const loadStyleEvidence = (generatorModule as unknown as {
+    loadStyleEvidence: (
+      repoRoot: string,
+      metadata: typeof styleModel.metadata,
+      validatedLedger: unknown,
+    ) => Record<string, unknown>
+  }).loadStyleEvidence
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-style-evidence-invalid-'))
+  try {
+    writeDocumentationFixture(repoRoot)
+    mutate(repoRoot)
+    expect(() => loadStyleEvidence(repoRoot, styleModel.metadata, {
+      schemaVersion: 1,
+      entries: [],
+    })).toThrow()
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
+test('pre-wires style artifact and parity gates without removing existing verify gates', () => {
+  const scripts = JSON.parse(readFileSync(join(sourceRoot, 'package.json'), 'utf8')).scripts
+  expect(scripts.verify).toBe([
+    'npm run lint',
+    'npm test',
+    'npm run typecheck',
+    'npm run build',
+    'npm run classification:validate',
+    'npm run questions:check',
+    'npm run styles:check',
+    'npm run runtime:imports:check',
+    'npm run parity:questions',
+    'npm run parity:persistence',
+    'npm run parity:styles',
+    'npm run classification:index:check',
+    'npm run migration:ledger:check',
+  ].join(' && '))
+  expect(scripts['styles:check']).toBe('tsx tools/styles/generate-style-model.ts --check')
+  expect(scripts['parity:styles']).toBe('tsx tools/parity/styles/parity.ts')
+  expect(scripts.verify).not.toMatch(/extract|--replace|--write|curl|wget/u)
 })
 
 test('loads tracked persistence identity as structurally validated before acceptance', async () => {

@@ -5,7 +5,10 @@ import {
   type ClassificationModel,
   type Diagnostic,
 } from '@ramen-style/classification-core/compiler'
-import type { DocumentationRelation } from './relations.js'
+import {
+  createDocumentationRelations,
+  type DocumentationRelation,
+} from './relations.js'
 
 const persistenceReadinessBlockers = [
   'persistence-adapter-not-integrated',
@@ -79,9 +82,55 @@ export interface QuestionDocumentationEvidence {
   verification?: QuestionParityVerification
 }
 
+export interface StyleParityVerification {
+  assurance: 'parity-verified'
+  parityScope: 'legacy-compiled-style-projection'
+  fixtureManifestHash: string
+  verifiedSemanticHash: string
+  verifiedDataVersion: string
+  implementationSha: string
+}
+
+export interface StyleDocumentationEvidence {
+  sourceRepository: {
+    host: string
+    owner: string
+    repository: string
+  }
+  sourceCommit: string
+  sourceTreeHash: string
+  fixtureManifestPath: string
+  fixtureManifestHash: string
+  fixtureSchemaVersion: string
+  fixtureCasesHash: string
+  fixtureContentHash: string
+  extractorVersion: string
+  extractorHash: string
+  instrumentationVersion: string
+  instrumentationHash: string
+  seedsHash: string
+  artifactPath: string
+  artifactHash: string
+  sourceHash: string
+  semanticHash: string
+  dataVersion: string
+  coverage: {
+    styles: number
+    cores: number
+    subtypes: number
+    rules: number
+    bonusCopies: number
+    conflictCopies: number
+    exclusionTags: number
+    copyRoles: number
+  }
+  verification?: StyleParityVerification
+}
+
 export interface DocumentationBuildOptions {
   questionEvidence?: QuestionDocumentationEvidence
   persistenceEvidence?: PersistenceDocumentationEvidence
+  styleEvidence?: StyleDocumentationEvidence
   detectedConsumerRegistry?: readonly string[]
 }
 
@@ -99,6 +148,25 @@ function shouldReportStylesNotMigrated(
   return origin === 'legacy-production' || origin === 'synthetic'
 }
 
+const styleConceptKinds = new Set(['style', 'intensity', 'noodle'])
+
+function normalizedStyleRelation(relation: DocumentationRelation) {
+  const sorted = (values: readonly string[] | undefined) => (
+    [...(values ?? [])].sort(compareCodePoints)
+  )
+  return {
+    canonicalSource: relation.canonicalSource,
+    provenanceSources: sorted(relation.provenanceSources),
+    validators: sorted(relation.validators),
+    consumers: sorted(relation.consumers),
+    tests: sorted(relation.tests),
+    migrations: sorted(relation.migrations),
+    generatedArtifacts: sorted(relation.generatedArtifacts),
+    messageSources: sorted(relation.messageSources),
+    evidence: sorted(relation.evidence),
+  }
+}
+
 export function buildDocumentation(
   model: ClassificationModel,
   relations: readonly DocumentationRelation[],
@@ -109,6 +177,70 @@ export function buildDocumentation(
   const collector = new DiagnosticCollector()
   const relationByKey = new Map<string, DocumentationRelation>()
   const inventoryByKey = new Map(model.inventory.map((item) => [item.key, item]))
+
+  const inventoryKeys = new Set<string>()
+  for (const concept of model.inventory) {
+    if (inventoryKeys.has(concept.key)) collector.error({
+      code: 'DOC_RELATION_INVALID',
+      sourceFile: 'tools/documentation/relations.ts',
+      path: '/inventory',
+      entityId: concept.key,
+      message: `Duplicate compiled inventory record ${concept.key}`,
+    })
+    inventoryKeys.add(concept.key)
+  }
+
+  const compiledStyleRecords = new Map<string, { readonly sourceFiles: readonly string[] }>()
+  const addCompiledStyleRecord = (key: string, sourceFiles: readonly string[]) => {
+    if (compiledStyleRecords.has(key)) {
+      collector.error({
+        code: 'DOC_RELATION_INVALID',
+        sourceFile: 'tools/documentation/relations.ts',
+        path: '/styleModel',
+        entityId: key,
+        message: `Duplicate compiled style record ${key}`,
+      })
+      return
+    }
+    compiledStyleRecords.set(key, { sourceFiles })
+  }
+  for (const style of model.styleModel.styles) {
+    addCompiledStyleRecord(`style/${style.id}`, [style.provenance.sourceFile])
+    for (const core of style.cores) {
+      addCompiledStyleRecord(
+        `intensity/${core.id}`,
+        core.provenance.map(({ sourceFile }) => sourceFile),
+      )
+      for (const subtype of core.subtypes) {
+        addCompiledStyleRecord(
+          `noodle/${subtype.id}`,
+          subtype.provenance.map(({ sourceFile }) => sourceFile),
+        )
+      }
+    }
+  }
+  for (const [key, record] of compiledStyleRecords) {
+    const concept = inventoryByKey.get(key as never)
+    if (!concept || !record.sourceFiles.includes(concept.sourceFile)) collector.error({
+      code: 'DOC_RELATION_INVALID',
+      sourceFile: 'tools/documentation/relations.ts',
+      path: '/inventory',
+      entityId: key,
+      message: `Compiled style record does not match inventory ${key}`,
+    })
+  }
+  for (const concept of model.inventory) {
+    if (
+      (concept.kind === 'style' || concept.kind === 'intensity' || concept.kind === 'noodle')
+      && !compiledStyleRecords.has(concept.key)
+    ) collector.error({
+      code: 'DOC_RELATION_INVALID',
+      sourceFile: 'tools/documentation/relations.ts',
+      path: '/inventory',
+      entityId: concept.key,
+      message: `Inventory has no compiled style record ${concept.key}`,
+    })
+  }
 
   relations.forEach((relation, index) => {
     if (relationByKey.has(relation.conceptKey)) {
@@ -123,6 +255,25 @@ export function buildDocumentation(
       relationByKey.set(relation.conceptKey, relation)
     }
   })
+
+  const expectedStyleRelations = new Map(createDocumentationRelations(model)
+    .filter(({ conceptKey }) => {
+      const concept = inventoryByKey.get(conceptKey)
+      return concept ? styleConceptKinds.has(concept.kind) : false
+    })
+    .map((relation) => [relation.conceptKey, normalizedStyleRelation(relation)]))
+  for (const [conceptKey, expected] of expectedStyleRelations) {
+    const received = relationByKey.get(conceptKey)
+    if (!received || stableJson(normalizedStyleRelation(received)) !== stableJson(expected)) {
+      collector.error({
+        code: 'DOC_RELATION_INVALID',
+        sourceFile: 'tools/documentation/relations.ts',
+        path: '/relations',
+        entityId: conceptKey,
+        message: `Compiled style documentation relation drifted for ${conceptKey}`,
+      })
+    }
+  }
 
   for (const concept of model.inventory) {
     if (!relationByKey.has(concept.key)) collector.error({
@@ -143,12 +294,19 @@ export function buildDocumentation(
       entityId: relation.conceptKey,
       message: `Unknown concept ${relation.conceptKey}`,
     })
-    if (concept && relation.canonicalSource !== concept.sourceFile) collector.error({
+    if (
+      concept
+      && styleConceptKinds.has(concept.kind)
+      && ![
+        relation.canonicalSource,
+        ...(relation.provenanceSources ?? []),
+      ].includes(concept.sourceFile)
+    ) collector.error({
       code: 'DOC_RELATION_INVALID',
       sourceFile: 'tools/documentation/relations.ts',
       path: `/relations/${relationIndex}/canonicalSource`,
       entityId: relation.conceptKey,
-      message: `Canonical source does not match compiled inventory for ${relation.conceptKey}`,
+      message: `Compiled provenance does not match the inventory source for ${relation.conceptKey}`,
     })
     if (relation.validators.length === 0) collector.error({
       code: 'DOC_RELATION_INVALID',
@@ -167,10 +325,20 @@ export function buildDocumentation(
 
     const declaredPaths = [
       ['canonicalSource', relation.canonicalSource] as const,
+      ...(relation.provenanceSources ?? []).map((path) => (
+        ['provenanceSources', path] as const
+      )),
       ...relation.validators.map((path) => ['validators', path] as const),
       ...relation.consumers.map((path) => ['consumers', path] as const),
       ...relation.tests.map((path) => ['tests', path] as const),
       ...relation.migrations.map((path) => ['migrations', path] as const),
+      ...(relation.generatedArtifacts ?? []).map((path) => (
+        ['generatedArtifacts', path] as const
+      )),
+      ...(relation.messageSources ?? []).map((path) => (
+        ['messageSources', path] as const
+      )),
+      ...(relation.evidence ?? []).map((path) => ['evidence', path] as const),
     ]
     for (const [field, path] of declaredPaths) {
       if (!isRepositoryPath(path)) collector.error({
@@ -219,14 +387,18 @@ export function buildDocumentation(
         kind: concept.kind,
         id: concept.id,
         canonicalSource: relation?.canonicalSource ?? concept.sourceFile,
+        provenanceSources: sorted(relation?.provenanceSources ?? []),
         validators: sorted(relation?.validators ?? []),
         consumers: sorted(relation?.consumers ?? []),
         migrations: sorted(relation?.migrations ?? []),
+        generatedArtifacts: sorted(relation?.generatedArtifacts ?? []),
         generatedOwners: [
           'docs/classification/index.md',
           'docs/classification/manifest.json',
         ],
+        messageSources: sorted(relation?.messageSources ?? []),
         messageIds: sorted(concept.messageIds),
+        evidence: sorted(relation?.evidence ?? []),
         tests: sorted(relation?.tests ?? []),
       }
     })
@@ -264,12 +436,73 @@ export function buildDocumentation(
         }
       : {}),
   }
+  const styleEvidence = options.styleEvidence
+  if (styleEvidence) {
+    const styleCores = model.styleModel.styles.flatMap(({ cores }) => cores)
+    const expectedCoverage = {
+      styles: model.styleModel.styles.length,
+      cores: styleCores.length,
+      subtypes: styleCores.flatMap(({ subtypes }) => subtypes).length,
+      rules: styleCores.flatMap(({ rules }) => rules).length,
+      bonusCopies: 54,
+      conflictCopies: 21,
+      exclusionTags: model.styleModel.exclusionTags.length,
+      copyRoles: 8,
+    }
+    if (
+      styleEvidence.sourceHash !== model.styleModel.metadata.sourceHash
+      || styleEvidence.semanticHash !== model.styleModel.metadata.semanticHash
+      || styleEvidence.dataVersion !== model.styleModel.metadata.dataVersion
+      || stableJson(styleEvidence.coverage) !== stableJson(expectedCoverage)
+    ) collector.error({
+      code: 'DOC_RELATION_INVALID',
+      sourceFile: 'tools/documentation/build-index.ts',
+      path: '/styleEvidence',
+      message: 'Style documentation evidence does not match the compiled model',
+    })
+  }
   const provenance = {
     questions: questionProvenance,
-    styles: {
-      origin: model.provenance.styles.origin,
-      assurance: 'structurally-validated',
-    },
+    styles: (() => {
+      const matchingVerification = styleEvidence?.verification
+        && styleEvidence.verification.fixtureManifestHash
+          === styleEvidence.fixtureManifestHash
+        && styleEvidence.verification.verifiedSemanticHash
+          === styleEvidence.semanticHash
+        && styleEvidence.verification.verifiedDataVersion
+          === styleEvidence.dataVersion
+        ? styleEvidence.verification
+        : undefined
+      return {
+        origin: model.provenance.styles.origin,
+        assurance: matchingVerification ? 'parity-verified' : 'compiler-validated',
+        parityScope: 'legacy-compiled-style-projection',
+        ...(styleEvidence
+          ? {
+              sourceRepository: styleEvidence.sourceRepository,
+              sourceCommit: styleEvidence.sourceCommit,
+              sourceTreeHash: styleEvidence.sourceTreeHash,
+              fixtureManifestPath: styleEvidence.fixtureManifestPath,
+              fixtureManifestHash: styleEvidence.fixtureManifestHash,
+              fixtureSchemaVersion: styleEvidence.fixtureSchemaVersion,
+              fixtureCasesHash: styleEvidence.fixtureCasesHash,
+              fixtureContentHash: styleEvidence.fixtureContentHash,
+              extractorVersion: styleEvidence.extractorVersion,
+              extractorHash: styleEvidence.extractorHash,
+              instrumentationVersion: styleEvidence.instrumentationVersion,
+              instrumentationHash: styleEvidence.instrumentationHash,
+              seedsHash: styleEvidence.seedsHash,
+              artifactPath: styleEvidence.artifactPath,
+              artifactHash: styleEvidence.artifactHash,
+              sourceHash: styleEvidence.sourceHash,
+              semanticHash: styleEvidence.semanticHash,
+              dataVersion: styleEvidence.dataVersion,
+              coverage: styleEvidence.coverage,
+              ...(matchingVerification ? { verification: matchingVerification } : {}),
+            }
+          : {}),
+      }
+    })(),
     scoringPolicy: {
       origin: model.provenance.scoringPolicy.origin,
       assurance: 'structurally-validated',
@@ -277,7 +510,10 @@ export function buildDocumentation(
   }
   const persistence = options.persistenceEvidence
   const readinessBlockers = persistence
-    ? [...persistenceReadinessBlockers]
+    ? persistenceReadinessBlockers.filter((blocker) => (
+        blocker !== 'styles-not-production-verified'
+        || provenance.styles.assurance !== 'parity-verified'
+      ))
     : [
         ...(shouldReportStylesNotMigrated(model.provenance.styles.origin)
           ? ['styles-not-migrated']
@@ -299,11 +535,15 @@ export function buildDocumentation(
   const rows = concepts.map((concept) => [
     `| \`${concept.key}\``,
     `\`${concept.canonicalSource}\``,
+    cell(concept.provenanceSources),
     cell(concept.validators),
     cell(concept.consumers),
     cell(concept.migrations),
+    cell(concept.generatedArtifacts),
     cell(concept.generatedOwners),
+    cell(concept.messageSources),
     cell(concept.messageIds),
+    cell(concept.evidence),
     `${cell(concept.tests)} |`,
   ].join(' | '))
   const persistenceSummary = persistence
@@ -329,15 +569,15 @@ export function buildDocumentation(
     '# Classification Index',
     '',
     model.provenance.questions.origin === 'legacy-production'
-      ? '> Production question ownership; style and scoring inventory remains synthetic.'
+      ? '> Production question ownership and compiled style ownership; scoring remains synthetic.'
       : '> Synthetic inventory — not production classification data.',
     '',
     `Model version: \`${model.modelVersion}\`<br>`,
     `Data version: \`${model.dataVersion}\``,
     '',
     ...persistenceSummary,
-    '| Concept | Canonical source | Validators | Consumers | Migrations | Generated owners | Messages | Tests |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| Concept | Canonical source | Provenance sources | Validators | Consumers | Migrations | Generated artifacts | Generated owners | Message sources | Messages | Evidence | Tests |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
     ...rows,
     '',
   ].join('\n')
