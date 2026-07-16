@@ -2,14 +2,14 @@
   "caseCount": 6,
   "casesHash": "c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89",
   "extractor": {
-    "hash": "4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d",
+    "hash": "650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706",
     "sources": [
       {
-        "hash": "1612c7966838b280332d94f3fcec29b75949c0a38bf7b77702a0c15100925c3e",
+        "hash": "bc5ee00e39aa91403e9a19e3c00cde8dd47a1208279b8a0b45d9464cfd800516",
         "path": "tools/parity/shared/contracts.ts"
       },
       {
-        "hash": "d49f924f1ca2d1809204f25d62e7c6a4726a74295e124994fbf82c33b05afc5a",
+        "hash": "b5e42e7acce9d57fd09f0e32bdb92770a22286e6670bb0be493a314a0141ccbc",
         "path": "tools/parity/shared/authoring.ts"
       },
       {
