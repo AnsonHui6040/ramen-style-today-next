@@ -385,7 +385,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Persistence identity maintenance
 
-- Status: `in-progress`
+- Status: `complete`
 - Change SHA: `2f445f99de924f5ba428967ff68869d4d46b593f`
 - Change parent SHA: `1adc6b54decc08e11bdc03f9665a8f82033fb126`
 - Accepted fixture manifest hash: `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`
@@ -393,6 +393,8 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - Cases hash: `c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89`
 - Accepted extractor hash: `4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d`
 - Maintained extractor hash: `650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706`
+- Candidate SHA: `8378f8cf05a4756698f92f6fb2f49fb52782d712`
+- Remote evidence gate: `batch3a-remote-ci`
 
 #### Persistence identity maintenance paths
 
@@ -400,7 +402,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 #### Persistence identity maintenance verification
 
-- Pending.
+- `batch2b-persistence-identity-maintenance-local-verify`: `npm run verify` — passed; the reviewed persistence identity payload passed the candidate gates
 
 ### Verification
 
@@ -409,10 +411,11 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411281929
 
-## Batch 3A — in-progress
+## Batch 3A — complete
 
 - Behavior: `no-production-runtime-change`
 - Transformation: Legacy production style inventory normalized into canonical typed definitions and deterministically compiled to an immutable inert style model with offline observed-parity evidence.
+- Implementation SHA: `8378f8cf05a4756698f92f6fb2f49fb52782d712`
 
 ### Legacy sources
 
@@ -530,4 +533,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Verification
 
-- Pending.
+- `batch3a-local-verify`: `npm run verify` — passed; all Batch 3A local candidate gates passed
+- `batch3a-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 3A candidate passed canonical CI
+  - Commit: `8378f8cf05a4756698f92f6fb2f49fb52782d712`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29532093331

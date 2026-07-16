@@ -391,7 +391,7 @@
         ]
       },
       "persistenceIdentityMaintenance": {
-        "status": "in-progress",
+        "status": "complete",
         "changeSha": "2f445f99de924f5ba428967ff68869d4d46b593f",
         "changeParentSha": "1adc6b54decc08e11bdc03f9665a8f82033fb126",
         "paths": [
@@ -402,7 +402,16 @@
         "casesHash": "c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89",
         "acceptedExtractorHash": "4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d",
         "maintainedExtractorHash": "650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706",
-        "verification": []
+        "candidateSha": "8378f8cf05a4756698f92f6fb2f49fb52782d712",
+        "remoteEvidenceGate": "batch3a-remote-ci",
+        "verification": [
+          {
+            "gate": "batch2b-persistence-identity-maintenance-local-verify",
+            "command": "npm run verify",
+            "outcome": "passed",
+            "evidence": "the reviewed persistence identity payload passed the candidate gates"
+          }
+        ]
       },
       "fixtureManifestHash": "71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd",
       "legacySources": [
@@ -482,7 +491,8 @@
     },
     {
       "batch": "3A",
-      "status": "in-progress",
+      "status": "complete",
+      "implementationSha": "8378f8cf05a4756698f92f6fb2f49fb52782d712",
       "implementationPaths": [
         "docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md",
         "docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md",
@@ -594,7 +604,22 @@
       ],
       "transformation": "Legacy production style inventory normalized into canonical typed definitions and deterministically compiled to an immutable inert style model with offline observed-parity evidence.",
       "behavior": "no-production-runtime-change",
-      "verification": []
+      "verification": [
+        {
+          "gate": "batch3a-local-verify",
+          "command": "npm run verify",
+          "outcome": "passed",
+          "evidence": "all Batch 3A local candidate gates passed"
+        },
+        {
+          "gate": "batch3a-remote-ci",
+          "command": "GitHub Actions CI / verify",
+          "outcome": "passed",
+          "evidence": "the exact Batch 3A candidate passed canonical CI",
+          "commitSha": "8378f8cf05a4756698f92f6fb2f49fb52782d712",
+          "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29532093331"
+        }
+      ]
     }
   ]
 }

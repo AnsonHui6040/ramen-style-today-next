@@ -18776,7 +18776,7 @@
     "styles": {
       "artifactHash": "46a63367179ce8874b10f2c6fc828a5816460bf463abac9d087ec77d8acfad3e",
       "artifactPath": "packages/classification-core/src/generated/style-model.ts",
-      "assurance": "compiler-validated",
+      "assurance": "parity-verified",
       "coverage": {
         "bonusCopies": 54,
         "conflictCopies": 21,
@@ -18808,14 +18808,21 @@
         "owner": "AnsonHui6040",
         "repository": "ramen-style-today"
       },
-      "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a"
+      "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a",
+      "verification": {
+        "assurance": "parity-verified",
+        "fixtureManifestHash": "fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b",
+        "implementationSha": "8378f8cf05a4756698f92f6fb2f49fb52782d712",
+        "parityScope": "legacy-compiled-style-projection",
+        "verifiedDataVersion": "c5b3b3353b42618875f1c20d64449ec513601b60215351f757dbd1e48d1fee28",
+        "verifiedSemanticHash": "9fb9832c434b22fcd8397809b14117a47c358a266694df24ba68fd290fc5f585"
+      }
     }
   },
   "readiness": {
     "blockers": [
       "persistence-adapter-not-integrated",
       "persisted-data-cutover-incomplete",
-      "styles-not-production-verified",
       "scoring-not-production-verified",
       "runtime-cutover-incomplete"
     ],
