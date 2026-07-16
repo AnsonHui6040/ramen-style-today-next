@@ -1422,6 +1422,101 @@ tools/parity/persistence/**
 tools/parity/fixtures/persistence/**
 ```
 
+### Reviewed persistence authoring-identity payload
+
+One local, unpushed, independently reviewed maintenance payload already
+refreshes authoring identity after the accepted shared-authoring transaction:
+
+```text
+change SHA:    2f445f99de924f5ba428967ff68869d4d46b593f
+direct parent: 1adc6b54decc08e11bdc03f9665a8f82033fb126
+exact path:    tools/parity/fixtures/persistence/legacy-unversioned/manifest.json
+accepted manifest SHA-256:
+  6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226
+maintained manifest SHA-256:
+  71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd
+cases hash:
+  c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89
+accepted extractor hash:
+  4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d
+maintained extractor hash:
+  650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706
+```
+
+The payload changes only the two shared-authoring source hashes and their
+aggregate extractor hash. Case bytes, case count, case order, fixture schema,
+instrumentation, frozen legacy source identity, runtime policy, persistence
+code, persistence contracts, and observed behavior remain byte-for-byte
+unchanged. It is a Batch 2B identity maintenance path, not a Batch 3A owner and
+not evidence that persistence semantics changed.
+
+Because the payload was created after Batch 3A implementation paths already
+made the live ledger and classification index intentionally stale, it cannot
+obtain an independent successful run of the canonical `npm run verify` push
+workflow before Task 17. The canonical workflow and acceptance verifier must
+not be weakened or given a temporary bypass. Instead, the ledger records a
+strict `persistenceIdentityMaintenance` object when Task 17 wires the complete
+local candidate.
+
+The in-progress object has exactly:
+
+```text
+status: in-progress
+changeSha: 2f445f99de924f5ba428967ff68869d4d46b593f
+changeParentSha: 1adc6b54decc08e11bdc03f9665a8f82033fb126
+paths:
+  tools/parity/fixtures/persistence/legacy-unversioned/manifest.json
+acceptedFixtureManifestHash:
+  6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226
+maintainedFixtureManifestHash:
+  71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd
+casesHash:
+  c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89
+acceptedExtractorHash:
+  4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d
+maintainedExtractorHash:
+  650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706
+verification: []
+candidateSha: absent
+remoteEvidenceGate: absent
+```
+
+At Task 17, the Batch 2B top-level `fixtureManifestHash`, the classification
+persistence projection, and the ignored protected-baseline evidence move to
+the maintained tracked-byte hash. The accepted hash remains immutable inside
+`persistenceIdentityMaintenance`; the maintenance is not allowed to erase or
+rewrite historical acceptance identity.
+
+Offline checks must prove all of the following before accepting the reopened
+path:
+
+1. `changeSha` has exactly the recorded direct parent;
+2. the parent-to-change commit diff is exactly the one recorded path;
+3. `changeSha` is an ancestor of the current candidate;
+4. no Batch 2B protected persistence path changes after `changeSha`;
+5. the current manifest tracked bytes, classification projection, cases hash,
+   and extractor hash equal the maintained values;
+6. the accepted and maintained identities are distinct and exact; and
+7. every other Batch 2B protected persistence path remains unchanged after the
+   accepted metadata boundary.
+
+Task 18 completes this object atomically with Batch 3A. Completion adds the
+exact Task 17 candidate SHA, exactly one local gate named
+`batch2b-persistence-identity-maintenance-local-verify`, and the literal remote
+evidence reference `batch3a-remote-ci`. The checker requires the referenced
+Batch 3A evidence to exist exactly once, be authenticated by the ordinary
+acceptance verifier, and have `commitSha === candidateSha ===` the Batch 3A
+`implementationSha`. The maintenance object does not duplicate the remote
+evidence record, so the acceptance verifier's duplicate-proof rejection remains
+unchanged. `record-ci 3A` performs both state transitions atomically; no
+separate maintenance recording target or second proof is permitted.
+
+The Task 17 candidate therefore contains both entries as `in-progress`, with no
+implementation SHA or remote evidence. The Task 18 completion diff remains the
+same exact four acceptance metadata files. Persistence assurance remains
+`contract-verified`, and Task 18 changes only style assurance and the style
+readiness blocker as already specified.
+
 The historical broader `implementationPaths` and `verificationPaths` remain in
 the ledger as an acceptance audit record but are not a permanent freeze on
 shared contracts, exports, package scripts, documentation, migration tooling,
@@ -1468,7 +1563,8 @@ acceptance metadata files may change.
 
 Batch 2A historical implementation and maintenance identities and the completed
 Batch 2B implementation/evidence remain unchanged. The newly explicit Batch 2B
-accepted metadata boundary and its boundary-maintenance evidence are additional
+accepted metadata boundary, its boundary-maintenance evidence, and the separate
+accepted-versus-maintained persistence authoring identities are additional
 governance records, not replacements for those identities.
 
 ## 17. Model and data version implications
@@ -1558,13 +1654,16 @@ The transaction is intentionally staged:
 6. build and freeze legacy observations through the shared authoring boundary;
 7. prove local style parity and the pre-wiring focused repository gates;
 8. wire the in-progress ledger, compiler-validated style provenance, readiness,
-   and exact ownership paths;
+   exact ownership paths, and the closed persistence identity-maintenance
+   binding described in section 16;
 9. run full local `npm run verify` again after that final wiring and resolve only
    in-scope failures before creating one clean implementation candidate commit;
 10. push only when the approved plan reaches its remote-acceptance task;
 11. authenticate successful CI whose head SHA exactly equals the implementation
    candidate;
-12. record that proof and regenerate only the four acceptance metadata files;
+12. record that proof once, atomically complete Batch 3A and the persistence
+    identity-maintenance binding, and regenerate only the four acceptance
+    metadata files;
 13. prove the completion diff is metadata-only and create the metadata commit;
 14. authenticate successful CI for the metadata commit; and
 15. report both SHAs/run IDs, fixture identities, test counts, final assurances,

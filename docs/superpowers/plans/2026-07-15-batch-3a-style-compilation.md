@@ -56,15 +56,21 @@ reviewed staged-result and Task 9 proof ownership rulings (SHA-256
   `packages/classification-core/src/generated/question-model.ts`,
   `packages/classification-core/src/flow/**`, `tools/parity/questions/**`, or
   `tools/parity/fixtures/questions/**`.
-- Never modify the permanently protected Batch 2B paths:
+- Never modify the permanently protected Batch 2B paths after the exact,
+  already committed Task 16A identity payload described below:
   `packages/classification-core/src/persistence/**`,
   `tools/parity/persistence/**`, or
   `tools/parity/fixtures/persistence/**`.
 - Preserve Batch 2B implementation SHA
   `30b71e3305b0e48a7c77e4869e2411c17941ebb8`, accepted metadata SHA
-  `6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4`, persistence fixture manifest
-  hash `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`,
-  original evidence, and `contract-verified` persistence assurance.
+  `6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4`, accepted persistence fixture
+  manifest hash
+  `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`,
+  reviewed maintained manifest hash
+  `71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd`,
+  original evidence, and `contract-verified` persistence assurance. The two
+  hashes have distinct historical/current roles and must never overwrite one
+  another.
 - Frozen legacy identity is
   `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`,
   tree `3e527de876cfeccfd3154ddc492830d71c4cfd9a`.
@@ -1626,6 +1632,81 @@ focused/affected gate failure.
 
 ---
 
+### Task 16A: Ratify the reviewed persistence identity payload and joint closure
+
+**Files:**
+- Modify only:
+  `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- Modify only:
+  `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+
+**Interfaces:** Formally records the already committed, independently reviewed,
+one-file authoring-identity payload and defines how Task 17 binds it without
+weakening canonical CI or granting Batch 3A ownership of a Batch 2B protected
+path. It changes no fixture, implementation, ledger, generated metadata,
+runtime, assurance, or readiness state.
+
+The immutable payload identity is exact:
+
+```text
+change SHA: 2f445f99de924f5ba428967ff68869d4d46b593f
+direct parent: 1adc6b54decc08e11bdc03f9665a8f82033fb126
+path: tools/parity/fixtures/persistence/legacy-unversioned/manifest.json
+accepted manifest SHA-256:
+  6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226
+maintained manifest SHA-256:
+  71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd
+cases hash:
+  c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89
+accepted extractor hash:
+  4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d
+maintained extractor hash:
+  650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706
+```
+
+- [ ] **Step 1: Reconfirm the immutable local payload**
+
+Require `changeSha` to have exactly the recorded parent and an exact one-file
+diff. Recompute both tracked-byte hashes and confirm that only the two reviewed
+shared-authoring source hashes plus their aggregate extractor hash changed.
+Cases, ordering, instrumentation, source lineage, runtime policy, and all other
+source identities remain unchanged.
+
+- [ ] **Step 2: Amend only the reviewed design and plan**
+
+Define the strict `persistenceIdentityMaintenance` in-progress and complete
+shapes, exact offline Git/history checks, accepted-versus-maintained identity
+roles, atomic `record-ci 3A` closure, single-proof rule, and unchanged four-file
+Task 18 completion boundary. Do not create a second CI target, duplicate remote
+evidence, temporary workflow mode, ledger/index bypass, or Batch 3A ownership
+for the protected fixture.
+
+- [ ] **Step 3: Independent contract/security review and commit**
+
+The review must confirm that the maintenance is exact, bounded, non-semantic,
+offline-verifiable, single-proof, compatible with the canonical push workflow,
+and incapable of authorizing a later change to the same or any other protected
+persistence path. After `PASS`:
+
+```bash
+git diff --check
+test "$(git diff --name-only HEAD | sort)" = \
+  $'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md\ndocs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md'
+git add docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md \
+  docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md
+git commit -m "Define persistence identity closure"
+```
+
+Do not push. Task 17 may start only after this review passes and the contract
+commit leaves a clean tree.
+
+**Stop conditions:** Any broader protected-path authorization, changed fixture
+bytes, duplicated remote evidence, reduced CI/acceptance authentication,
+temporary bypass, non-four-file completion, persistence semantic claim, or
+independent `CHANGES_REQUIRED`.
+
+---
+
 ### Task 17: Wire Batch 3A ownership and create the local candidate
 
 **Files:**
@@ -1644,6 +1725,7 @@ focused/affected gate failure.
 
 **Interfaces:** Adds the in-progress Batch 3A ledger, exact path groups,
 style fixture binding, closed completion gates, `3A` CI recording target,
+the exact in-progress Batch 2B `persistenceIdentityMaintenance` binding,
 compiler-validated live style provenance, and unchanged five-blocker readiness.
 
 The ledger path groups are exact.
@@ -1694,6 +1776,12 @@ acceptanceMetadataPaths:
   docs/migration/ledger.md
 ```
 
+The reviewed `2f445f99de924f5ba428967ff68869d4d46b593f` manifest path is
+intentionally absent from all three Batch 3A groups. It remains owned and
+authorized only by the exact Batch 2B `persistenceIdentityMaintenance` object.
+Historical coverage must classify this commit through that object rather than
+expanding Batch 3A ownership.
+
 - [ ] **Step 1: Write RED ownership/completion/readiness tests**
 
 Assert exact path arrays and no overlaps; style fixture manifest hash equals
@@ -1705,6 +1793,17 @@ metadata files; Batch 2A and narrow Batch 2B protections remain active; style
 assurance/readiness follow the exact pre/post states; and formal ownership of
 the two planning files replaces the temporary exception. Test that keeping the
 exception after adding Batch 3A or removing it before owner registration fails.
+
+Also assert the exact persistence maintenance change SHA, direct parent,
+one-file path, accepted/maintained tracked-byte hashes, unchanged cases hash,
+accepted/maintained extractor hashes, current manifest/classification
+projection, and absence of any protected-path change after the payload SHA.
+The in-progress maintenance has no candidate SHA, remote gate, or evidence.
+Completion requires the exact Task 17 candidate SHA, one local maintenance
+gate, and a reference to the single `batch3a-remote-ci` evidence whose SHA also
+equals the Batch 3A implementation SHA. Reject a separate target, duplicated
+proof, partial transition, wrong parent, extra path, later manifest edit, or
+any other protected persistence change.
 
 - [ ] **Step 2: Confirm RED**
 
@@ -1722,6 +1821,15 @@ exact paths, no implementation SHA, and no verification. Generate in order:
 npm run migration:ledger
 npm run classification:index
 ```
+
+In the same candidate, add Batch 2B `persistenceIdentityMaintenance` as
+`in-progress` with its exact immutable payload fields and `verification: []`.
+Update the Batch 2B current `fixtureManifestHash`, classification persistence
+projection, and ignored protected-baseline evidence to the maintained
+tracked-byte hash while preserving the accepted hash inside the maintenance
+object. Do not modify the fixture again. Offline checking must attribute only
+the exact historical payload path to Batch 2B maintenance and freeze every
+protected persistence path after that payload SHA.
 
 In the same task, delete `pendingBatch3APlanningBaseline` and its special-case
 checker branch only after the new Batch 3A `newOwners` registers the exact
@@ -1760,9 +1868,11 @@ protected baseline, and full verify output in ignored evidence.
 
 - [ ] **Step 5: Independent final implementation review and candidate commit**
 
-Review covers all Task 4–17 changes, approved public API, deterministic
+Review covers all Task 4–17 changes plus Task 16A, approved public API, deterministic
 compiler/artifact, fixture truth boundary, parity scope, runtime import graph,
-path ownership, assurances/readiness, and protected Batch 2A/2B identities.
+path ownership, assurances/readiness, accepted/maintained Batch 2B identities,
+the exact one-file maintenance history, single-proof closure, and all remaining
+protected Batch 2A/2B identities.
 After `PASS`:
 
 ```bash
@@ -1776,7 +1886,8 @@ This is the Batch 3A implementation candidate. No implementation or
 verification path may change afterward.
 
 **Stop conditions:** Full verify failure, unowned changed path, early assurance,
-missing fixture identity, modified protected baseline, scoring/eligibility
+missing fixture identity, unauthorized protected-baseline drift, any protected
+persistence change after `2f445f9`, duplicated proof, scoring/eligibility
 leakage, or independent `CHANGES_REQUIRED`.
 
 ---
@@ -1789,9 +1900,11 @@ leakage, or independent `CHANGES_REQUIRED`.
 - Generate only: `docs/classification/manifest.json`
 - Generate only: `docs/classification/index.md`
 
-**Interfaces:** Consumes exact Task 17 candidate CI; produces a four-file
-metadata completion commit, authenticated metadata CI, parity-verified narrow
-style provenance, and the exact four remaining readiness blockers.
+**Interfaces:** Consumes exact Task 17 candidate CI; atomically completes Batch
+3A and the reviewed Batch 2B persistence identity maintenance from the same
+single authenticated proof; produces a four-file metadata completion commit,
+authenticated metadata CI, parity-verified narrow style provenance, and the
+exact four remaining readiness blockers.
 
 - [ ] **Step 1: Push and authenticate the exact implementation candidate**
 
@@ -1862,6 +1975,14 @@ scoring-not-production-verified
 runtime-cutover-incomplete
 ```
 
+The same `record-ci 3A` operation must atomically set
+`persistenceIdentityMaintenance.status` to `complete`, bind its
+`candidateSha` to `implementation_sha`, add exactly
+`batch2b-persistence-identity-maintenance-local-verify`, and set the literal
+remote reference to `batch3a-remote-ci`. It must not add a second remote
+evidence object. Schema and offline checks require the referenced proof's SHA,
+the Batch 3A `implementationSha`, and maintenance `candidateSha` to be equal.
+
 - [ ] **Step 3: Prove exact metadata-only diff and review**
 
 ```bash
@@ -1874,9 +1995,9 @@ git diff --check
 ```
 
 Independent metadata review confirms the exact implementation/run identity,
-four-file diff, unchanged implementation/verification paths, narrow parity
-scope, persistence/scoring assurances, and exact readiness transition. After
-`PASS`:
+four-file diff, atomic maintenance/Batch 3A transition, one authenticated proof,
+unchanged implementation/verification paths, narrow parity scope,
+persistence/scoring assurances, and exact readiness transition. After `PASS`:
 
 ```bash
 git add docs/classification/index.md docs/classification/manifest.json \
@@ -1912,10 +2033,15 @@ fixture identities, 18/54/270/378 counts, test counts, full verify, public
 exports, final assurances/readiness, clean state, and confirmation that Batch 3B
 and 3C did not start.
 
-**Stop conditions:** Mismatched or failed CI, non-metadata completion change,
-protected baseline drift, assurance/readiness overclaim, implementation path
-change after candidate, dirty/upstream-divergent final state, or unreviewed
-metadata.
+For the persistence identity maintenance, report the immutable payload SHA and
+parent, accepted and maintained manifest/extractor hashes, unchanged cases
+hash, Task 17 candidate SHA used as `candidateSha`, the single shared Batch 3A
+remote run ID, and confirmation that no duplicate maintenance proof exists.
+
+**Stop conditions:** Mismatched or failed CI, partial or duplicated joint
+closure, non-metadata completion change, protected baseline drift,
+assurance/readiness overclaim, implementation path change after candidate,
+dirty/upstream-divergent final state, or unreviewed metadata.
 
 ---
 
@@ -1928,7 +2054,8 @@ specification, not tracked progress; record task state under ignored
 checkpoint.
 
 Plan approval authorizes only the ordered actions and pushes explicitly named
-above. It does not authorize allowlist expansion, protected-path maintenance,
-Batch 3B scoring, Batch 3C eligibility, adapters, or product cutover. Stop at
-the first conflict and report the plan clause, code evidence, options, and
-recommended resolution before editing outside scope.
+above. It authorizes formal attribution of the immutable Task 16A payload but
+no new protected-path change, allowlist expansion, Batch 3B scoring, Batch 3C
+eligibility, adapter, or product cutover. Stop at the first conflict and report
+the plan clause, code evidence, options, and recommended resolution before
+editing outside scope.
