@@ -17,8 +17,8 @@ import {
 } from './ledger-check.js'
 import {
   migrationLedgerSchema,
-  pendingBatch3APlanningBaseline,
   persistenceFixtureManifestPath,
+  styleFixtureManifestPath,
 } from './ledger-schema.js'
 import { recordSuccessfulCiFile } from './record-ci.js'
 
@@ -175,6 +175,17 @@ function readBatch2BIdentities() {
   if (typeof classificationFixtureManifestHash !== 'string') {
     throw new Error('classification manifest is missing persistence fixture identity')
   }
+  const fixtureManifest = JSON.parse(readFileSync(
+    resolve(repoRoot, persistenceFixtureManifestPath),
+    'utf8',
+  )) as {
+    casesHash?: unknown
+    extractor?: { hash?: unknown }
+  }
+  if (typeof fixtureManifest.casesHash !== 'string'
+    || typeof fixtureManifest.extractor?.hash !== 'string') {
+    throw new Error('persistence fixture manifest is missing identity fields')
+  }
 
   return {
     persistenceFixtureManifestHash: sha256File(resolve(
@@ -182,6 +193,26 @@ function readBatch2BIdentities() {
       persistenceFixtureManifestPath,
     )),
     classificationPersistenceFixtureManifestHash: classificationFixtureManifestHash,
+    persistenceFixtureCasesHash: fixtureManifest.casesHash,
+    persistenceFixtureExtractorHash: fixtureManifest.extractor.hash,
+  }
+}
+
+function readBatch3AIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    provenance?: { styles?: { fixtureManifestHash?: unknown } }
+  }
+  const classificationStyleFixtureManifestHash =
+    manifest.provenance?.styles?.fixtureManifestHash
+  if (typeof classificationStyleFixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing style fixture identity')
+  }
+  return {
+    styleFixtureManifestHash: sha256File(resolve(repoRoot, styleFixtureManifestPath)),
+    classificationStyleFixtureManifestHash,
   }
 }
 
@@ -314,11 +345,6 @@ async function run() {
   const input = JSON.parse(readFileSync(sourceFile, 'utf8')) as unknown
   const repoFiles = repositoryFiles()
   const existingFiles = new Set([...repoFiles].filter(isSafeRepositoryFile))
-  const repositoryFileHashes = new Map(
-    pendingBatch3APlanningBaseline
-      .filter(({ path }) => existingFiles.has(path))
-      .map(({ path }) => [path, sha256File(resolve(repoRoot, path))]),
-  )
   if (mode === '--write') {
     assertRegularFileOrMissing(outputFile, 'ledger Markdown output')
     repoFiles.add('docs/migration/ledger.md')
@@ -335,7 +361,6 @@ async function run() {
     repoFiles,
     existingFiles,
     repoDirectories,
-    repositoryFileHashes,
     currentMarkdown,
   })
   let result = baseResult
@@ -343,6 +368,7 @@ async function run() {
     const parsedLedger = migrationLedgerSchema.parse(input)
     const batch2AEntry = parsedLedger.entries.find(({ batch }) => batch === '2A')
     const batch2BEntry = parsedLedger.entries.find(({ batch }) => batch === '2B')
+    const batch3AEntry = parsedLedger.entries.find(({ batch }) => batch === '3A')
     const batch2AIdentities = batch2AEntry
       ? readBatch2AIdentities(batch2AEntry.maintenance !== undefined)
       : {
@@ -361,7 +387,6 @@ async function run() {
       existingFiles,
       repoDirectories,
       currentMarkdown,
-      repositoryFileHashes,
       currentHeadSha,
       isCommitAncestor,
       directParentsOf,
@@ -372,6 +397,7 @@ async function run() {
       ),
       ...batch2AIdentities,
       ...(batch2BEntry ? readBatch2BIdentities() : {}),
+      ...(batch3AEntry ? readBatch3AIdentities() : {}),
     })
   }
   if (!result.ok || result.markdown === undefined) {

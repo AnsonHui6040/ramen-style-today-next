@@ -34,6 +34,94 @@ const workflowApiUrl = 'https://api.github.com/repos/AnsonHui6040/ramen-style-to
 const runUrl = 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123'
 const historicalBatch2AImplementationSha =
   'ecf9f5b4791862471d0898da7283ba4a40d3fbf9'
+const maintainedPersistenceManifestHash =
+  '71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd'
+const styleFixtureManifestHash =
+  'fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b'
+const batch3AImplementationPaths = [
+  'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
+  'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
+  'packages/classification-core/package.json',
+  'packages/classification-core/src/compiler/compile.ts',
+  'packages/classification-core/src/compiler/compile.test.ts',
+  'packages/classification-core/src/compiler/collector.ts',
+  'packages/classification-core/src/compiler/collector.test.ts',
+  'packages/classification-core/src/compiler/index.ts',
+  'packages/classification-core/src/compiler/parse.ts',
+  'packages/classification-core/src/compiler/parse.test.ts',
+  'packages/classification-core/src/compiler/source-schema.ts',
+  'packages/classification-core/src/compiler/styles/**',
+  'packages/classification-core/src/contracts/diagnostic-codes.ts',
+  'packages/classification-core/src/contracts/diagnostic.ts',
+  'packages/classification-core/src/contracts/diagnostic.test.ts',
+  'packages/classification-core/src/contracts/model.ts',
+  'packages/classification-core/src/contracts/provenance.ts',
+  'packages/classification-core/src/contracts/style-model.ts',
+  'packages/classification-core/src/definitions/classification.ts',
+  'packages/classification-core/src/definitions/styles/**',
+  'packages/classification-core/src/definitions/synthetic.ts',
+  'packages/classification-core/src/generated/style-model.ts',
+  'packages/classification-core/src/index.ts',
+  'packages/classification-core/src/index.test.ts',
+  'packages/classification-core/src/style-model.ts',
+  'tools/parity/styles/**',
+  'tools/parity/fixtures/styles/**',
+  'tools/styles/**',
+] as const
+const batch3AVerificationPaths = [
+  'package.json',
+  'tools/acceptance/**',
+  'tools/documentation/**',
+  'tools/migration/**',
+  'tools/validation/check-runtime-imports.ts',
+  'tools/validation/check-runtime-imports.test.ts',
+  'tools/validation/validate-classification.ts',
+] as const
+const batch3AAcceptanceMetadataPaths = [
+  'docs/classification/index.md',
+  'docs/classification/manifest.json',
+  'docs/migration/ledger.json',
+  'docs/migration/ledger.md',
+] as const
+
+function persistenceIdentityMaintenance() {
+  return {
+    status: 'in-progress',
+    changeSha: '2f445f99de924f5ba428967ff68869d4d46b593f',
+    changeParentSha: '1adc6b54decc08e11bdc03f9665a8f82033fb126',
+    paths: ['tools/parity/fixtures/persistence/legacy-unversioned/manifest.json'],
+    acceptedFixtureManifestHash:
+      '6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226',
+    maintainedFixtureManifestHash: maintainedPersistenceManifestHash,
+    casesHash: 'c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89',
+    acceptedExtractorHash:
+      '4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d',
+    maintainedExtractorHash:
+      '650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706',
+    verification: [],
+  }
+}
+
+function batch3AEntry() {
+  return {
+    batch: '3A',
+    status: 'in-progress',
+    implementationPaths: [...batch3AImplementationPaths],
+    verificationPaths: [...batch3AVerificationPaths],
+    acceptanceMetadataPaths: [...batch3AAcceptanceMetadataPaths],
+    fixtureManifestHash: styleFixtureManifestHash,
+    legacySources: ['src/data/styles.json'],
+    ownedScopes: [],
+    newOwners: [
+      'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
+      'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
+      'packages/classification-core/src/style-model.ts',
+    ],
+    transformation: 'Canonical legacy style definitions compiled to inert runtime data.',
+    behavior: 'no-production-runtime-change',
+    verification: [],
+  }
+}
 
 function acceptedBatch2BBoundary() {
   return {
@@ -51,11 +139,14 @@ function acceptedBatch2BBoundary() {
   }
 }
 
-function acceptedBatch2BEntry(boundaryMaintenance: Record<string, unknown> = {
-  status: 'in-progress',
-  paths: [...batch2BBoundaryMaintenancePaths],
-  verification: [],
-}) {
+function acceptedBatch2BEntry(
+  boundaryMaintenance: Record<string, unknown> = {
+    status: 'in-progress',
+    paths: [...batch2BBoundaryMaintenancePaths],
+    verification: [],
+  },
+  overrides: Record<string, unknown> = {},
+) {
   return {
     batch: '2B',
     status: 'complete',
@@ -87,6 +178,7 @@ function acceptedBatch2BEntry(boundaryMaintenance: Record<string, unknown> = {
         runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411281929',
       },
     ],
+    ...overrides,
   }
 }
 
@@ -515,6 +607,124 @@ test('Batch 2B boundary maintenance rejects recording unless the nested target i
       repoRoot,
       sourceFile,
     })).rejects.toThrow('Batch 2B boundary maintenance is not in progress')
+
+    expect(readFileSync(sourceFile, 'utf8')).toBe(before)
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
+test('Batch 3A recording atomically completes style acceptance and the single-proof persistence identity closure', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-record-3a-'))
+  try {
+    const sourceFile = join(repoRoot, 'docs/migration/ledger.json')
+    mkdirSync(dirname(sourceFile), { recursive: true })
+    const input = {
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: 'b'.repeat(40),
+      },
+      entries: [
+        acceptedBatch2BEntry(undefined, {
+          fixtureManifestHash: maintainedPersistenceManifestHash,
+          persistenceIdentityMaintenance: persistenceIdentityMaintenance(),
+        }),
+        batch3AEntry(),
+      ],
+    }
+    writeFileSync(sourceFile, `${JSON.stringify(input, null, 2)}\n`)
+    const requestedUrls: string[] = []
+
+    await recordSuccessfulCiFile({
+      batch: '3A',
+      expectedCandidateSha: candidateSha,
+      fetchImplementation: authenticatedFetch(requestedUrls),
+      githubToken: 'github-token',
+      proofInput: {
+        schemaVersion: 1,
+        sha: candidateSha,
+        runId: 123,
+        runUrl,
+      },
+      repoRoot,
+      sourceFile,
+    })
+
+    const updated = migrationLedgerSchema.parse(JSON.parse(
+      readFileSync(sourceFile, 'utf8'),
+    ) as unknown)
+    const batch2B = updated.entries.find(({ batch }) => batch === '2B')!
+    const batch3A = updated.entries.find(({ batch }) => batch === '3A')!
+    expect(batch3A).toMatchObject({
+      status: 'complete',
+      implementationSha: candidateSha,
+      fixtureManifestHash: styleFixtureManifestHash,
+    })
+    expect(batch3A.verification.map(({ gate }) => gate)).toEqual([
+      'batch3a-local-verify',
+      'batch3a-remote-ci',
+    ])
+    expect(batch3A.verification[1]).toMatchObject({
+      commitSha: candidateSha,
+      runUrl,
+    })
+    expect(batch2B.persistenceIdentityMaintenance).toMatchObject({
+      status: 'complete',
+      candidateSha,
+      remoteEvidenceGate: 'batch3a-remote-ci',
+    })
+    expect(batch2B.persistenceIdentityMaintenance?.verification.map(({ gate }) => gate))
+      .toEqual(['batch2b-persistence-identity-maintenance-local-verify'])
+
+    const candidateRemoteEvidence = updated.entries.flatMap((entry) => (
+      entry.verification.filter((item) => (
+        item.gate.endsWith('-remote-ci') && item.commitSha === candidateSha
+      ))
+    ))
+    expect(candidateRemoteEvidence).toHaveLength(1)
+    expect(requestedUrls).toEqual([runApiUrl, workflowApiUrl])
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true })
+  }
+})
+
+test('rejects a separate persistence identity recording target', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-ledger-record-identity-target-'))
+  try {
+    const sourceFile = join(repoRoot, 'docs/migration/ledger.json')
+    mkdirSync(dirname(sourceFile), { recursive: true })
+    const input = {
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: 'b'.repeat(40),
+      },
+      entries: [
+        acceptedBatch2BEntry(undefined, {
+          fixtureManifestHash: maintainedPersistenceManifestHash,
+          persistenceIdentityMaintenance: persistenceIdentityMaintenance(),
+        }),
+        batch3AEntry(),
+      ],
+    }
+    const before = `${JSON.stringify(input, null, 2)}\n`
+    writeFileSync(sourceFile, before)
+
+    await expect(recordSuccessfulCiFile({
+      batch: '2B-persistence-identity-maintenance',
+      expectedCandidateSha: candidateSha,
+      fetchImplementation: authenticatedFetch([]),
+      githubToken: 'github-token',
+      proofInput: {
+        schemaVersion: 1,
+        sha: candidateSha,
+        runId: 123,
+        runUrl,
+      },
+      repoRoot,
+      sourceFile,
+    })).rejects.toThrow('Unknown ledger batch 2B-persistence-identity-maintenance')
 
     expect(readFileSync(sourceFile, 'utf8')).toBe(before)
   } finally {

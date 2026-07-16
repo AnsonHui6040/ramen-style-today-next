@@ -132,6 +132,60 @@ export function recordSuccessfulCi(
       } : entry),
     })
   }
+  if (batch === '3A') {
+    const target = ledger.entries.find((entry) => entry.batch === '3A')
+    if (!target) throw new Error('Unknown ledger batch 3A')
+    if (target.status !== 'in-progress') throw new Error('Batch 3A is not in progress')
+    const batch2B = ledger.entries.find((entry) => entry.batch === '2B')
+    if (!batch2B?.persistenceIdentityMaintenance) {
+      throw new Error('Batch 3A requires Batch 2B persistence identity maintenance')
+    }
+    if (batch2B.persistenceIdentityMaintenance.status !== 'in-progress') {
+      throw new Error('Batch 2B persistence identity maintenance is not in progress')
+    }
+    return migrationLedgerSchema.parse({
+      ...ledger,
+      entries: ledger.entries.map((entry) => {
+        if (entry.batch === '2B') return {
+          ...entry,
+          persistenceIdentityMaintenance: {
+            ...entry.persistenceIdentityMaintenance,
+            status: 'complete',
+            candidateSha: verifiedRun.sha,
+            remoteEvidenceGate: 'batch3a-remote-ci',
+            verification: [{
+              gate: 'batch2b-persistence-identity-maintenance-local-verify',
+              command: 'npm run verify',
+              outcome: 'passed',
+              evidence: 'the reviewed persistence identity payload passed the candidate gates',
+            }],
+          },
+        }
+        if (entry.batch === '3A') return {
+          ...entry,
+          status: 'complete',
+          implementationSha: verifiedRun.sha,
+          verification: [
+            {
+              gate: 'batch3a-local-verify',
+              command: 'npm run verify',
+              outcome: 'passed',
+              evidence: 'all Batch 3A local candidate gates passed',
+            },
+            {
+              gate: 'batch3a-remote-ci',
+              command: 'GitHub Actions CI / verify',
+              outcome: 'passed',
+              evidence: 'the exact Batch 3A candidate passed canonical CI',
+              commitSha: verifiedRun.sha,
+              runUrl: verifiedRun.runUrl,
+            },
+          ],
+        }
+        return entry
+      }),
+    })
+  }
   const target = ledger.entries.find((entry) => entry.batch === batch)
   if (!target) throw new Error(`Unknown ledger batch ${batch}`)
   if (target.status !== 'in-review') throw new Error(`Batch ${batch} is not in review`)

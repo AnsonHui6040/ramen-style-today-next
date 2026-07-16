@@ -38,7 +38,7 @@ export function renderLedger(ledger: MigrationLedger) {
         '',
       ] : []),
       ...(entry.fixtureManifestHash ? [
-        `- Persistence fixture manifest hash: \`${entry.fixtureManifestHash}\``,
+        `- ${entry.batch === '3A' ? 'Style' : 'Persistence'} fixture manifest hash: \`${entry.fixtureManifestHash}\``,
         '',
       ] : []),
       ...(entry.implementationPaths?.length ? [
@@ -101,6 +101,37 @@ export function renderLedger(ledger: MigrationLedger) {
                 `- \`${item.gate}\`: \`${item.command}\` — ${item.outcome}; ${item.evidence}`,
                 ...(item.commitSha ? [`  - Commit: \`${item.commitSha}\``] : []),
                 ...(item.runUrl ? [`  - Run: ${item.runUrl}`] : []),
+              ])
+          : ['- Pending.']),
+        '',
+      ] : []),
+      ...(entry.persistenceIdentityMaintenance ? [
+        '### Persistence identity maintenance',
+        '',
+        `- Status: \`${entry.persistenceIdentityMaintenance.status}\``,
+        `- Change SHA: \`${entry.persistenceIdentityMaintenance.changeSha}\``,
+        `- Change parent SHA: \`${entry.persistenceIdentityMaintenance.changeParentSha}\``,
+        `- Accepted fixture manifest hash: \`${entry.persistenceIdentityMaintenance.acceptedFixtureManifestHash}\``,
+        `- Maintained fixture manifest hash: \`${entry.persistenceIdentityMaintenance.maintainedFixtureManifestHash}\``,
+        `- Cases hash: \`${entry.persistenceIdentityMaintenance.casesHash}\``,
+        `- Accepted extractor hash: \`${entry.persistenceIdentityMaintenance.acceptedExtractorHash}\``,
+        `- Maintained extractor hash: \`${entry.persistenceIdentityMaintenance.maintainedExtractorHash}\``,
+        ...(entry.persistenceIdentityMaintenance.status === 'complete' ? [
+          `- Candidate SHA: \`${entry.persistenceIdentityMaintenance.candidateSha}\``,
+          `- Remote evidence gate: \`${entry.persistenceIdentityMaintenance.remoteEvidenceGate}\``,
+        ] : []),
+        '',
+        '#### Persistence identity maintenance paths',
+        '',
+        ...entry.persistenceIdentityMaintenance.paths.map((path) => `- \`${path}\``),
+        '',
+        '#### Persistence identity maintenance verification',
+        '',
+        ...(entry.persistenceIdentityMaintenance.verification.length
+          ? [...entry.persistenceIdentityMaintenance.verification]
+              .sort((left, right) => compareCodePoints(left.gate, right.gate))
+              .flatMap((item) => [
+                `- \`${item.gate}\`: \`${item.command}\` — ${item.outcome}; ${item.evidence}`,
               ])
           : ['- Pending.']),
         '',

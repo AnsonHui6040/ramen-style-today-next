@@ -90,6 +90,181 @@ const pendingBatch3APlanningFiles = [
   },
 ] as const
 
+const batch3AImplementationPaths = [
+  'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
+  'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
+  'packages/classification-core/package.json',
+  'packages/classification-core/src/compiler/compile.ts',
+  'packages/classification-core/src/compiler/compile.test.ts',
+  'packages/classification-core/src/compiler/collector.ts',
+  'packages/classification-core/src/compiler/collector.test.ts',
+  'packages/classification-core/src/compiler/index.ts',
+  'packages/classification-core/src/compiler/parse.ts',
+  'packages/classification-core/src/compiler/parse.test.ts',
+  'packages/classification-core/src/compiler/source-schema.ts',
+  'packages/classification-core/src/compiler/styles/**',
+  'packages/classification-core/src/contracts/diagnostic-codes.ts',
+  'packages/classification-core/src/contracts/diagnostic.ts',
+  'packages/classification-core/src/contracts/diagnostic.test.ts',
+  'packages/classification-core/src/contracts/model.ts',
+  'packages/classification-core/src/contracts/provenance.ts',
+  'packages/classification-core/src/contracts/style-model.ts',
+  'packages/classification-core/src/definitions/classification.ts',
+  'packages/classification-core/src/definitions/styles/**',
+  'packages/classification-core/src/definitions/synthetic.ts',
+  'packages/classification-core/src/generated/style-model.ts',
+  'packages/classification-core/src/index.ts',
+  'packages/classification-core/src/index.test.ts',
+  'packages/classification-core/src/style-model.ts',
+  'tools/parity/styles/**',
+  'tools/parity/fixtures/styles/**',
+  'tools/styles/**',
+] as const
+
+const batch3AVerificationPaths = [
+  'package.json',
+  'tools/acceptance/**',
+  'tools/documentation/**',
+  'tools/migration/**',
+  'tools/validation/check-runtime-imports.ts',
+  'tools/validation/check-runtime-imports.test.ts',
+  'tools/validation/validate-classification.ts',
+] as const
+
+const batch3AAcceptanceMetadataPaths = [
+  'docs/classification/index.md',
+  'docs/classification/manifest.json',
+  'docs/migration/ledger.json',
+  'docs/migration/ledger.md',
+] as const
+
+const styleFixtureManifestHash =
+  'fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b'
+const persistenceIdentityChangeSha =
+  '2f445f99de924f5ba428967ff68869d4d46b593f'
+const persistenceIdentityChangeParentSha =
+  '1adc6b54decc08e11bdc03f9665a8f82033fb126'
+const persistenceIdentityPath =
+  'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json'
+const acceptedPersistenceManifestHash =
+  '6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226'
+const maintainedPersistenceManifestHash =
+  '71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd'
+const persistenceCasesHash =
+  'c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89'
+const acceptedPersistenceExtractorHash =
+  '4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d'
+const maintainedPersistenceExtractorHash =
+  '650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706'
+
+function persistenceIdentityMaintenance(overrides: Record<string, unknown> = {}) {
+  return {
+    status: 'in-progress',
+    changeSha: persistenceIdentityChangeSha,
+    changeParentSha: persistenceIdentityChangeParentSha,
+    paths: [persistenceIdentityPath],
+    acceptedFixtureManifestHash: acceptedPersistenceManifestHash,
+    maintainedFixtureManifestHash: maintainedPersistenceManifestHash,
+    casesHash: persistenceCasesHash,
+    acceptedExtractorHash: acceptedPersistenceExtractorHash,
+    maintainedExtractorHash: maintainedPersistenceExtractorHash,
+    verification: [],
+    ...overrides,
+  }
+}
+
+function completePersistenceIdentityMaintenance(
+  overrides: Record<string, unknown> = {},
+) {
+  return persistenceIdentityMaintenance({
+    status: 'complete',
+    candidateSha,
+    remoteEvidenceGate: 'batch3a-remote-ci',
+    verification: [{
+      gate: 'batch2b-persistence-identity-maintenance-local-verify',
+      command: 'npm run verify',
+      outcome: 'passed',
+      evidence: 'the reviewed persistence identity payload passed the candidate gates',
+    }],
+    ...overrides,
+  })
+}
+
+function batch3AEntry(overrides: Record<string, unknown> = {}) {
+  return {
+    batch: '3A',
+    status: 'in-progress',
+    implementationPaths: [...batch3AImplementationPaths],
+    verificationPaths: [...batch3AVerificationPaths],
+    acceptanceMetadataPaths: [...batch3AAcceptanceMetadataPaths],
+    fixtureManifestHash: styleFixtureManifestHash,
+    legacySources: [
+      'src/data/styles.json',
+      'src/lib/scoring/scorer.ts',
+      'src/lib/scoring/explainer.ts',
+    ],
+    ownedScopes: [],
+    newOwners: [
+      pendingBatch3APlanningFiles[0].path,
+      pendingBatch3APlanningFiles[1].path,
+      'packages/classification-core/src/style-model.ts',
+    ],
+    transformation: 'Canonical legacy style definitions compiled to inert runtime data.',
+    behavior: 'no-production-runtime-change',
+    verification: [],
+    ...overrides,
+  }
+}
+
+function completeBatch3A(overrides: Record<string, unknown> = {}) {
+  return batch3AEntry({
+    status: 'complete',
+    implementationSha: candidateSha,
+    verification: [
+      {
+        gate: 'batch3a-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'all Batch 3A local candidate gates passed',
+      },
+      {
+        gate: 'batch3a-remote-ci',
+        command: 'GitHub Actions CI / verify',
+        outcome: 'passed',
+        evidence: 'the exact Batch 3A candidate passed canonical CI',
+        commitSha: candidateSha,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+    ],
+    ...overrides,
+  })
+}
+
+function batch3ALedger(options: {
+  batch2BOverrides?: Record<string, unknown>
+  batch3A?: Record<string, unknown>
+} = {}) {
+  const styleEntry = options.batch3A ?? batch3AEntry()
+  const complete = styleEntry.status === 'complete'
+  return {
+    schemaVersion: 1,
+    baseline: {
+      repository: 'AnsonHui6040/ramen-style-today',
+      commit: 'b'.repeat(40),
+    },
+    entries: [
+      completeBatch2B({
+        fixtureManifestHash: maintainedPersistenceManifestHash,
+        persistenceIdentityMaintenance: complete
+          ? completePersistenceIdentityMaintenance()
+          : persistenceIdentityMaintenance(),
+        ...options.batch2BOverrides,
+      }),
+      styleEntry,
+    ],
+  }
+}
+
 function acceptanceBoundary(overrides: Record<string, unknown> = {}) {
   return {
     implementationSha: acceptedBatch2BImplementationSha,
@@ -917,102 +1092,362 @@ describe('migration ledger repository checks', () => {
 
 })
 
-describe('pending Batch 3A planning baseline', () => {
-  function planningCheck(options: {
-    input?: unknown
-    additionalFiles?: readonly string[]
-    existingFiles?: ReadonlySet<string>
-    hashes?: ReadonlyMap<string, string>
-  } = {}) {
-    const planningPaths = pendingBatch3APlanningFiles.map(({ path }) => path)
-    const repoFiles = new Set([
-      ...declaredFiles,
-      ...planningPaths,
-      ...(options.additionalFiles ?? []),
-    ])
-    return checkLedger({
-      input: options.input ?? ledger,
-      repoFiles,
-      existingFiles: options.existingFiles ?? repoFiles,
-      repoDirectories: parentDirectories(repoFiles),
-      repositoryFileHashes: options.hashes ?? new Map(
-        pendingBatch3APlanningFiles.map(({ path, sha256 }) => [path, sha256]),
-      ),
-      currentMarkdown: renderLedger(ledger),
-    })
-  }
+describe('Batch 3A ownership, completion, and persistence identity closure', () => {
+  test('closes the approved batch domain while accepting the exact in-progress shape', () => {
+    expect(migrationLedgerSchema.safeParse(batch3ALedger()).success).toBe(true)
 
-  test('suppresses only ownership diagnostics for the exact two approved regular files', () => {
-    const result = planningCheck()
-
-    expect(result.errors).toEqual([])
-    expect(pendingBatch3APlanningFiles.every(({ path }) => (
-      ledger.entries.every(({ newOwners }) => !newOwners.includes(path))
-    ))).toBe(true)
+    const unknownBatch = {
+      schemaVersion: 1,
+      baseline: {
+        repository: 'AnsonHui6040/ramen-style-today',
+        commit: 'b'.repeat(40),
+      },
+      entries: [{
+        batch: '3B',
+        status: 'in-progress',
+        legacySources: [],
+        ownedScopes: [],
+        newOwners: ['future-owner.ts'],
+        transformation: 'Unapproved future batch.',
+        behavior: 'no-production-runtime-change',
+        verification: [],
+      }],
+    }
+    expect(migrationLedgerSchema.safeParse(unknownBatch).success).toBe(false)
   })
 
-  test('rejects content drift and does not partially activate the exception', () => {
-    const hashes = new Map<string, string>(
-      pendingBatch3APlanningFiles.map(({ path, sha256 }) => [path, sha256]),
-    )
-    hashes.set(pendingBatch3APlanningFiles[0].path, '0'.repeat(64))
+  test('requires exact ordered disjoint path groups and the style fixture identity', () => {
+    const cases = [
+      { implementationPaths: batch3AImplementationPaths.slice(1) },
+      { implementationPaths: [...batch3AImplementationPaths, 'extra.ts'] },
+      { implementationPaths: [...batch3AImplementationPaths].reverse() },
+      {
+        implementationPaths: [
+          ...batch3AImplementationPaths,
+          batch3AImplementationPaths[0],
+        ],
+      },
+      { verificationPaths: batch3AVerificationPaths.slice(1) },
+      { verificationPaths: [...batch3AVerificationPaths, 'extra.ts'] },
+      { acceptanceMetadataPaths: batch3AAcceptanceMetadataPaths.slice(1) },
+      { acceptanceMetadataPaths: [...batch3AAcceptanceMetadataPaths, 'extra.md'] },
+      {
+        verificationPaths: [
+          ...batch3AVerificationPaths.slice(0, -1),
+          batch3AImplementationPaths[0],
+        ],
+      },
+      { fixtureManifestHash: '0'.repeat(64) },
+    ]
 
-    const result = planningCheck({ hashes })
-
-    for (const { path } of pendingBatch3APlanningFiles) {
-      expect(result.errors).toContain(
-        `Repository file has no migration-ledger owner: ${path}`,
-      )
+    for (const overrides of cases) {
+      expect(migrationLedgerSchema.safeParse(batch3ALedger({
+        batch3A: batch3AEntry(overrides),
+      })).success).toBe(false)
     }
   })
 
-  test.each([
-    'docs/superpowers/plans/third-batch-3a-file.md',
-    'docs/superpowers/plans/*.md',
-    'docs/superpowers/plans',
-  ])('does not cover an extra, wildcard, or directory path: %s', (extraPath) => {
-    const result = planningCheck({ additionalFiles: [extraPath] })
+  test('requires both exact planning owners and no temporary exception source', () => {
+    for (const missingPath of pendingBatch3APlanningFiles.map(({ path }) => path)) {
+      const newOwners = batch3AEntry().newOwners.filter((owner) => owner !== missingPath)
+      expect(migrationLedgerSchema.safeParse(batch3ALedger({
+        batch3A: batch3AEntry({ newOwners }),
+      })).success).toBe(false)
+    }
 
-    expect(result.errors).toContain(
-      `Repository file has no migration-ledger owner: ${extraPath}`,
+    expect(readFileSync(new URL('./ledger-schema.ts', import.meta.url), 'utf8'))
+      .not.toContain('pendingBatch3APlanningBaseline')
+    expect(readFileSync(new URL('./ledger-check.ts', import.meta.url), 'utf8'))
+      .not.toContain('pendingBatch3APlanningBaseline')
+    expect(readFileSync(new URL('./check-ledger.ts', import.meta.url), 'utf8'))
+      .not.toContain('pendingBatch3APlanningBaseline')
+  })
+
+  test('forbids implementation SHA or evidence while Batch 3A is in progress', () => {
+    for (const overrides of [
+      { implementationSha: candidateSha },
+      {
+        verification: [{
+          gate: 'batch3a-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'premature evidence',
+        }],
+      },
+    ]) {
+      expect(migrationLedgerSchema.safeParse(batch3ALedger({
+        batch3A: batch3AEntry(overrides),
+      })).success).toBe(false)
+    }
+  })
+
+  test('requires exact complete evidence and the atomic maintenance completion', () => {
+    expect(migrationLedgerSchema.safeParse(batch3ALedger({
+      batch3A: completeBatch3A(),
+    })).success).toBe(true)
+
+    const completeEvidence = completeBatch3A().verification as Array<{
+      gate: string
+      [key: string]: unknown
+    }>
+    const invalidStyleEntries = [
+      completeBatch3A({ implementationSha: undefined }),
+      completeBatch3A({ verification: completeEvidence.slice(0, 1) }),
+      completeBatch3A({ verification: completeEvidence.slice(1) }),
+      completeBatch3A({ verification: [...completeEvidence, completeEvidence[0]] }),
+      completeBatch3A({
+        verification: completeEvidence.map((item) => (
+          item.gate === 'batch3a-remote-ci'
+            ? { ...item, commitSha: 'f'.repeat(40) }
+            : item
+        )),
+      }),
+    ]
+    for (const entry of invalidStyleEntries) {
+      expect(migrationLedgerSchema.safeParse(batch3ALedger({ batch3A: entry })).success)
+        .toBe(false)
+    }
+
+    for (const maintenance of [
+      persistenceIdentityMaintenance(),
+      completePersistenceIdentityMaintenance({ candidateSha: 'f'.repeat(40) }),
+      completePersistenceIdentityMaintenance({ remoteEvidenceGate: 'batch2b-remote-ci' }),
+      completePersistenceIdentityMaintenance({ verification: [] }),
+    ]) {
+      expect(migrationLedgerSchema.safeParse(batch3ALedger({
+        batch2BOverrides: { persistenceIdentityMaintenance: maintenance },
+        batch3A: completeBatch3A(),
+      })).success).toBe(false)
+    }
+  })
+
+  test('binds the exact reviewed persistence identity payload', () => {
+    const fields: Array<[string, unknown]> = [
+      ['changeSha', 'f'.repeat(40)],
+      ['changeParentSha', 'e'.repeat(40)],
+      ['paths', [persistenceIdentityPath, 'extra.json']],
+      ['acceptedFixtureManifestHash', '0'.repeat(64)],
+      ['maintainedFixtureManifestHash', '1'.repeat(64)],
+      ['casesHash', '2'.repeat(64)],
+      ['acceptedExtractorHash', '3'.repeat(64)],
+      ['maintainedExtractorHash', '4'.repeat(64)],
+    ]
+    for (const [field, value] of fields) {
+      expect(migrationLedgerSchema.safeParse(batch3ALedger({
+        batch2BOverrides: {
+          persistenceIdentityMaintenance: persistenceIdentityMaintenance({
+            [field]: value,
+          }),
+        },
+      })).success).toBe(false)
+    }
+
+    expect(migrationLedgerSchema.safeParse(batch3ALedger({
+      batch2BOverrides: { fixtureManifestHash: acceptedPersistenceManifestHash },
+    })).success).toBe(false)
+    expect(migrationLedgerSchema.safeParse(batch3ALedger({
+      batch2BOverrides: { persistenceIdentityMaintenance: undefined },
+    })).success).toBe(false)
+  })
+
+  function jointRepositoryState(overrides: Record<string, unknown> = {}) {
+    const owners = new Set([
+      'packages/classification-core/src/persistence/contracts.ts',
+      ...batch3AEntry().newOwners,
+    ])
+    const currentHeadSha = 'c'.repeat(40)
+    return {
+      repoFiles: owners,
+      existingFiles: owners,
+      repoDirectories: parentDirectories(owners),
+      currentMarkdown: undefined,
+      currentHeadSha,
+      isCommitAncestor: async () => true,
+      directParentsOf: async (sha: string) => (
+        sha === persistenceIdentityChangeSha
+          ? [persistenceIdentityChangeParentSha]
+          : [acceptedBatch2BImplementationSha]
+      ),
+      changedPathsBetween: async (ancestorSha: string, targetSha: string) => {
+        if (ancestorSha === acceptedBatch2BImplementationSha
+          && targetSha === acceptedBatch2BMetadataSha) {
+          return [...batch2BAcceptanceMetadataPaths]
+        }
+        if (ancestorSha === acceptedBatch2BMetadataSha) return [persistenceIdentityPath]
+        if (ancestorSha === persistenceIdentityChangeParentSha
+          && targetSha === persistenceIdentityChangeSha) return [persistenceIdentityPath]
+        if (ancestorSha === persistenceIdentityChangeSha) return []
+        if (ancestorSha === candidateSha) return [...batch3AAcceptanceMetadataPaths]
+        return []
+      },
+      questionSemanticHash: '',
+      classificationSemanticHash: '',
+      fixtureManifestHash: '',
+      classificationFixtureManifestHash: '',
+      persistenceFixtureManifestHash: maintainedPersistenceManifestHash,
+      classificationPersistenceFixtureManifestHash: maintainedPersistenceManifestHash,
+      persistenceFixtureCasesHash: persistenceCasesHash,
+      persistenceFixtureExtractorHash: maintainedPersistenceExtractorHash,
+      styleFixtureManifestHash,
+      classificationStyleFixtureManifestHash: styleFixtureManifestHash,
+      ...overrides,
+    }
+  }
+
+  test('proves the payload commit boundary and freezes protected paths afterward', async () => {
+    const input = batch3ALedger()
+    const valid = await checkLedgerOffline(
+      input,
+      jointRepositoryState() as Parameters<typeof checkLedgerOffline>[1],
+    )
+    expect(valid.errors).toEqual([])
+
+    const wrongParent = await checkLedgerOffline(
+      input,
+      jointRepositoryState({
+        directParentsOf: async (sha: string) => (
+          sha === persistenceIdentityChangeSha ? ['f'.repeat(40)] : [acceptedBatch2BImplementationSha]
+        ),
+      }) as Parameters<typeof checkLedgerOffline>[1],
+    )
+    expect(wrongParent.errors).toContain(
+      `Batch 2B persistence identity change SHA ${persistenceIdentityChangeSha} must have exactly one parent ${persistenceIdentityChangeParentSha}`,
+    )
+
+    const laterChange = await checkLedgerOffline(
+      input,
+      jointRepositoryState({
+        changedPathsBetween: async (ancestorSha: string, targetSha: string) => {
+          if (ancestorSha === acceptedBatch2BImplementationSha
+            && targetSha === acceptedBatch2BMetadataSha) {
+            return [...batch2BAcceptanceMetadataPaths]
+          }
+          if (ancestorSha === acceptedBatch2BMetadataSha) return [persistenceIdentityPath]
+          if (ancestorSha === persistenceIdentityChangeParentSha
+            && targetSha === persistenceIdentityChangeSha) return [persistenceIdentityPath]
+          if (ancestorSha === persistenceIdentityChangeSha) return [persistenceIdentityPath]
+          return []
+        },
+      }) as Parameters<typeof checkLedgerOffline>[1],
+    )
+    expect(laterChange.errors).toContain(
+      `Batch 2B protected persistence path changed after identity payload SHA: ${persistenceIdentityPath}`,
     )
   })
 
-  test('rejects a planning symlink or other non-regular file', () => {
-    const planningPaths = pendingBatch3APlanningFiles.map(({ path }) => path)
-    const repoFiles = new Set([...declaredFiles, ...planningPaths])
-    const existingFiles = new Set(repoFiles)
-    existingFiles.delete(planningPaths[0]!)
-
-    const result = planningCheck({ existingFiles })
-
-    expect(result.errors).toContain(
-      `Repository file has no migration-ledger owner: ${planningPaths[0]}`,
+  test('does not reinterpret a later formal batch as the historical Batch 2B maintenance completion', async () => {
+    const historicalMaintenanceSha = 'd'.repeat(40)
+    const input = batch3ALedger({
+      batch2BOverrides: {
+        boundaryMaintenance: boundaryMaintenance({
+          status: 'complete',
+          maintenanceSha: historicalMaintenanceSha,
+          verification: [
+            {
+              gate: 'batch2b-boundary-maintenance-local-verify',
+              command: 'npm run verify',
+              outcome: 'passed',
+              evidence: 'local boundary-maintenance verification passed',
+            },
+            {
+              gate: 'batch2b-boundary-maintenance-remote-ci',
+              command: 'GitHub Actions CI / verify',
+              outcome: 'passed',
+              evidence: 'remote boundary-maintenance verification passed',
+              commitSha: historicalMaintenanceSha,
+              runUrl:
+                'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+            },
+          ],
+        }),
+      },
+    })
+    const result = await checkLedgerOffline(
+      input,
+      jointRepositoryState({
+        changedPathsBetween: async (ancestorSha: string, targetSha: string) => {
+          if (ancestorSha === acceptedBatch2BImplementationSha
+            && targetSha === acceptedBatch2BMetadataSha) {
+            return [...batch2BAcceptanceMetadataPaths]
+          }
+          if (ancestorSha === acceptedBatch2BMetadataSha) return [persistenceIdentityPath]
+          if (ancestorSha === persistenceIdentityChangeParentSha
+            && targetSha === persistenceIdentityChangeSha) return [persistenceIdentityPath]
+          if (ancestorSha === persistenceIdentityChangeSha) return []
+          if (ancestorSha === historicalMaintenanceSha) {
+            return [batch3AImplementationPaths[0]]
+          }
+          return []
+        },
+      }) as Parameters<typeof checkLedgerOffline>[1],
     )
+
+    expect(result.errors).toEqual([])
   })
 
-  test('is invalid as soon as a Batch 3A ledger entry exists', () => {
-    const withBatch3A = structuredClone(ledger)
-    const owner = 'batch-3a-owner.md'
-    withBatch3A.entries.push({
-      batch: '3A',
-      status: 'in-progress',
-      legacySources: [],
-      ownedScopes: [],
-      newOwners: [owner],
-      transformation: 'Batch 3A ownership fixture.',
-      behavior: 'no-production-runtime-change',
-      verification: [],
-    })
+  test('binds current persistence/style fixture bytes and projections', async () => {
+    const input = batch3ALedger()
+    const cases: Array<[Record<string, unknown>, string]> = [
+      [
+        { persistenceFixtureManifestHash: '0'.repeat(64) },
+        'Batch 2B fixture manifest hash is inconsistent with tracked bytes',
+      ],
+      [
+        { persistenceFixtureCasesHash: '0'.repeat(64) },
+        'Batch 2B persistence identity cases hash is inconsistent with tracked manifest',
+      ],
+      [
+        { persistenceFixtureExtractorHash: '0'.repeat(64) },
+        'Batch 2B persistence identity extractor hash is inconsistent with tracked manifest',
+      ],
+      [
+        { styleFixtureManifestHash: '0'.repeat(64) },
+        'Batch 3A fixture manifest hash is inconsistent with tracked bytes',
+      ],
+      [
+        { classificationStyleFixtureManifestHash: '0'.repeat(64) },
+        'classification manifest style fixture manifest hash is inconsistent',
+      ],
+    ]
+    for (const [overrides, expected] of cases) {
+      const result = await checkLedgerOffline(
+        input,
+        jointRepositoryState(overrides) as Parameters<typeof checkLedgerOffline>[1],
+      )
+      expect(result.errors).toContain(expected)
+    }
+  })
 
-    const result = planningCheck({
-      input: withBatch3A,
-      additionalFiles: [owner],
-    })
+  test('freezes implementation and verification paths after the candidate SHA', async () => {
+    const input = batch3ALedger({ batch3A: completeBatch3A() })
+    const valid = await checkLedgerOffline(
+      input,
+      jointRepositoryState() as Parameters<typeof checkLedgerOffline>[1],
+    )
+    expect(valid.errors).toEqual([])
 
-    for (const { path } of pendingBatch3APlanningFiles) {
+    for (const path of [batch3AImplementationPaths[0], batch3AVerificationPaths[0]]) {
+      const result = await checkLedgerOffline(
+        input,
+        jointRepositoryState({
+          changedPathsBetween: async (ancestorSha: string, targetSha: string) => {
+            if (ancestorSha === acceptedBatch2BImplementationSha
+              && targetSha === acceptedBatch2BMetadataSha) {
+              return [...batch2BAcceptanceMetadataPaths]
+            }
+            if (ancestorSha === acceptedBatch2BMetadataSha) return [persistenceIdentityPath]
+            if (ancestorSha === persistenceIdentityChangeParentSha
+              && targetSha === persistenceIdentityChangeSha) return [persistenceIdentityPath]
+            if (ancestorSha === persistenceIdentityChangeSha) return []
+            if (ancestorSha === candidateSha) {
+              return [...batch3AAcceptanceMetadataPaths, path]
+            }
+            return []
+          },
+        }) as Parameters<typeof checkLedgerOffline>[1],
+      )
       expect(result.errors).toContain(
-        `Repository file has no migration-ledger owner: ${path}`,
+        `Batch 3A candidate completion changed a frozen path: ${path}`,
       )
     }
   })

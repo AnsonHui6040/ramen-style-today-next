@@ -79,16 +79,81 @@ export const batch2BBoundaryMaintenancePaths = [
   'tools/acceptance/verify-acceptance.test.ts',
 ] as const
 
-export const pendingBatch3APlanningBaseline = [
-  {
-    path: 'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
-    sha256: 'a09a1abdaf706ddc3af7d0974aba2cd30024ae3cea2e3f2b33a02ecccbfcdc0e',
-  },
-  {
-    path: 'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
-    sha256: '0c2661d617fd5d2831f3812e421a87ebd13453a6e0028b766ed562a17f9dd499',
-  },
+export const batch3AImplementationPaths = [
+  'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
+  'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
+  'packages/classification-core/package.json',
+  'packages/classification-core/src/compiler/compile.ts',
+  'packages/classification-core/src/compiler/compile.test.ts',
+  'packages/classification-core/src/compiler/collector.ts',
+  'packages/classification-core/src/compiler/collector.test.ts',
+  'packages/classification-core/src/compiler/index.ts',
+  'packages/classification-core/src/compiler/parse.ts',
+  'packages/classification-core/src/compiler/parse.test.ts',
+  'packages/classification-core/src/compiler/source-schema.ts',
+  'packages/classification-core/src/compiler/styles/**',
+  'packages/classification-core/src/contracts/diagnostic-codes.ts',
+  'packages/classification-core/src/contracts/diagnostic.ts',
+  'packages/classification-core/src/contracts/diagnostic.test.ts',
+  'packages/classification-core/src/contracts/model.ts',
+  'packages/classification-core/src/contracts/provenance.ts',
+  'packages/classification-core/src/contracts/style-model.ts',
+  'packages/classification-core/src/definitions/classification.ts',
+  'packages/classification-core/src/definitions/styles/**',
+  'packages/classification-core/src/definitions/synthetic.ts',
+  'packages/classification-core/src/generated/style-model.ts',
+  'packages/classification-core/src/index.ts',
+  'packages/classification-core/src/index.test.ts',
+  'packages/classification-core/src/style-model.ts',
+  'tools/parity/styles/**',
+  'tools/parity/fixtures/styles/**',
+  'tools/styles/**',
 ] as const
+
+export const batch3AVerificationPaths = [
+  'package.json',
+  'tools/acceptance/**',
+  'tools/documentation/**',
+  'tools/migration/**',
+  'tools/validation/check-runtime-imports.ts',
+  'tools/validation/check-runtime-imports.test.ts',
+  'tools/validation/validate-classification.ts',
+] as const
+
+export const batch3AAcceptanceMetadataPaths = [
+  'docs/classification/index.md',
+  'docs/classification/manifest.json',
+  'docs/migration/ledger.json',
+  'docs/migration/ledger.md',
+] as const
+
+export const batch3APlanningOwners = [
+  'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
+  'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
+] as const
+
+export const styleFixtureManifestPath =
+  'tools/parity/fixtures/styles/legacy-v1/manifest.json' as const
+export const acceptedStyleFixtureManifestHash =
+  'fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b' as const
+
+export const persistenceIdentityMaintenanceChangeSha =
+  '2f445f99de924f5ba428967ff68869d4d46b593f' as const
+export const persistenceIdentityMaintenanceParentSha =
+  '1adc6b54decc08e11bdc03f9665a8f82033fb126' as const
+export const persistenceIdentityMaintenancePaths = [
+  'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json',
+] as const
+export const acceptedPersistenceFixtureManifestHash =
+  '6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226' as const
+export const maintainedPersistenceFixtureManifestHash =
+  '71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd' as const
+export const persistenceIdentityMaintenanceCasesHash =
+  'c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89' as const
+export const acceptedPersistenceExtractorHash =
+  '4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d' as const
+export const maintainedPersistenceExtractorHash =
+  '650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706' as const
 
 export const persistenceFixtureManifestPath =
   'tools/parity/fixtures/persistence/legacy-unversioned/manifest.json' as const
@@ -220,6 +285,52 @@ const batch2BBoundaryMaintenanceSchema = z.union([
   completeBatch2BBoundaryMaintenanceSchema,
 ])
 
+const persistenceIdentityMaintenanceBase = {
+  changeSha: z.literal(persistenceIdentityMaintenanceChangeSha),
+  changeParentSha: z.literal(persistenceIdentityMaintenanceParentSha),
+  paths: exactPathsSchema(
+    persistenceIdentityMaintenancePaths,
+    'Batch 2B persistence identity maintenance',
+  ),
+  acceptedFixtureManifestHash: z.literal(acceptedPersistenceFixtureManifestHash),
+  maintainedFixtureManifestHash: z.literal(maintainedPersistenceFixtureManifestHash),
+  casesHash: z.literal(persistenceIdentityMaintenanceCasesHash),
+  acceptedExtractorHash: z.literal(acceptedPersistenceExtractorHash),
+  maintainedExtractorHash: z.literal(maintainedPersistenceExtractorHash),
+}
+
+const inProgressPersistenceIdentityMaintenanceSchema = z.strictObject({
+  status: z.literal('in-progress'),
+  ...persistenceIdentityMaintenanceBase,
+  verification: z.array(verificationSchema).length(0),
+})
+
+const completePersistenceIdentityMaintenanceSchema = z.strictObject({
+  status: z.literal('complete'),
+  ...persistenceIdentityMaintenanceBase,
+  candidateSha: fullShaSchema,
+  remoteEvidenceGate: z.literal('batch3a-remote-ci'),
+  verification: z.array(verificationSchema),
+}).superRefine((maintenance, context) => {
+  const evidence = maintenance.verification[0]
+  if (maintenance.verification.length !== 1
+    || evidence?.gate !== 'batch2b-persistence-identity-maintenance-local-verify'
+    || evidence.command !== 'npm run verify'
+    || evidence.commitSha !== undefined
+    || evidence.runUrl !== undefined) {
+    context.addIssue({
+      code: 'custom',
+      path: ['verification'],
+      message: 'complete Batch 2B persistence identity maintenance requires its exact local gate and remote reference',
+    })
+  }
+})
+
+const persistenceIdentityMaintenanceSchema = z.union([
+  inProgressPersistenceIdentityMaintenanceSchema,
+  completePersistenceIdentityMaintenanceSchema,
+])
+
 const maintenancePathsSchema = z.array(repoPathSchema).superRefine((paths, context) => {
   if (JSON.stringify(paths) !== JSON.stringify(batch2AMaintenancePaths)) {
     context.addIssue({
@@ -305,10 +416,14 @@ const completionGatePolicies = new Map<string, ReadonlySet<string>>([
     'batch2b-local-verify',
     'batch2b-remote-ci',
   ])],
+  ['3A', new Set([
+    'batch3a-local-verify',
+    'batch3a-remote-ci',
+  ])],
 ])
 
 const entrySchema = z.strictObject({
-  batch: z.string().min(1),
+  batch: z.enum(['0', '1', '2A', '2B', '3A']),
   status: z.enum(['in-review', 'in-progress', 'complete']),
   foundationCommit: fullShaSchema.optional(),
   implementationSha: fullShaSchema.optional(),
@@ -320,6 +435,7 @@ const entrySchema = z.strictObject({
   acceptanceMetadataPaths: z.array(repoPathSchema).optional(),
   acceptanceBoundary: batch2BAcceptanceBoundarySchema.optional(),
   boundaryMaintenance: batch2BBoundaryMaintenanceSchema.optional(),
+  persistenceIdentityMaintenance: persistenceIdentityMaintenanceSchema.optional(),
   fixtureManifestHash: sha256Schema.optional(),
   legacySources: z.array(z.string().min(1)),
   ownedScopes: z.array(repoPathSchema).default([]),
@@ -413,10 +529,12 @@ const entrySchema = z.strictObject({
       }
     }
   } else {
-    if (entry.batch !== '2B' && entry.implementationSha !== undefined) context.addIssue({
+    if (entry.batch !== '2B'
+      && entry.batch !== '3A'
+      && entry.implementationSha !== undefined) context.addIssue({
       code: 'custom',
       path: ['implementationSha'],
-      message: 'implementationSha is currently reserved for Batch 2A and completed Batch 2B',
+      message: 'implementationSha is reserved for approved acceptance batches',
     })
     if (entry.semanticPaths !== undefined) context.addIssue({
       code: 'custom',
@@ -456,6 +574,14 @@ const entrySchema = z.strictObject({
       path: ['fixtureManifestHash'],
       message: 'Batch 2B requires the persistence fixture manifest hash',
     })
+    if (entry.persistenceIdentityMaintenance
+      && entry.fixtureManifestHash !== maintainedPersistenceFixtureManifestHash) {
+      context.addIssue({
+        code: 'custom',
+        path: ['fixtureManifestHash'],
+        message: 'Batch 2B persistence identity maintenance requires the maintained fixture manifest hash',
+      })
+    }
     if (entry.status === 'in-review') context.addIssue({
       code: 'custom',
       path: ['status'],
@@ -473,7 +599,8 @@ const entrySchema = z.strictObject({
         message: 'in-progress Batch 2B must not record acceptance evidence',
       })
       if (entry.acceptanceBoundary !== undefined
-        || entry.boundaryMaintenance !== undefined) context.addIssue({
+        || entry.boundaryMaintenance !== undefined
+        || entry.persistenceIdentityMaintenance !== undefined) context.addIssue({
         code: 'custom',
         path: ['acceptanceBoundary'],
         message: 'Batch 2B acceptance boundary is recorded only after Batch 2B completion',
@@ -506,14 +633,88 @@ const entrySchema = z.strictObject({
         })
       }
     }
+  } else if (entry.batch === '3A') {
+    const exactPathGroups = [
+      ['implementationPaths', entry.implementationPaths, batch3AImplementationPaths],
+      ['verificationPaths', entry.verificationPaths, batch3AVerificationPaths],
+      [
+        'acceptanceMetadataPaths',
+        entry.acceptanceMetadataPaths,
+        batch3AAcceptanceMetadataPaths,
+      ],
+    ] as const
+    for (const [field, actual, expected] of exactPathGroups) {
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) context.addIssue({
+        code: 'custom',
+        path: [field],
+        message: `Batch 3A requires exact ${field}: ${expected.join(', ')}`,
+      })
+    }
+    if (entry.fixtureManifestHash !== acceptedStyleFixtureManifestHash) context.addIssue({
+      code: 'custom',
+      path: ['fixtureManifestHash'],
+      message: `Batch 3A requires style fixture manifest hash ${acceptedStyleFixtureManifestHash}`,
+    })
+    for (const owner of batch3APlanningOwners) {
+      if (!entry.newOwners.includes(owner)) context.addIssue({
+        code: 'custom',
+        path: ['newOwners'],
+        message: `Batch 3A requires exact planning owner ${owner}`,
+      })
+    }
+    if (entry.status === 'in-review') context.addIssue({
+      code: 'custom',
+      path: ['status'],
+      message: 'Task 17 requires Batch 3A to be in-progress or complete',
+    })
+    if (entry.status === 'in-progress') {
+      if (entry.implementationSha !== undefined) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: 'in-progress Batch 3A must not record implementationSha',
+      })
+      if (entry.verification.length !== 0) context.addIssue({
+        code: 'custom',
+        path: ['verification'],
+        message: 'in-progress Batch 3A must not record acceptance evidence',
+      })
+    }
+    if (entry.status === 'complete') {
+      if (!entry.implementationSha) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: 'complete Batch 3A requires implementationSha',
+      })
+      const remoteGate = entry.verification.find(
+        ({ gate }) => gate === 'batch3a-remote-ci',
+      )
+      if (entry.implementationSha && remoteGate?.commitSha !== entry.implementationSha) {
+        context.addIssue({
+          code: 'custom',
+          path: ['verification'],
+          message: 'complete Batch 3A remote CI commit must match implementationSha',
+        })
+      }
+    }
   } else {
     for (const field of [
       'implementationPaths',
       'verificationPaths',
       'acceptanceMetadataPaths',
+      'fixtureManifestHash',
+    ] as const) {
+      if (entry[field] !== undefined) context.addIssue({
+        code: 'custom',
+        path: [field],
+        message: `${field} is reserved for Batch 2B or Batch 3A`,
+      })
+    }
+  }
+  if (entry.batch !== '2B') {
+    for (const field of [
       'acceptanceBoundary',
       'boundaryMaintenance',
-      'fixtureManifestHash',
+      'persistenceIdentityMaintenance',
     ] as const) {
       if (entry[field] !== undefined) context.addIssue({
         code: 'custom',
@@ -572,6 +773,54 @@ export const migrationLedgerSchema = z.strictObject({
       })
       owners.set(owner, entryIndex)
     })
+  })
+
+  const batch2BIndex = ledger.entries.findIndex(({ batch }) => batch === '2B')
+  const batch3AIndex = ledger.entries.findIndex(({ batch }) => batch === '3A')
+  const batch2B = ledger.entries[batch2BIndex]
+  const batch3A = ledger.entries[batch3AIndex]
+  const identityMaintenance = batch2B?.persistenceIdentityMaintenance
+  if (batch3A) {
+    if (!batch2B || !identityMaintenance) context.addIssue({
+      code: 'custom',
+      path: ['entries', batch2BIndex >= 0 ? batch2BIndex : batch3AIndex],
+      message: 'Batch 3A requires the exact Batch 2B persistence identity maintenance binding',
+    })
+    if (batch3A.status === 'in-progress'
+      && identityMaintenance?.status !== 'in-progress') context.addIssue({
+      code: 'custom',
+      path: ['entries', batch2BIndex, 'persistenceIdentityMaintenance'],
+      message: 'in-progress Batch 3A requires in-progress persistence identity maintenance',
+    })
+    if (batch3A.status === 'complete') {
+      if (identityMaintenance?.status !== 'complete') context.addIssue({
+        code: 'custom',
+        path: ['entries', batch2BIndex, 'persistenceIdentityMaintenance'],
+        message: 'complete Batch 3A requires complete persistence identity maintenance',
+      })
+      if (identityMaintenance?.status === 'complete') {
+        if (identityMaintenance.candidateSha !== batch3A.implementationSha) {
+          context.addIssue({
+            code: 'custom',
+            path: ['entries', batch2BIndex, 'persistenceIdentityMaintenance', 'candidateSha'],
+            message: 'persistence identity maintenance candidateSha must match Batch 3A implementationSha',
+          })
+        }
+        const referencedRemote = batch3A.verification.filter(
+          ({ gate }) => gate === identityMaintenance.remoteEvidenceGate,
+        )
+        if (referencedRemote.length !== 1
+          || referencedRemote[0]?.commitSha !== identityMaintenance.candidateSha) context.addIssue({
+          code: 'custom',
+          path: ['entries', batch2BIndex, 'persistenceIdentityMaintenance'],
+          message: 'persistence identity maintenance must reference the single exact Batch 3A remote evidence',
+        })
+      }
+    }
+  } else if (identityMaintenance !== undefined) context.addIssue({
+    code: 'custom',
+    path: ['entries', batch2BIndex, 'persistenceIdentityMaintenance'],
+    message: 'persistence identity maintenance is recorded only with Batch 3A ownership',
   })
 })
 

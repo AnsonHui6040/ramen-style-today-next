@@ -309,7 +309,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `tools/parity/persistence/verify-fixtures.test.ts`
 - `tools/parity/persistence/verify-fixtures.ts`
 
-- Persistence fixture manifest hash: `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`
+- Persistence fixture manifest hash: `71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd`
 
 ### Implementation paths
 
@@ -383,9 +383,151 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `28fb8179046d3165f633337b242c7f27df69b2d1`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29432576692
 
+### Persistence identity maintenance
+
+- Status: `in-progress`
+- Change SHA: `2f445f99de924f5ba428967ff68869d4d46b593f`
+- Change parent SHA: `1adc6b54decc08e11bdc03f9665a8f82033fb126`
+- Accepted fixture manifest hash: `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`
+- Maintained fixture manifest hash: `71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd`
+- Cases hash: `c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89`
+- Accepted extractor hash: `4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d`
+- Maintained extractor hash: `650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706`
+
+#### Persistence identity maintenance paths
+
+- `tools/parity/fixtures/persistence/legacy-unversioned/manifest.json`
+
+#### Persistence identity maintenance verification
+
+- Pending.
+
 ### Verification
 
 - `batch2b-local-verify`: `npm run verify` — passed; all Batch 2B offline implementation and verification gates passed
 - `batch2b-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 2B implementation candidate passed Node 24 CI
   - Commit: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411281929
+
+## Batch 3A — in-progress
+
+- Behavior: `no-production-runtime-change`
+- Transformation: Legacy production style inventory normalized into canonical typed definitions and deterministically compiled to an immutable inert style model with offline observed-parity evidence.
+
+### Legacy sources
+
+- `src/config/styles.ts`
+- `src/data/questions.json`
+- `src/data/styles.json`
+- `src/domain/schema.ts`
+- `src/domain/types.ts`
+- `src/lib/scoring/explainer.ts`
+- `src/lib/scoring/scorer.ts`
+
+### New owners
+
+- `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+- `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- `packages/classification-core/src/compiler/styles/compile.test.ts`
+- `packages/classification-core/src/compiler/styles/compile.ts`
+- `packages/classification-core/src/compiler/styles/proof.test.ts`
+- `packages/classification-core/src/compiler/styles/proof.ts`
+- `packages/classification-core/src/compiler/styles/serialize.test.ts`
+- `packages/classification-core/src/compiler/styles/serialize.ts`
+- `packages/classification-core/src/compiler/styles/source-schema.test.ts`
+- `packages/classification-core/src/compiler/styles/source-schema.ts`
+- `packages/classification-core/src/compiler/styles/test-fixtures.ts`
+- `packages/classification-core/src/contracts/diagnostic.test.ts`
+- `packages/classification-core/src/contracts/style-model.ts`
+- `packages/classification-core/src/definitions/styles/aburasoba.ts`
+- `packages/classification-core/src/definitions/styles/chicken-chintan.ts`
+- `packages/classification-core/src/definitions/styles/chicken-paitan.ts`
+- `packages/classification-core/src/definitions/styles/definitions.test.ts`
+- `packages/classification-core/src/definitions/styles/duck-chintan.ts`
+- `packages/classification-core/src/definitions/styles/duck-paitan.ts`
+- `packages/classification-core/src/definitions/styles/gyokai-tsukemen.ts`
+- `packages/classification-core/src/definitions/styles/gyokai.ts`
+- `packages/classification-core/src/definitions/styles/hakata.ts`
+- `packages/classification-core/src/definitions/styles/iekei.ts`
+- `packages/classification-core/src/definitions/styles/index.ts`
+- `packages/classification-core/src/definitions/styles/jiro.ts`
+- `packages/classification-core/src/definitions/styles/konbusui-tsukemen.ts`
+- `packages/classification-core/src/definitions/styles/miso.ts`
+- `packages/classification-core/src/definitions/styles/sapporo.ts`
+- `packages/classification-core/src/definitions/styles/shellfish-dashi.ts`
+- `packages/classification-core/src/definitions/styles/shio-chintan.ts`
+- `packages/classification-core/src/definitions/styles/shoyu-chintan.ts`
+- `packages/classification-core/src/definitions/styles/taiwan-mazesoba.ts`
+- `packages/classification-core/src/definitions/styles/taxonomy.ts`
+- `packages/classification-core/src/definitions/styles/tonkotsu.ts`
+- `packages/classification-core/src/generated/style-model.ts`
+- `packages/classification-core/src/style-model.ts`
+- `tools/parity/fixtures/styles/legacy-v1/cases.json`
+- `tools/parity/fixtures/styles/legacy-v1/manifest.json`
+- `tools/parity/styles/contracts.test.ts`
+- `tools/parity/styles/contracts.ts`
+- `tools/parity/styles/extract.ts`
+- `tools/parity/styles/extractor.test.ts`
+- `tools/parity/styles/extractor.ts`
+- `tools/parity/styles/legacy-instrumentation.patch`
+- `tools/parity/styles/parity.test.ts`
+- `tools/parity/styles/parity.ts`
+- `tools/parity/styles/seeds.json`
+- `tools/parity/styles/verify-fixtures.test.ts`
+- `tools/parity/styles/verify-fixtures.ts`
+- `tools/styles/generate-style-model.test.ts`
+- `tools/styles/generate-style-model.ts`
+
+- Style fixture manifest hash: `fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b`
+
+### Implementation paths
+
+- `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+- `packages/classification-core/package.json`
+- `packages/classification-core/src/compiler/compile.ts`
+- `packages/classification-core/src/compiler/compile.test.ts`
+- `packages/classification-core/src/compiler/collector.ts`
+- `packages/classification-core/src/compiler/collector.test.ts`
+- `packages/classification-core/src/compiler/index.ts`
+- `packages/classification-core/src/compiler/parse.ts`
+- `packages/classification-core/src/compiler/parse.test.ts`
+- `packages/classification-core/src/compiler/source-schema.ts`
+- `packages/classification-core/src/compiler/styles/**`
+- `packages/classification-core/src/contracts/diagnostic-codes.ts`
+- `packages/classification-core/src/contracts/diagnostic.ts`
+- `packages/classification-core/src/contracts/diagnostic.test.ts`
+- `packages/classification-core/src/contracts/model.ts`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/contracts/style-model.ts`
+- `packages/classification-core/src/definitions/classification.ts`
+- `packages/classification-core/src/definitions/styles/**`
+- `packages/classification-core/src/definitions/synthetic.ts`
+- `packages/classification-core/src/generated/style-model.ts`
+- `packages/classification-core/src/index.ts`
+- `packages/classification-core/src/index.test.ts`
+- `packages/classification-core/src/style-model.ts`
+- `tools/parity/styles/**`
+- `tools/parity/fixtures/styles/**`
+- `tools/styles/**`
+
+### Verification paths
+
+- `package.json`
+- `tools/acceptance/**`
+- `tools/documentation/**`
+- `tools/migration/**`
+- `tools/validation/check-runtime-imports.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+- `tools/validation/validate-classification.ts`
+
+### Acceptance metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
+
+### Verification
+
+- Pending.
