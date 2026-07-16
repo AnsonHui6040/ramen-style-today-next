@@ -1481,6 +1481,20 @@ or any manually edited fixture byte.
 **Interfaces:** Adds offline `parity:styles` comparing a canonical compiled
 projection to frozen observations, without executing recommendations.
 
+The approved Task 15 projection contract is exact:
+
+- compare legacy `kind` as the fixed adjustment phase (`bonus` before
+  `conflict`);
+- compare legacy `sourceOrdinal` to compiled adjustment `priority`;
+- compare `points` and `penalty` only as inert representation operands, without
+  applying, aggregating, capping, rounding, or claiming numerical scoring;
+- do not compare a rule source/provenance role because the frozen rule
+  observation contains no such evidence;
+- use legacy adjustment `sourceRole` only for copy identity and group
+  consistency; and
+- derive current copy roles from stable message/template slots and do not
+  compare localized copy values or current provenance paths.
+
 - [ ] **Step 1: Write RED fixture/parity tests**
 
 Test fixture schema/manifest identity, exact counts/ordered IDs/parents,
@@ -1498,8 +1512,10 @@ npx vitest run tools/parity/styles/parity.test.ts \
 
 - [ ] **Step 3: Implement exact narrow projection**
 
-Do not compare or claim numeric score, collapse, ranking, confidence, blocked
-results, recommendation, catalog, Finder, or rendered copy.
+Do not calculate, apply, or claim numeric score, collapse, ranking, confidence,
+blocked results, recommendation, catalog, Finder, or rendered copy. Exact
+`points` and `penalty` equality is representation-only operand evidence under
+the contract above, not a scoring claim.
 
 - [ ] **Step 4: GREEN, review, and commit**
 

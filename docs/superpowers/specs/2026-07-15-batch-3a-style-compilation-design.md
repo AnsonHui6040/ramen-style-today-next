@@ -1236,6 +1236,22 @@ the committed legacy observation. It covers:
 The parity projection canonicalizes membership-only arrays. It preserves every
 ordering value that can affect legacy behavior as explicit priority.
 
+The adjustment projection uses the frozen observation fields without inventing
+new evidence. Legacy `kind` is the fixed adjustment phase, with `bonus` before
+`conflict`, and legacy `sourceOrdinal` is the adjustment priority compared to
+the compiled `priority`. Exact `points` and `penalty` values are compared only
+as inert representation operands. This comparison does not apply, aggregate,
+cap, round, or otherwise evaluate those operands and therefore does not claim
+numerical scoring parity.
+
+Rule parity does not include a source-role or provenance-role comparison. The
+frozen rule observation contains no such field; current rule provenance remains
+compiler-validated evidence rather than legacy parity evidence. For adjustment
+copies, legacy `sourceRole` participates only in copy identity and closed-group
+consistency. Current copy roles are derived from the stable message/template
+slots for each entity kind. Legacy localized copy values and current provenance
+paths are outside the projection and are not compared.
+
 The batch does not claim numerical scoring, collapse, ranking, confidence,
 blocked-result, recommendation, catalog, Finder, or rendered-copy parity. Those
 claims require their later batches and cannot be inferred from inventory parity.
