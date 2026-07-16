@@ -1,0 +1,236 @@
+diff --git a/src/parity-style-observer.test.ts b/src/parity-style-observer.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..9ea042fd70ccfd735926d94108d7c01cb83becd2
+--- /dev/null
++++ b/src/parity-style-observer.test.ts
+@@ -0,0 +1,230 @@
++import { readFileSync, writeFileSync } from 'node:fs'
++import { basename, dirname, isAbsolute } from 'node:path'
++
++import { expect, test } from 'vitest'
++
++import { questionBank } from './config/questions'
++import { styleCatalog } from './config/styles'
++import {
++  exclusionValues,
++  scoredQuestionIds,
++} from './domain/types'
++
++const tierIds = ['exact', 'adjacent', 'partial', 'miss'] as const
++const copyRoles = [
++  'style-label',
++  'style-summary',
++  'core-label',
++  'core-summary',
++  'subtype-label',
++  'subtype-summary',
++  'bonus-reason',
++  'conflict-reason',
++] as const
++
++function assertRecord(value: unknown, label: string): asserts value is Record<string, unknown> {
++  if (!value || typeof value !== 'object' || Array.isArray(value)) {
++    throw new Error(`invalid ${label}`)
++  }
++}
++
++function optionPriorityByQuestion() {
++  return new Map(questionBank.map((question) => {
++    const options = question.options ?? Object.values(question.branchOptions ?? {}).flat()
++    const priorities = new Map<string, number>()
++    for (const option of options) {
++      if (!priorities.has(option.value)) priorities.set(option.value, priorities.size)
++    }
++    return [question.id, priorities] as const
++  }))
++}
++
++function observeCatalog() {
++  const optionPriorities = optionPriorityByQuestion()
++  const styles = styleCatalog.map((style, displayPriority) => ({
++    id: style.id,
++    family: style.family,
++    displayPriority,
++    accent: style.accent,
++    exclusionTagIds: [...style.ingredients],
++    copySources: [
++      { role: 'style-label', value: style.label },
++      { role: 'style-summary', value: style.summary },
++    ],
++  }))
++  const cores = styleCatalog.flatMap((style) => style.coreTypes.map((core, priority) => ({
++    id: core.id,
++    parentStyleId: style.id,
++    intensityId: core.intensity,
++    priority,
++    copySources: [
++      { role: 'core-label', value: core.label },
++      { role: 'core-summary', value: core.summary },
++    ],
++  })))
++  const subtypes = styleCatalog.flatMap((style) => style.coreTypes.flatMap((core) => (
++    core.noodleVariants.map((subtype, priority) => ({
++      id: subtype.id,
++      parentStyleId: style.id,
++      parentCoreId: core.id,
++      noodleId: subtype.noodle,
++      priority,
++      copySources: [
++        { role: 'subtype-label', value: subtype.label },
++        { role: 'subtype-summary', value: subtype.summary },
++      ],
++    }))
++  )))
++  const rules = styleCatalog.flatMap((style) => style.coreTypes.flatMap((core) => (
++    scoredQuestionIds.map((questionId, priority) => {
++      const rule = core.rules[questionId]
++      const optionPriority = optionPriorities.get(questionId)
++      const tiers = tierIds.map((tier) => ({
++        tier,
++        targets: tier === 'miss'
++          ? []
++          : [...(rule[tier] ?? [])]
++              .map((optionId) => ({
++                optionId,
++                priority: optionPriority?.get(optionId) ?? Number.MAX_SAFE_INTEGER,
++              }))
++              .sort((left, right) => (
++                left.priority - right.priority || left.optionId.localeCompare(right.optionId, 'en')
++              )),
++      }))
++      return {
++        id: `${core.id}:${questionId}`,
++        parentStyleId: style.id,
++        parentCoreId: core.id,
++        questionId,
++        priority,
++        tiers,
++      }
++    })
++  )))
++  const adjustments = styleCatalog.flatMap((style) => style.coreTypes.flatMap((core) => [
++    ...(core.bonuses ?? []).map((bonus, sourceOrdinal) => ({
++      kind: 'bonus',
++      id: bonus.id,
++      parentStyleId: style.id,
++      parentCoreId: core.id,
++      sourceRole: 'core-bonus',
++      sourceOrdinal,
++      points: bonus.points,
++      minMatches: bonus.minMatches,
++      conditions: bonus.conditions.map((condition, priority) => ({
++        priority,
++        questionId: condition.question,
++        optionIds: [...condition.anyOf].sort((left, right) => (
++          (optionPriorities.get(condition.question)?.get(left) ?? Number.MAX_SAFE_INTEGER)
++            - (optionPriorities.get(condition.question)?.get(right) ?? Number.MAX_SAFE_INTEGER)
++          || left.localeCompare(right, 'en')
++        )),
++      })),
++      copySources: [{ role: 'bonus-reason', value: bonus.label }],
++    })),
++    ...(core.conflicts ?? []).map((conflict, sourceOrdinal) => ({
++      kind: 'conflict',
++      id: conflict.id,
++      parentStyleId: style.id,
++      parentCoreId: core.id,
++      sourceRole: 'core-conflict',
++      sourceOrdinal,
++      penalty: conflict.penalty,
++      whenAll: conflict.whenAll.map((condition, priority) => ({
++        priority,
++        questionId: condition.question,
++        optionIds: [...condition.anyOf].sort((left, right) => (
++          (optionPriorities.get(condition.question)?.get(left) ?? Number.MAX_SAFE_INTEGER)
++            - (optionPriorities.get(condition.question)?.get(right) ?? Number.MAX_SAFE_INTEGER)
++          || left.localeCompare(right, 'en')
++        )),
++      })),
++      copySources: [{ role: 'conflict-reason', value: conflict.label }],
++    })),
++  ]))
++  const usedTags = new Set(styleCatalog.flatMap((style) => style.ingredients))
++  const exclusionTags = exclusionValues.flatMap((id, priority) => (
++    usedTags.has(id) ? [{ id, priority }] : []
++  ))
++  return {
++    schemaVersion: 1,
++    id: 'legacy-style-catalog',
++    styles,
++    cores,
++    subtypes,
++    rules,
++    adjustments,
++    exclusionTags,
++    copyRoles: copyRoles.map((id, priority) => ({ id, priority })),
++    coverage: {
++      styles: styles.length,
++      cores: cores.length,
++      subtypes: subtypes.length,
++      rules: rules.length,
++      bonusCopies: adjustments.filter(({ kind }) => kind === 'bonus').length,
++      conflictCopies: adjustments.filter(({ kind }) => kind === 'conflict').length,
++      exclusionTags: exclusionTags.length,
++      copyRoles: copyRoles.length,
++    },
++  }
++}
++
++function seedProjection(observation: ReturnType<typeof observeCatalog>) {
++  return {
++    id: observation.id,
++    styleIds: observation.styles.map(({ id }) => id),
++    coreIds: observation.cores.map(({ id }) => id),
++    subtypeIds: observation.subtypes.map(({ id }) => id),
++    ruleIds: observation.rules.map(({ id }) => id),
++    adjustmentCopies: observation.adjustments.map((adjustment) => ({
++      kind: adjustment.kind,
++      id: adjustment.id,
++      parentCoreId: adjustment.parentCoreId,
++      sourceRole: adjustment.sourceRole,
++      sourceOrdinal: adjustment.sourceOrdinal,
++    })),
++    exclusionTagIds: observation.exclusionTags.map(({ id }) => id),
++    copyRoles: observation.copyRoles.map(({ id }) => id),
++  }
++}
++
++test('observes the complete frozen legacy style catalog', () => {
++  const capabilityPath = process.env.RAMEN_PARITY_SEED ?? ''
++  if (!capabilityPath) {
++    expect(styleCatalog).toHaveLength(18)
++    return
++  }
++  if (!isAbsolute(capabilityPath)) throw new Error('invalid style capability')
++  const capability: unknown = JSON.parse(readFileSync(capabilityPath, 'utf8'))
++  assertRecord(capability, 'style capability')
++  if (
++    Object.keys(capability).sort().join('\0') !== 'rawOutputPath\0schemaVersion\0seedPath\0token'
++    || capability.schemaVersion !== 1
++    || typeof capability.seedPath !== 'string'
++    || typeof capability.rawOutputPath !== 'string'
++    || typeof capability.token !== 'string'
++    || !/^[a-f0-9]{32,128}$/.test(capability.token)
++    || !isAbsolute(capability.seedPath)
++    || !isAbsolute(capability.rawOutputPath)
++    || dirname(capabilityPath) !== dirname(capability.seedPath)
++    || dirname(capabilityPath) !== dirname(capability.rawOutputPath)
++    || basename(capabilityPath) !== `capability-${capability.token}.json`
++    || basename(capability.seedPath) !== 'seed-copy.json'
++    || basename(capability.rawOutputPath) !== 'raw-output.json'
++  ) throw new Error('invalid style capability')
++
++  const seed: unknown = JSON.parse(readFileSync(capability.seedPath, 'utf8'))
++  assertRecord(seed, 'style seed')
++  if (
++    Object.keys(seed).sort().join('\0') !== 'case\0schemaVersion'
++    || seed.schemaVersion !== 1
++  ) throw new Error('invalid style seed')
++  const observation = observeCatalog()
++  if (JSON.stringify(seed.case) !== JSON.stringify(seedProjection(observation))) {
++    throw new Error('style seed coverage mismatch')
++  }
++  const output = `${JSON.stringify({ schemaVersion: 1, cases: [observation] })}\n`
++  if (output.length > 4_000_000) throw new Error('style observation output exceeds bound')
++  writeFileSync(capability.rawOutputPath, output, { flag: 'wx', mode: 0o600 })
++})
