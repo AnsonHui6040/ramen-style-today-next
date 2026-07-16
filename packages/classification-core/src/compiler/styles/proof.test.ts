@@ -558,12 +558,14 @@ describe('style proof immutability and boundaries', () => {
     expect(serialized).not.toContain(process.env.HOME ?? '/Users/unknown')
   })
 
-  test('keeps proveStyleModel out of compiler and runtime public exports', async () => {
+  test('keeps proveStyleModel private while publishing the inert style model', async () => {
     const compiler = await import('../index.js')
     const runtime = await import('../../index.js')
+    const generated = await import('../../generated/style-model.js')
 
     expect(compiler).not.toHaveProperty('proveStyleModel')
     expect(runtime).not.toHaveProperty('proveStyleModel')
-    expect(runtime).not.toHaveProperty('styleModel')
+    expect(runtime.styleModel).toBe(generated.styleModel)
+    expect(Object.isFrozen(runtime.styleModel)).toBe(true)
   })
 })

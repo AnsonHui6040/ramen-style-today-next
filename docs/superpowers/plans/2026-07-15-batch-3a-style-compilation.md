@@ -1120,15 +1120,27 @@ documentation output, assurance, provenance evidence, or readiness behavior.
 ### Task 12: Expose compiler and inert runtime style contracts
 
 **Files:**
+- Modify: `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+  (approved Task 12 allowlist amendment only)
+- Create: `packages/classification-core/src/style-model.ts` (exact hand-written
+  runtime facade; re-exports the generated value and approved inert types only)
 - Modify: `packages/classification-core/src/index.ts`
 - Modify: `packages/classification-core/src/index.test.ts`
+- Modify: `packages/classification-core/src/compiler/compile.test.ts` (replace
+  only the completed Task 11 "Task 12 not started" boundary assertion)
+- Modify: `packages/classification-core/src/compiler/styles/proof.test.ts`
+  (replace only the completed Task 9 proof/runtime boundary assertion)
+- Modify: `packages/classification-core/src/compiler/styles/serialize.test.ts`
+  (replace only the completed Task 10 artifact/runtime boundary assertion)
 - Modify: `packages/classification-core/package.json`
 - Modify: `tools/validation/check-runtime-imports.ts`
 - Modify: `tools/validation/check-runtime-imports.test.ts`
 
-**Interfaces:** Preserves Task 10 compiler exports; runtime root and
-`./generated/style-model` export only `styleModel` plus approved inert compiled
-types.
+**Interfaces:** Preserves Task 10 compiler exports. A hand-written
+`src/style-model.ts` facade projects only the generated `styleModel` value and
+the exact approved inert compiled types. Both the runtime root and
+`./generated/style-model` use that facade, so the generated artifact bytes stay
+unchanged and the subpath does not leak unrelated runtime-root types.
 
 - [ ] **Step 1: Write RED export and import-boundary tests**
 
@@ -1150,6 +1162,12 @@ npx vitest run packages/classification-core/src/index.test.ts \
 
 Do not rename or remove `questionModel`, `decodeAnswerDraft`, `evaluateFlow`, or
 persistence exports. Do not export source definitions from the runtime root.
+The facade may have one runtime edge to `./generated/style-model.js` and one
+type-only edge to `./contracts/style-model.js`; it must not add any other edge
+or export.
+The three protected compiler test files may change only their stale
+pre-Task-12 runtime assertions. They must continue to lock compiler exports,
+artifact identity, `proveStyleModel` privacy, and all Task 9-11 semantics.
 
 - [ ] **Step 4: GREEN, build, review, and commit**
 
@@ -1169,8 +1187,13 @@ git diff --name-status HEAD
 After independent public-surface/runtime-boundary review `PASS`:
 
 ```bash
-git add packages/classification-core/src/index.ts \
+git add docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md \
+  packages/classification-core/src/style-model.ts \
+  packages/classification-core/src/index.ts \
   packages/classification-core/src/index.test.ts \
+  packages/classification-core/src/compiler/compile.test.ts \
+  packages/classification-core/src/compiler/styles/proof.test.ts \
+  packages/classification-core/src/compiler/styles/serialize.test.ts \
   packages/classification-core/package.json \
   tools/validation/check-runtime-imports.ts \
   tools/validation/check-runtime-imports.test.ts
@@ -1178,8 +1201,10 @@ git commit -m "Expose compiled style model"
 ```
 
 **Stop conditions:** Breaking existing public API, compiler dependency in root,
-runtime Zod/Node/tools import, changed question artifact, or new scorer/
-eligibility/storage export.
+runtime Zod/Node/tools import, generated artifact modification, facade export
+beyond `styleModel` plus the approved inert types, changed question artifact,
+compiler implementation change, protected compiler test change beyond the
+three stale pre-Task-12 assertions, or new scorer/eligibility/storage export.
 
 ---
 

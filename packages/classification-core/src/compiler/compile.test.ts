@@ -438,10 +438,13 @@ describe('preserved question and API boundaries', () => {
     )
   })
 
-  test('does not publish the Task 12 runtime style API early', async () => {
+  test('publishes the Task 12 inert style value without compiler values', async () => {
     const runtime = await import('../index.js')
+    const generated = await import('../generated/style-model.js')
 
-    expect(runtime).not.toHaveProperty('styleModel')
+    expect(runtime.styleModel).toBe(generated.styleModel)
     expect(runtime).not.toHaveProperty('CompiledStyleModel')
+    expect(runtime).not.toHaveProperty('compileStyles')
+    expect(runtime).not.toHaveProperty('proveStyleModel')
   })
 })

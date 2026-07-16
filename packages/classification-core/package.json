@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./generated/question-model": "./src/generated/question-model.ts",
+    "./generated/style-model": "./src/style-model.ts",
     "./compiler": "./src/compiler/index.ts"
   },
   "dependencies": {

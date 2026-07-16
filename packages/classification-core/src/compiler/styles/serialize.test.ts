@@ -275,8 +275,9 @@ describe('Task 10 compiler and runtime boundaries', () => {
     )
   })
 
-  test('leaves the runtime root exact and does not publish the style artifact early', async () => {
+  test('publishes the exact Task 12 runtime root without compiler APIs', async () => {
     const runtime = await import('../../index.js')
+    const generated = await import('../../generated/style-model.js')
 
     expect(Object.keys(runtime).sort()).toEqual([
       'applyAnswer',
@@ -288,9 +289,11 @@ describe('Task 10 compiler and runtime boundaries', () => {
       'getPreviousInteractiveQuestion',
       'questionModel',
       'restoreClassification',
+      'styleModel',
       'updatePendingSelection',
     ].sort())
-    expect(runtime).not.toHaveProperty('styleModel')
+    expect(runtime.styleModel).toBe(generated.styleModel)
     expect(runtime).not.toHaveProperty('compileStyles')
+    expect(runtime).not.toHaveProperty('proveStyleModel')
   })
 })

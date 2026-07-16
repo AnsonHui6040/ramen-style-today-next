@@ -7,11 +7,28 @@ import * as ts from 'typescript'
 
 const corePackage = '@ramen-style/classification-core'
 const corePersistenceRoot = 'packages/classification-core/src/persistence'
+const coreRuntimeEntrypoint = 'packages/classification-core/src/index.ts'
+const coreStyleRuntimeEntrypoint = 'packages/classification-core/src/style-model.ts'
+const coreGeneratedStyleModel = 'packages/classification-core/src/generated/style-model.ts'
+const approvedStyleRuntimeSpecifiers = new Map<string, ReadonlySet<string>>([
+  [coreStyleRuntimeEntrypoint, new Set(['./generated/style-model.js'])],
+  [coreGeneratedStyleModel, new Set(['../contracts/deep-freeze.js'])],
+])
+const approvedStyleRuntimeTargets = new Map<string, ReadonlySet<string>>([
+  [coreRuntimeEntrypoint, new Set([coreStyleRuntimeEntrypoint])],
+  [coreStyleRuntimeEntrypoint, new Set([coreGeneratedStyleModel])],
+])
+const protectedStyleRuntimeTargets = new Set([
+  coreStyleRuntimeEntrypoint,
+  coreGeneratedStyleModel,
+])
+const forbiddenStylePublicExports = new Set(['proveStyleModel'])
 const sourceExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'] as const
 const forbiddenModuleFamilies = new Map<string, RuntimeImportReason>([
   ['browser', 'forbidden-module:browser'],
   ['catalog', 'forbidden-module:catalog'],
   ['dom', 'forbidden-module:dom'],
+  ['eligibility', 'forbidden-module:eligibility'],
   ['happy-dom', 'forbidden-module:dom'],
   ['jsdom', 'forbidden-module:dom'],
   ['legacy', 'forbidden-module:legacy'],
@@ -26,6 +43,7 @@ const forbiddenPathFamilies = new Map<string, RuntimeImportReason>([
   ['browser', 'forbidden-path:browser'],
   ['catalog', 'forbidden-path:catalog'],
   ['dom', 'forbidden-path:dom'],
+  ['eligibility', 'forbidden-path:eligibility'],
   ['legacy', 'forbidden-path:legacy'],
   ['localstorage', 'forbidden-path:storage'],
   ['network', 'forbidden-path:network'],
@@ -64,6 +82,7 @@ export type RuntimeImportReason =
   | 'forbidden-module:zod'
   | 'forbidden-module:browser'
   | 'forbidden-module:dom'
+  | 'forbidden-module:eligibility'
   | 'forbidden-module:legacy'
   | 'forbidden-module:network'
   | 'forbidden-module:persistence'
@@ -77,14 +96,18 @@ export type RuntimeImportReason =
   | 'forbidden-path:definitions'
   | 'forbidden-path:browser'
   | 'forbidden-path:dom'
+  | 'forbidden-path:eligibility'
   | 'forbidden-path:legacy'
   | 'forbidden-path:network'
   | 'forbidden-path:persistence'
   | 'forbidden-path:scoring'
   | 'forbidden-path:storage'
   | 'forbidden-path:styles'
+  | 'forbidden-path:test'
   | 'forbidden-path:catalog'
   | 'forbidden-path:outside-repository'
+  | 'forbidden-public-export'
+  | 'forbidden-style-runtime-edge'
   | 'nonliteral-dynamic-module-load'
   | 'unresolved-local-import'
 
@@ -190,8 +213,12 @@ function forbiddenModuleReason(specifier: string): RuntimeImportReason | undefin
   return undefined
 }
 
-function forbiddenPathReason(relativePath: string): RuntimeImportReason | undefined {
+function forbiddenPathReason(
+  relativePath: string,
+  allowCorePersistence: boolean,
+): RuntimeImportReason | undefined {
   const segments = relativePath.split('/').filter(Boolean)
+  const fileName = segments.at(-1)?.toLowerCase() ?? ''
   const sourceIndex = segments.findIndex((segment, index) => (
     segment === 'src' && segments[index - 1] === 'classification-core'
   ))
@@ -199,10 +226,14 @@ function forbiddenPathReason(relativePath: string): RuntimeImportReason | undefi
   if (coreSegment === 'compiler') return 'forbidden-path:compiler'
   if (coreSegment === 'definitions') return 'forbidden-path:definitions'
   if (segments[0] === 'tools') return 'forbidden-path:tools'
+  if (
+    segments.some((segment) => segment.toLowerCase() === '__tests__')
+      || /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(fileName)
+  ) return 'forbidden-path:test'
   const isCorePersistence = relativePath === corePersistenceRoot
     || relativePath.startsWith(`${corePersistenceRoot}/`)
   if (
-    !isCorePersistence
+    (!allowCorePersistence || !isCorePersistence)
       && segments.some((segment) => segment.toLowerCase() === 'persistence')
   ) {
     return 'forbidden-path:persistence'
@@ -241,6 +272,7 @@ function scanRuntimeModuleLoads(source: string, fileName: string) {
   )
   const specifiers: string[] = []
   const nonliteralDynamicLoads: ('import' | 'require')[] = []
+  const publicValueExports: string[] = []
   const addSpecifier = (specifier: string) => {
     if (!specifiers.includes(specifier)) specifiers.push(specifier)
   }
@@ -258,6 +290,19 @@ function scanRuntimeModuleLoads(source: string, fileName: string) {
         && ts.isStringLiteral(statement.moduleSpecifier)
         && exportDeclarationLoadsRuntime(statement)
     ) addSpecifier(statement.moduleSpecifier.text)
+
+    if (
+      ts.isExportDeclaration(statement)
+        && !statement.isTypeOnly
+        && statement.exportClause
+        && ts.isNamedExports(statement.exportClause)
+    ) {
+      for (const element of statement.exportClause.elements) {
+        if (!element.isTypeOnly && !publicValueExports.includes(element.name.text)) {
+          publicValueExports.push(element.name.text)
+        }
+      }
+    }
 
     if (
       ts.isImportEqualsDeclaration(statement)
@@ -288,7 +333,29 @@ function scanRuntimeModuleLoads(source: string, fileName: string) {
   }
   visit(sourceFile)
 
-  return { specifiers, nonliteralDynamicLoads }
+  for (const statement of sourceFile.statements) {
+    if (!ts.canHaveModifiers(statement)) continue
+    const exported = ts.getModifiers(statement)?.some(
+      ({ kind }) => kind === ts.SyntaxKind.ExportKeyword,
+    ) ?? false
+    if (!exported) continue
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (
+          ts.isIdentifier(declaration.name)
+            && !publicValueExports.includes(declaration.name.text)
+        ) publicValueExports.push(declaration.name.text)
+      }
+    } else if (
+      (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement))
+        && statement.name
+        && !publicValueExports.includes(statement.name.text)
+    ) {
+      publicValueExports.push(statement.name.text)
+    }
+  }
+
+  return { specifiers, nonliteralDynamicLoads, publicValueExports }
 }
 
 function resolveLocalImport(repoRoot: string, fromFile: string, specifier: string) {
@@ -331,6 +398,12 @@ function resolveLocalImport(repoRoot: string, fromFile: string, specifier: strin
       'packages/classification-core/src/generated/question-model.ts',
     ))
   }
+  if (specifier === `${corePackage}/generated/style-model`) {
+    return resolveSourceFile(resolve(
+      repoRoot,
+      'packages/classification-core/src/style-model.ts',
+    ))
+  }
   if (specifier === `${corePackage}/compiler`) {
     return resolveSourceFile(resolve(repoRoot, 'packages/classification-core/src/compiler/index.ts'))
   }
@@ -355,6 +428,9 @@ export function checkRuntimeImports(
 
   const visited = new Set<string>()
   const forbidden: ForbiddenRuntimeImport[] = []
+  const entryRelative = repositoryPath(absoluteRoot, entry)
+  const styleBoundary = entryRelative === coreStyleRuntimeEntrypoint
+  const allowCorePersistence = !styleBoundary
   const pending = [entry]
   while (pending.length > 0) {
     const current = pending.pop()!
@@ -363,6 +439,15 @@ export function checkRuntimeImports(
     visited.add(currentRelative)
 
     const moduleLoads = scanRuntimeModuleLoads(readFileSync(current, 'utf8'), currentRelative)
+    if (styleBoundary && currentRelative === entryRelative) {
+      for (const exportedName of moduleLoads.publicValueExports) {
+        if (forbiddenStylePublicExports.has(exportedName)) forbidden.push({
+          from: currentRelative,
+          specifier: exportedName,
+          reason: 'forbidden-public-export',
+        })
+      }
+    }
     for (const kind of moduleLoads.nonliteralDynamicLoads) forbidden.push({
       from: currentRelative,
       specifier: `${kind}(<nonliteral>)`,
@@ -377,11 +462,23 @@ export function checkRuntimeImports(
         reason: moduleReason,
       })
 
+      const approvedStyleSpecifiers = approvedStyleRuntimeSpecifiers.get(currentRelative)
       const isLocal = specifier.startsWith('.')
         || isAbsolute(specifier)
         || isFileUrlSpecifier(specifier)
         || isCoreSpecifier(specifier)
-      if (!isLocal) continue
+      if (!isLocal) {
+        if (
+          approvedStyleSpecifiers
+            && !approvedStyleSpecifiers.has(specifier)
+            && !moduleReason
+        ) forbidden.push({
+          from: currentRelative,
+          specifier,
+          reason: 'forbidden-style-runtime-edge',
+        })
+        continue
+      }
       const resolved = resolveLocalImport(absoluteRoot, current, specifier)
       if (!resolved) {
         forbidden.push({
@@ -400,11 +497,27 @@ export function checkRuntimeImports(
         continue
       }
       const resolvedRelative = repositoryPath(absoluteRoot, resolved)
-      const pathReason = forbiddenPathReason(resolvedRelative)
+      const pathReason = forbiddenPathReason(resolvedRelative, allowCorePersistence)
       if (pathReason) forbidden.push({
         from: currentRelative,
         specifier,
         reason: pathReason,
+      })
+      const approvedStyleTargets = approvedStyleRuntimeTargets.get(currentRelative)
+      const violatesExactStyleSource = approvedStyleSpecifiers
+        ? !approvedStyleSpecifiers.has(specifier)
+        : false
+      const violatesProtectedStyleTarget = !approvedStyleSpecifiers
+        && protectedStyleRuntimeTargets.has(resolvedRelative)
+        && !approvedStyleTargets?.has(resolvedRelative)
+      if (
+        (violatesExactStyleSource || violatesProtectedStyleTarget)
+          && !moduleReason
+          && !pathReason
+      ) forbidden.push({
+        from: currentRelative,
+        specifier,
+        reason: 'forbidden-style-runtime-edge',
       })
       if (!visited.has(resolvedRelative)) pending.push(resolved)
     }
@@ -422,9 +535,15 @@ export function checkRuntimeImports(
 
 function run() {
   const repoRoot = resolve(import.meta.dirname, '../..')
-  const result = checkRuntimeImports(repoRoot)
-  if (result.forbidden.length > 0) {
-    for (const violation of result.forbidden) {
+  const entrypoints = [coreRuntimeEntrypoint, coreStyleRuntimeEntrypoint]
+  const results = entrypoints.map((entrypoint) => checkRuntimeImports(repoRoot, entrypoint))
+  const forbidden = results.flatMap((result) => result.forbidden).sort((left, right) => (
+    compareCodePoints(left.reason, right.reason)
+    || compareCodePoints(left.from, right.from)
+    || compareCodePoints(left.specifier, right.specifier)
+  ))
+  if (forbidden.length > 0) {
+    for (const violation of forbidden) {
       process.stderr.write(
         `RUNTIME_IMPORT_FORBIDDEN ${violation.reason} ${violation.from} -> ${violation.specifier}\n`,
       )
@@ -434,8 +553,8 @@ function run() {
   }
   process.stdout.write(`${JSON.stringify({
     status: 'pass',
-    entrypoint: 'packages/classification-core/src/index.ts',
-    visitedCount: result.visited.length,
+    entrypoints,
+    visitedCount: new Set(results.flatMap((result) => result.visited)).size,
   })}\n`)
 }
 

@@ -41,9 +41,12 @@ describe('runtime import boundary', () => {
     )
     expect(result.forbidden).toEqual([])
     expect(result.visited).toEqual(expect.arrayContaining([
+      'packages/classification-core/src/contracts/deep-freeze.ts',
+      'packages/classification-core/src/generated/style-model.ts',
       'packages/classification-core/src/persistence/index.ts',
       'packages/classification-core/src/persistence/create-payload.ts',
       'packages/classification-core/src/persistence/restore.ts',
+      'packages/classification-core/src/style-model.ts',
     ]))
     expect(result.visited.some((path) => path.endsWith('.test.ts'))).toBe(false)
   })
@@ -68,6 +71,7 @@ describe('runtime import boundary', () => {
           "import 'zod'",
           "import '@runtime/browser'",
           "import '@runtime/dom'",
+          "import '@runtime/eligibility'",
           "import '@legacy/questionnaire'",
           "import '@runtime/network'",
           "import '@runtime/persistence'",
@@ -104,6 +108,7 @@ describe('runtime import boundary', () => {
         'forbidden-module:browser',
         'forbidden-module:catalog',
         'forbidden-module:dom',
+        'forbidden-module:eligibility',
         'forbidden-module:legacy',
         'forbidden-module:network',
         'forbidden-module:node',
@@ -121,6 +126,255 @@ describe('runtime import boundary', () => {
       expect(result.visited).toContain('packages/classification-core/src/flow/index.ts')
       expect(result.visited).toContain('packages/classification-core/src/compiler/index.ts')
       expect(result.forbidden.some(({ specifier }) => specifier === 'node:fs')).toBe(false)
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('resolves the generated style package route through the exact public facade', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-style-route-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(join(sourceRoot, 'contracts'), { recursive: true })
+      mkdirSync(join(sourceRoot, 'generated'), { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'index.ts'),
+        "export { styleModel } from '@ramen-style/classification-core/generated/style-model'\n",
+      )
+      writeFileSync(
+        join(sourceRoot, 'style-model.ts'),
+        [
+          "export { styleModel } from './generated/style-model.js'",
+          "export type { CompiledStyleModel } from './contracts/style-model.js'",
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(
+        join(sourceRoot, 'generated/style-model.ts'),
+        "import { deepFreeze } from '../contracts/deep-freeze.js'\nexport const styleModel = deepFreeze({})\n",
+      )
+      writeFileSync(
+        join(sourceRoot, 'contracts/deep-freeze.ts'),
+        'export const deepFreeze = <T>(value: T): T => value\n',
+      )
+      writeFileSync(
+        join(sourceRoot, 'contracts/style-model.ts'),
+        "import 'node:fs'\nexport interface CompiledStyleModel {}\n",
+      )
+
+      const result = checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      )
+      expect(result.forbidden).toEqual([])
+      expect(result.visited).toEqual([
+        'packages/classification-core/src/contracts/deep-freeze.ts',
+        'packages/classification-core/src/generated/style-model.ts',
+        'packages/classification-core/src/index.ts',
+        'packages/classification-core/src/style-model.ts',
+      ])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('allows only the approved style facade and artifact runtime edges', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-style-edges-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(join(sourceRoot, 'contracts'), { recursive: true })
+      mkdirSync(join(sourceRoot, 'generated'), { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'style-model.ts'),
+        [
+          "export { styleModel } from './generated/style-model.js'",
+          "export type { CompiledStyleModel } from './contracts/style-model.js'",
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(
+        join(sourceRoot, 'generated/style-model.ts'),
+        [
+          "import type { CompiledStyleModel } from '../contracts/style-model.js'",
+          "import { deepFreeze } from '../contracts/deep-freeze.js'",
+          'export const styleModel = deepFreeze({} as CompiledStyleModel)',
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(
+        join(sourceRoot, 'contracts/deep-freeze.ts'),
+        'export const deepFreeze = <T>(value: T): T => value\n',
+      )
+      writeFileSync(
+        join(sourceRoot, 'contracts/style-model.ts'),
+        "import 'node:fs'\nexport interface CompiledStyleModel {}\n",
+      )
+
+      const result = checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/style-model.ts',
+      )
+      expect(result.forbidden).toEqual([])
+      expect(result.visited).toEqual([
+        'packages/classification-core/src/contracts/deep-freeze.ts',
+        'packages/classification-core/src/generated/style-model.ts',
+        'packages/classification-core/src/style-model.ts',
+      ])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('rejects an unapproved bare external edge from the style facade', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-style-external-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(sourceRoot, { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'style-model.ts'),
+        "import 'lodash'\nexport const styleModel = {}\n",
+      )
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/style-model.ts',
+      ).forbidden).toEqual([{
+        from: 'packages/classification-core/src/style-model.ts',
+        specifier: 'lodash',
+        reason: 'forbidden-style-runtime-edge',
+      }])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('rejects a runtime-root bypass of the style facade', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-style-bypass-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(join(sourceRoot, 'generated'), { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'index.ts'),
+        "export { styleModel } from './generated/style-model.js'\n",
+      )
+      writeFileSync(
+        join(sourceRoot, 'generated/style-model.ts'),
+        'export const styleModel = {}\n',
+      )
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/index.ts',
+      ).forbidden).toEqual([{
+        from: 'packages/classification-core/src/index.ts',
+        specifier: './generated/style-model.js',
+        reason: 'forbidden-style-runtime-edge',
+      }])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('rejects transitive test-file leakage from the style graph', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-style-test-leak-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(join(sourceRoot, 'contracts'), { recursive: true })
+      mkdirSync(join(sourceRoot, 'generated'), { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'style-model.ts'),
+        "export { styleModel } from './generated/style-model.js'\n",
+      )
+      writeFileSync(
+        join(sourceRoot, 'generated/style-model.ts'),
+        [
+          "import { deepFreeze } from '../contracts/deep-freeze.js'",
+          'export const styleModel = deepFreeze({})',
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(
+        join(sourceRoot, 'contracts/deep-freeze.ts'),
+        [
+          "import './deep-freeze.test.js'",
+          'export const deepFreeze = <T>(value: T): T => value',
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(
+        join(sourceRoot, 'contracts/deep-freeze.test.ts'),
+        'export const leakedTestHelper = true\n',
+      )
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/style-model.ts',
+      ).forbidden).toEqual([{
+        from: 'packages/classification-core/src/contracts/deep-freeze.ts',
+        specifier: './deep-freeze.test.js',
+        reason: 'forbidden-path:test',
+      }])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('rejects persistence and ordinary contract runtime edges from style modules', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-style-forbidden-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(join(sourceRoot, 'contracts'), { recursive: true })
+      mkdirSync(join(sourceRoot, 'persistence'), { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'style-model.ts'),
+        [
+          "import './contracts/style-model.js'",
+          "import './persistence/index.js'",
+          'export const styleModel = {}',
+          '',
+        ].join('\n'),
+      )
+      writeFileSync(join(sourceRoot, 'contracts/style-model.ts'), 'export {}\n')
+      writeFileSync(join(sourceRoot, 'persistence/index.ts'), 'export {}\n')
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/style-model.ts',
+      ).forbidden).toEqual([
+        {
+          from: 'packages/classification-core/src/style-model.ts',
+          specifier: './persistence/index.js',
+          reason: 'forbidden-path:persistence',
+        },
+        {
+          from: 'packages/classification-core/src/style-model.ts',
+          specifier: './contracts/style-model.js',
+          reason: 'forbidden-style-runtime-edge',
+        },
+      ])
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  test('rejects a public proveStyleModel leak from the style facade', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-runtime-style-proof-leak-'))
+    try {
+      const sourceRoot = join(repoRoot, 'packages/classification-core/src')
+      mkdirSync(sourceRoot, { recursive: true })
+      writeFileSync(
+        join(sourceRoot, 'style-model.ts'),
+        'export const proveStyleModel = () => true\n',
+      )
+
+      expect(checkRuntimeImports(
+        repoRoot,
+        'packages/classification-core/src/style-model.ts',
+      ).forbidden).toEqual([{
+        from: 'packages/classification-core/src/style-model.ts',
+        specifier: 'proveStyleModel',
+        reason: 'forbidden-public-export',
+      }])
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
     }

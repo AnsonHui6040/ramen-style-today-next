@@ -1,4 +1,5 @@
 export { questionModel } from './generated/question-model.js'
+export { styleModel } from './style-model.js'
 export {
   applyAnswer,
   decodeAnswerDraft,
@@ -58,3 +59,29 @@ export type {
   RestoreResult,
   StoredClassificationPayloadV1,
 } from './persistence/index.js'
+export type {
+  CompiledAdjustment,
+  CompiledAdjustmentCondition,
+  CompiledBonus,
+  CompiledConflict,
+  CompiledCore,
+  CompiledExclusionTag,
+  CompiledRuleTarget,
+  CompiledStyle,
+  CompiledStyleInventoryRecord,
+  CompiledStyleModel,
+  CompiledStyleModelMetadata,
+  CompiledStyleRule,
+  CompiledSubtype,
+  CoreId,
+  ExclusionTagId,
+  IntensityId,
+  MatchTier,
+  NoodleId,
+  RuleId,
+  StyleFamilyId,
+  StyleId,
+  StyleRuleProvenance,
+  StyleSourceReference,
+  SubtypeId,
+} from './style-model.js'
