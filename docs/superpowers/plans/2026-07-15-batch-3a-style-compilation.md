@@ -1946,6 +1946,113 @@ leakage, or independent `CHANGES_REQUIRED`.
 
 ---
 
+### Task 17A: Repair exact-SHA CI portability and replace the failed candidate
+
+**Contract checkpoint files:**
+- Modify only:
+  `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- Modify only:
+  `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+
+**Implementation files:**
+- Modify only: `packages/classification-core/src/compiler/compile.test.ts`
+- Modify only: `tools/documentation/build-index.test.ts`
+- Modify only: `tools/parity/shared/authoring.test.ts`
+
+**Interfaces:** Consumes failed canonical push run `29530731362` for exact SHA
+`3917ad73b99437a5597d5954f0a8bd28dea8347b` as RED evidence; repairs only
+test-fixture portability and four evidenced per-test deadlines; produces one
+new reviewed Task 17 candidate without changing runtime, compiler semantics,
+fixtures, tools, workflow, ownership metadata, assurance, or readiness.
+
+- [ ] **Step 1: Review and commit the contract-only amendment**
+
+The exact total tracked allowlist is the two contract files plus the three test
+files above. Independent review must confirm that the failed run had the exact
+repository/workflow/event/branch/SHA identity, that no success evidence was
+recorded, and that the repair does not weaken a production security boundary or
+authorize a metadata transition. After `PASS`, commit only the two contract
+files:
+
+```bash
+git add docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md \
+  docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md
+git commit -m "Define Batch 3A candidate CI repair"
+```
+
+Do not push this checkpoint. Do not modify implementation tests before the
+contract review passes.
+
+- [ ] **Step 2: Preserve external RED and add the local portability RED**
+
+Record run `29530731362`: 11 failed / 1416 passed across three failed files;
+seven failures report the absent `/Users` trusted-tool parent, three
+classification tests exceed 5 seconds, and one locale determinism test exceeds
+15 seconds. Add one regression proving every copy-validated fake trusted tool
+is a regular, non-symlink file below its fixture root. Confirm it fails while
+the helper still exposes the Mac-only production paths.
+
+- [ ] **Step 3: Implement the minimum test-only repair**
+
+In `authoring.test.ts`, provision all four trusted-tool doubles below each fake
+fixture root, temporarily bind the module's shared `trustedTools` object to the
+exact doubles before constructing a copy-validated environment, and restore
+the original object in `afterEach`. Existing substituted Node and sandbox tests
+must continue to prove the production equality guard.
+
+Set exact per-test deadlines only:
+
+```text
+compile.test.ts lines represented by failed tests 133, 337, 355: 15_000 ms
+build-index.test.ts locale determinism test: 30_000 ms
+```
+
+Do not set a global timeout, retry, skip, serial mode, or lower concurrency.
+
+- [ ] **Step 4: Verify the replacement candidate**
+
+```bash
+npx vitest run tools/parity/shared/authoring.test.ts \
+  packages/classification-core/src/compiler/compile.test.ts \
+  tools/documentation/build-index.test.ts
+npm run verify
+GITHUB_TOKEN="$(gh auth token)" npm run verify:acceptance
+shasum -a 256 -c .superpowers/sdd/batch-3a/protected-baseline.sha256
+git diff --check
+git diff --name-status HEAD
+```
+
+The exact implementation diff is the three test files. Full verify must pass
+without a live metadata regeneration. All generated files and protected
+identities remain byte-identical.
+
+- [ ] **Step 5: Independent repair review and new candidate commit**
+
+Review confirms the exact failed-run evidence, cross-platform isolated test
+tools, unchanged production authoring/security contract, exact four per-test
+deadlines, no unrelated timeout expansion, full verification, and the exact
+three-file implementation diff. After `PASS`:
+
+```bash
+git add packages/classification-core/src/compiler/compile.test.ts \
+  tools/documentation/build-index.test.ts \
+  tools/parity/shared/authoring.test.ts
+git commit -m "Repair Batch 3A CI verification"
+```
+
+This commit, not `3917ad73b99437a5597d5954f0a8bd28dea8347b`, is the replacement
+Task 17 candidate. Record its exact SHA in ignored evidence, leave the working
+tree clean, and return to Task 18 Step 1. Task 18 may push and authenticate only
+the replacement candidate; the failed run is never acceptance evidence.
+
+**Stop conditions:** Any production/tool/fixture/workflow/metadata change,
+global timeout, retry/skip/concurrency workaround, security-contract weakening,
+failure outside the four evidenced deadlines, protected identity drift,
+non-three-file implementation diff, full verify or acceptance failure, or
+independent `CHANGES_REQUIRED`.
+
+---
+
 ### Task 18: Authenticate the exact candidate and close Batch 3A
 
 **Files:**

@@ -1675,6 +1675,57 @@ record the prior implementation SHA but cannot change implementation or
 verification paths. No production code, artifact, fixture, export, live ledger,
 commit, or push is authorized merely by this draft.
 
+### 20A. Exact-SHA candidate CI repair boundary
+
+The first pushed Task 17 candidate,
+`3917ad73b99437a5597d5954f0a8bd28dea8347b`, failed canonical push run
+`29530731362` before metadata completion. Its identity was correct, but Ubuntu
+exposed a test-only portability defect and four bounded test deadlines:
+
+- the shared authoring test fixture reused the Mac-only production
+  `trustedTools` paths, so seven copy-validated tests failed because `/Users`
+  does not exist on the runner;
+- three classification composition/identity tests exceeded their default
+  5-second Vitest deadline under full-suite runner load; and
+- the two-locale documentation subprocess test completed after its existing
+  15-second deadline.
+
+This failed run is RED evidence, not acceptance evidence. It authorizes no
+ledger promotion or metadata generation. A narrow Task 17A replaces the failed
+candidate only after an independently reviewed repair. Its total tracked-file
+allowlist is exactly:
+
+```text
+docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md
+docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md
+packages/classification-core/src/compiler/compile.test.ts
+tools/documentation/build-index.test.ts
+tools/parity/shared/authoring.test.ts
+```
+
+The two documentation files form a contract-only checkpoint before the three
+test files may change. The implementation repair must:
+
+1. provision isolated regular-file trusted-tool doubles below each shared
+   authoring test root, bind the test module's exact shared-tool identity to
+   those doubles, and restore the original identities after every test;
+2. retain the production `trustedTools`, no-follow validation, copy-validated
+   equality check, sandbox policy, dependency validation, and fixture bytes
+   unchanged;
+3. add a regression that proves all copy-validated test tools are isolated
+   regular files while the existing substituted-node/sandbox rejection remains
+   active;
+4. give only the three timed-out classification tests an exact 15-second
+   deadline; and
+5. raise only the locale determinism test's deadline from 15 to 30 seconds.
+
+No global timeout, retry, skip, concurrency reduction, production change,
+fixture edit, workflow change, live metadata change, diagnostic weakening, or
+assurance/readiness transition is permitted. After focused and full Node 24
+verification and independent review, one test-only commit becomes the new Task
+17 implementation candidate. Task 18 must authenticate that new exact SHA and
+must never record failed run `29530731362` or the superseded SHA as evidence.
+
 ## 21. Explicit deferred work for Batch 3B and 3C
 
 Batch 3B owns:
