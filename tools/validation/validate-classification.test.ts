@@ -8,16 +8,21 @@ import {
 import { validateClassificationModel } from './validate-classification.js'
 
 describe('classification validation', () => {
-  test('accepts decoupled global and style versions through policy bindings', () => {
-    const result = compileClassification(
-      classificationDefinition,
-      'packages/classification-core/src/definitions/classification.ts',
-    )
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.model.modelVersion).not.toBe(result.model.styleModel.metadata.modelVersion)
-    expect(() => validateClassificationModel(result.model)).not.toThrow()
-  })
+  // Full classification compilation and validation can exceed Vitest's 5s default on remote runners.
+  test(
+    'accepts decoupled global and style versions through policy bindings',
+    () => {
+      const result = compileClassification(
+        classificationDefinition,
+        'packages/classification-core/src/definitions/classification.ts',
+      )
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.model.modelVersion).not.toBe(result.model.styleModel.metadata.modelVersion)
+      expect(() => validateClassificationModel(result.model)).not.toThrow()
+    },
+    15_000,
+  )
 
   test('rejects a policy component identity mismatch', () => {
     const result = compileClassification(
