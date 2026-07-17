@@ -762,3 +762,39 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `batch3c-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 3C candidate passed canonical CI
   - Commit: `011df13ca4f87333db54d3386b26f5987ffa14b7`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29598120984
+
+## Batch Web — in-progress
+
+- Behavior: `internal-runnable-product-no-acceptance-promotion`
+- Transformation: Introduces the first internal runnable Web product slice over accepted public classification runtime contracts.
+
+### Legacy sources
+
+- None; this batch introduces new infrastructure.
+
+### New owners
+
+- `apps/web/e2e/runnable-product.spec.ts`
+- `apps/web/index.html`
+- `apps/web/package.json`
+- `apps/web/playwright.config.ts`
+- `apps/web/public/favicon.svg`
+- `apps/web/src/App.tsx`
+- `apps/web/src/catalog-adapter.test.ts`
+- `apps/web/src/catalog-adapter.ts`
+- `apps/web/src/finder-adapter.test.ts`
+- `apps/web/src/finder-adapter.ts`
+- `apps/web/src/main.tsx`
+- `apps/web/src/presentation-copy.ts`
+- `apps/web/src/questionnaire.test.ts`
+- `apps/web/src/questionnaire.ts`
+- `apps/web/src/runtime.ts`
+- `apps/web/src/styles.css`
+- `apps/web/src/web-persistence.test.ts`
+- `apps/web/src/web-persistence.ts`
+- `apps/web/tsconfig.json`
+- `apps/web/vite.config.ts`
+
+### Verification
+
+- Pending.

@@ -7,6 +7,7 @@
     "node": ">=24"
   },
   "workspaces": [
+    "apps/*",
     "packages/*"
   ],
   "scripts": {
@@ -15,6 +16,7 @@
     "classification-model:check": "tsx tools/scoring/generate-classification-model.ts --check",
     "classification-model:generate": "tsx tools/scoring/generate-classification-model.ts --write",
     "classification:validate": "tsx tools/validation/validate-classification.ts",
+    "dev": "npm run dev --workspace @ramen-style/web",
     "lint": "eslint . --max-warnings=0",
     "migration:ledger": "tsx tools/migration/check-ledger.ts --write",
     "migration:ledger:check": "tsx tools/migration/check-ledger.ts --check",
@@ -33,8 +35,10 @@
     "styles:check": "tsx tools/styles/generate-style-model.ts --check",
     "styles:generate": "tsx tools/styles/generate-style-model.ts --write",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
-    "build": "tsc -b packages/classification-core",
+    "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
+    "build": "tsc -b packages/classification-core && npm run build --workspace @ramen-style/web",
+    "test:web": "vitest run apps/web/src",
+    "test:browser": "playwright test --config apps/web/playwright.config.ts",
     "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run questions:check && npm run styles:check && npm run classification-model:check && npm run runtime:imports:check && npm run parity:questions && npm run parity:persistence && npm run parity:styles && npm run parity:scoring && npm run parity:eligibility && npm run classification:index:check && npm run migration:ledger:check",
     "verify:acceptance": "npm run verify && tsx tools/acceptance/verify-acceptance.ts"
   },

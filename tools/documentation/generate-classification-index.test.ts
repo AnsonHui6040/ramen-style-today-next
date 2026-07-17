@@ -241,6 +241,12 @@ function batch2BEntry(
 
 function writeRegisteredConsumers(repoRoot: string) {
   for (const [file, importedPackage] of [
+    ['apps/web/src/App.tsx', '@ramen-style/classification-core'],
+    ['apps/web/src/catalog-adapter.ts', '@ramen-style/classification-core'],
+    ['apps/web/src/finder-adapter.ts', '@ramen-style/classification-core'],
+    ['apps/web/src/questionnaire.ts', '@ramen-style/classification-core'],
+    ['apps/web/src/runtime.ts', '@ramen-style/classification-core'],
+    ['apps/web/src/web-persistence.ts', '@ramen-style/classification-core'],
     ['tools/parity/eligibility/parity.ts', '@ramen-style/classification-core'],
     ['tools/parity/questions/observable-trace.ts', '@ramen-style/classification-core/compiler'],
     ['tools/parity/questions/parity.ts', '@ramen-style/classification-core/compiler'],

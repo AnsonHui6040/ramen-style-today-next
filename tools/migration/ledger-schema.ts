@@ -251,6 +251,9 @@ export const acceptedBatch3AMetadataSha =
 export const acceptedBatch3BMetadataSha =
   '13f9b7fd4939f182362ff15a5c9862f6198abe94' as const
 
+export const acceptedBatch3CMetadataSha =
+  '4698a9ea04c6ca8289cff9a41b166c4e51fd9181' as const
+
 export const batch3BApprovedDependencyTestPaths = [
   'packages/classification-core/src/persistence/contracts.test.ts',
   'packages/classification-core/src/compiler/styles/serialize.test.ts',
@@ -326,6 +329,38 @@ export const batch3CNewOwners = [
   'tools/parity/eligibility/verify-fixtures.ts',
   'tools/parity/fixtures/eligibility/legacy-v1/cases.json',
   'tools/parity/fixtures/eligibility/legacy-v1/manifest.json',
+] as const
+
+export const webProductNewOwners = [
+  'apps/web/e2e/runnable-product.spec.ts',
+  'apps/web/index.html',
+  'apps/web/package.json',
+  'apps/web/playwright.config.ts',
+  'apps/web/public/favicon.svg',
+  'apps/web/src/App.tsx',
+  'apps/web/src/catalog-adapter.test.ts',
+  'apps/web/src/catalog-adapter.ts',
+  'apps/web/src/finder-adapter.test.ts',
+  'apps/web/src/finder-adapter.ts',
+  'apps/web/src/main.tsx',
+  'apps/web/src/presentation-copy.ts',
+  'apps/web/src/questionnaire.test.ts',
+  'apps/web/src/questionnaire.ts',
+  'apps/web/src/runtime.ts',
+  'apps/web/src/styles.css',
+  'apps/web/src/web-persistence.test.ts',
+  'apps/web/src/web-persistence.ts',
+  'apps/web/tsconfig.json',
+  'apps/web/vite.config.ts',
+] as const
+
+export const webProductProtectedMaintenancePaths = [
+  'package.json',
+  'tools/documentation/generate-classification-index.test.ts',
+  'tools/documentation/relations.ts',
+  'tools/migration/ledger-check.test.ts',
+  'tools/migration/ledger-check.ts',
+  'tools/migration/ledger-schema.ts',
 ] as const
 
 export const batch3AProtectedStylePaths = [
@@ -642,7 +677,7 @@ const completionGatePolicies = new Map<string, ReadonlySet<string>>([
 ])
 
 const entrySchema = z.strictObject({
-  batch: z.enum(['0', '1', '2A', '2B', '3A', '3B', '3C']),
+  batch: z.enum(['0', '1', '2A', '2B', '3A', '3B', '3C', 'Web']),
   status: z.enum(['in-review', 'in-progress', 'complete']),
   foundationCommit: fullShaSchema.optional(),
   implementationSha: fullShaSchema.optional(),
@@ -774,6 +809,32 @@ const entrySchema = z.strictObject({
       code: 'custom',
       path: ['maintenance'],
       message: 'maintenance is currently reserved for Batch 2A',
+    })
+  }
+  if (entry.batch === 'Web') {
+    if (entry.status !== 'in-progress') context.addIssue({
+      code: 'custom',
+      path: ['status'],
+      message: 'the first runnable Web product slice must remain in-progress',
+    })
+    if (JSON.stringify(entry.ownedScopes) !== JSON.stringify(['apps/web'])) {
+      context.addIssue({
+        code: 'custom',
+        path: ['ownedScopes'],
+        message: 'the Web product slice owns only the apps/web scope',
+      })
+    }
+    if (JSON.stringify(entry.newOwners) !== JSON.stringify(webProductNewOwners)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['newOwners'],
+        message: 'the Web product slice requires the exact closed new-owner inventory',
+      })
+    }
+    if (entry.verification.length !== 0) context.addIssue({
+      code: 'custom',
+      path: ['verification'],
+      message: 'the in-progress Web product slice must not record acceptance evidence',
     })
   }
   if (entry.batch === '2B') {

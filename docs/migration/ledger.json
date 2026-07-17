@@ -860,6 +860,39 @@
           "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29598120984"
         }
       ]
+    },
+    {
+      "batch": "Web",
+      "status": "in-progress",
+      "legacySources": [],
+      "ownedScopes": [
+        "apps/web"
+      ],
+      "newOwners": [
+        "apps/web/e2e/runnable-product.spec.ts",
+        "apps/web/index.html",
+        "apps/web/package.json",
+        "apps/web/playwright.config.ts",
+        "apps/web/public/favicon.svg",
+        "apps/web/src/App.tsx",
+        "apps/web/src/catalog-adapter.test.ts",
+        "apps/web/src/catalog-adapter.ts",
+        "apps/web/src/finder-adapter.test.ts",
+        "apps/web/src/finder-adapter.ts",
+        "apps/web/src/main.tsx",
+        "apps/web/src/presentation-copy.ts",
+        "apps/web/src/questionnaire.test.ts",
+        "apps/web/src/questionnaire.ts",
+        "apps/web/src/runtime.ts",
+        "apps/web/src/styles.css",
+        "apps/web/src/web-persistence.test.ts",
+        "apps/web/src/web-persistence.ts",
+        "apps/web/tsconfig.json",
+        "apps/web/vite.config.ts"
+      ],
+      "transformation": "Introduces the first internal runnable Web product slice over accepted public classification runtime contracts.",
+      "behavior": "internal-runnable-product-no-acceptance-promotion",
+      "verification": []
     }
   ]
 }

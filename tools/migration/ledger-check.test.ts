@@ -1847,6 +1847,30 @@ describe('Batch 3C eligibility ownership and transaction boundary', () => {
   })
 })
 
+describe('first runnable Web product ownership', () => {
+  test('remains in-progress with exact scoped owners and no acceptance evidence', () => {
+    expect(migrationLedgerSchema.safeParse(ledger).success).toBe(true)
+    for (const overrides of [
+      { status: 'complete' },
+      { ownedScopes: [] },
+      { newOwners: ledger.entries.find(({ batch }) => batch === 'Web')!.newOwners.slice(1) },
+      { implementationSha: candidateSha },
+      {
+        verification: [{
+          gate: 'web-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'premature acceptance evidence',
+        }],
+      },
+    ]) {
+      const input = structuredClone(ledger)
+      Object.assign(input.entries.find(({ batch }) => batch === 'Web')!, overrides)
+      expect(migrationLedgerSchema.safeParse(input).success).toBe(false)
+    }
+  })
+})
+
 describe('Batch 2B ownership and acceptance invariants', () => {
   test('accepts only the exact in-progress path groups without implementation evidence', () => {
     expect(migrationLedgerSchema.safeParse(batch2BLedger()).success).toBe(true)

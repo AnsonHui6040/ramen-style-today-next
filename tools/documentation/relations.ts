@@ -22,6 +22,12 @@ export const documentationSourceFile =
   'packages/classification-core/src/definitions/questions.ts'
 
 export const documentationDetectedConsumers = [
+  'apps/web/src/App.tsx',
+  'apps/web/src/catalog-adapter.ts',
+  'apps/web/src/finder-adapter.ts',
+  'apps/web/src/questionnaire.ts',
+  'apps/web/src/runtime.ts',
+  'apps/web/src/web-persistence.ts',
   'tools/parity/eligibility/parity.ts',
   'tools/parity/questions/observable-trace.ts',
   'tools/parity/questions/parity.ts',

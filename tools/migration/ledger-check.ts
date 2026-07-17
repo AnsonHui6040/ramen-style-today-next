@@ -11,12 +11,14 @@ import {
   batch3AProtectedStylePaths,
   batch3BAcceptanceMetadataPaths,
   acceptedBatch3BMetadataSha,
+  acceptedBatch3CMetadataSha,
   batch3BApprovedDependencyTestPaths,
   batch3CAcceptanceMetadataPaths,
   batch3CImplementationPaths,
   batch3CVerificationPaths,
   migrationLedgerSchema,
   protectedQuestionBaseline,
+  webProductProtectedMaintenancePaths,
 } from './ledger-schema.js'
 import { renderLedger } from './render-ledger.js'
 
@@ -206,6 +208,7 @@ export async function checkLedgerOffline(
   const errors = [...base.errors]
   const hasBatch3B = base.ledger.entries.some(({ batch }) => batch === '3B')
   const hasBatch3C = base.ledger.entries.some(({ batch }) => batch === '3C')
+  const hasWebProduct = base.ledger.entries.some(({ batch }) => batch === 'Web')
 
   if (!fullShaPattern.test(state.currentHeadSha)) {
     errors.push('Current repository HEAD must be a full lowercase SHA')
@@ -534,7 +537,45 @@ export async function checkLedgerOffline(
       errors.push('classification manifest eligibility fixture manifest hash is inconsistent')
     }
     if (batch3C.status === 'complete' && batch3C.implementationSha) {
-      if (!await state.isCommitAncestor(batch3C.implementationSha, state.currentHeadSha)) {
+      if (hasWebProduct) {
+        const parents = await state.directParentsOf(acceptedBatch3CMetadataSha)
+        if (parents.length !== 1 || parents[0] !== batch3C.implementationSha) {
+          errors.push(
+            `Batch 3C accepted metadata SHA ${acceptedBatch3CMetadataSha} must have exactly one parent ${batch3C.implementationSha}`,
+          )
+        }
+        const acceptedPaths = [
+          ...await (state.committedChangedPathsBetween ?? state.changedPathsBetween)(
+            batch3C.implementationSha,
+            acceptedBatch3CMetadataSha,
+          ),
+        ].sort(compareCodePoints)
+        const expectedPaths = [...batch3CAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(acceptedPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3C accepted boundary requires the exact acceptance metadata path set')
+        }
+        if (!await state.isCommitAncestor(acceptedBatch3CMetadataSha, state.currentHeadSha)) {
+          errors.push(
+            `Batch 3C accepted metadata SHA ${acceptedBatch3CMetadataSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+          )
+        } else {
+          const changedAfterAcceptance = await state.changedPathsBetween(
+            acceptedBatch3CMetadataSha,
+            state.currentHeadSha,
+          )
+          for (const file of changedAfterAcceptance) {
+            if ([
+              ...(batch3C.implementationPaths ?? []),
+              ...(batch3C.verificationPaths ?? []),
+            ].some((path) => matchesSemanticPath(file, path))
+              && !webProductProtectedMaintenancePaths.some(
+                (path) => matchesSemanticPath(file, path),
+              )) errors.push(
+              `Batch 3C protected eligibility path changed after accepted metadata SHA: ${file}`,
+            )
+          }
+        }
+      } else if (!await state.isCommitAncestor(batch3C.implementationSha, state.currentHeadSha)) {
         errors.push(
           `Batch 3C implementation SHA ${batch3C.implementationSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
         )
