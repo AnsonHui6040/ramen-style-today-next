@@ -22,6 +22,8 @@
     "parity:persistence": "tsx tools/parity/persistence/verify-fixtures.ts",
     "parity:persistence:extract": "tsx tools/parity/persistence/extract.ts",
     "parity:questions": "tsx tools/parity/questions/parity.ts",
+    "parity:scoring": "tsx tools/parity/scoring/parity.ts",
+    "parity:scoring:extract": "tsx tools/parity/scoring/extract.ts",
     "parity:styles": "tsx tools/parity/styles/parity.ts",
     "questions:check": "tsx tools/questions/generate-question-model.ts --check",
     "questions:generate": "tsx tools/questions/generate-question-model.ts --write",
