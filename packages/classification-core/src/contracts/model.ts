@@ -1,8 +1,8 @@
 import type { DeepReadonly } from './deep-freeze.js'
-import type { CompiledQuestion } from './question-model.js'
+import type { CompiledQuestion, CompiledQuestionModel } from './question-model.js'
 import type { ClassificationSourceProvenance } from './provenance.js'
+import type { CompiledScoringPolicy } from './scoring-policy.js'
 import type { CompiledStyleModel } from './style-model.js'
-import type { DefinitionBundleSource } from '../compiler/source-schema.js'
 
 export type { DeepReadonly } from './deep-freeze.js'
 
@@ -22,8 +22,9 @@ export interface ClassificationModel {
   readonly modelVersion: string
   readonly dataVersion: string
   readonly provenance: DeepReadonly<ClassificationSourceProvenance>
+  readonly questionModel: CompiledQuestionModel
   readonly questions: DeepReadonly<readonly CompiledQuestion[]>
   readonly styleModel: CompiledStyleModel
-  readonly policy: DeepReadonly<DefinitionBundleSource['policy']>
+  readonly policy: CompiledScoringPolicy
   readonly inventory: readonly ConceptRecord[]
 }

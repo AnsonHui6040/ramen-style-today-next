@@ -9,11 +9,12 @@ import type {
 } from '../contracts/question-model.js'
 import type { CompiledStyleModel } from '../contracts/style-model.js'
 import { classificationDefinition } from '../definitions/classification.js'
+import { legacyScoringPolicy } from '../definitions/policies.js'
 import { questionDefinitions } from '../definitions/questions.js'
 import { styleDefinitionBundle } from '../definitions/styles/index.js'
-import { syntheticPolicy } from '../definitions/synthetic.js'
 import { compileClassification, type CompileResult } from './compile.js'
 import { compileQuestions } from './questions/compile.js'
+import { compileScoringPolicy } from './scoring-policy/compile.js'
 import type { DefinitionBundleSource } from './source-schema.js'
 import { stableJson } from './stable-json.js'
 import { compileStyles } from './styles/compile.js'
@@ -34,15 +35,15 @@ type Mutable<T> = T extends readonly (infer Item)[]
 
 function productionDefinition(): Mutable<DefinitionBundleSource> {
   return structuredClone({
-    modelVersion: 'batch3a.1.0',
+    modelVersion: 'batch3b.1.0',
     provenance: {
       questions: { origin: 'legacy-production' },
       styles: { origin: 'legacy-production' },
-      scoringPolicy: { origin: 'synthetic' },
+      scoringPolicy: { origin: 'legacy-production' },
     },
     questions: questionDefinitions,
     styles: styleDefinitionBundle,
-    policy: syntheticPolicy,
+    policy: legacyScoringPolicy,
   }) as unknown as Mutable<DefinitionBundleSource>
 }
 
@@ -84,6 +85,13 @@ function expectedClassificationDataVersion(
   questionModel: CompiledQuestionModel,
   styleModel: CompiledStyleModel,
 ) {
+  const policy = compileScoringPolicy(
+    definition.policy,
+    questionModel,
+    styleModel,
+    definition.modelVersion,
+  )
+  if (!policy.ok) throw new Error('test policy source must compile')
   return sha256(stableJson({
     modelVersion: definition.modelVersion,
     questionModel: {
@@ -97,13 +105,8 @@ function expectedClassificationDataVersion(
       dataVersion: styleModel.metadata.dataVersion,
     },
     scoringPolicy: {
-      exactRatio: definition.policy.exactRatio,
-      adjacentRatio: definition.policy.adjacentRatio,
-      partialRatio: definition.policy.partialRatio,
-      bonusCap: definition.policy.bonusCap,
-      penaltyCap: definition.policy.penaltyCap,
-      confidenceThreshold: definition.policy.confidenceThreshold,
-      tieGap: definition.policy.tieGap,
+      semanticHash: policy.model.metadata.semanticHash,
+      dataVersion: policy.model.metadata.dataVersion,
     },
   }))
 }
@@ -117,6 +120,9 @@ function reverseSourceOrder(definition: Mutable<DefinitionBundleSource>) {
   definition.styles.taxonomy.noodles.reverse()
   definition.styles.taxonomy.exclusionTags.reverse()
   definition.styles.taxonomy.ruleQuestions.reverse()
+  definition.policy.scoredQuestions.reverse()
+  definition.policy.tiers.reverse()
+  definition.policy.confidence.uncertainty.reverse()
   for (const style of definition.styles.definitions) {
     style.supportedIntensityIds.reverse()
     style.supportedNoodleIds.reverse()
@@ -130,15 +136,25 @@ function reverseSourceOrder(definition: Mutable<DefinitionBundleSource>) {
 }
 
 describe('classification source replacement and compile ordering', () => {
-  test('uses the production style bundle while preserving the synthetic policy', () => {
+  test('uses the production style bundle and compiled legacy policy', () => {
     expect(classificationDefinition).toEqual(productionDefinition())
 
     const result = compileClassification(classificationDefinition, sourceFile)
 
     expectSuccess(result)
-    expect(result.model.modelVersion).toBe('batch3a.1.0')
-    expect(result.model.policy).toEqual(syntheticPolicy)
-    expect(result.model.provenance.scoringPolicy).toEqual({ origin: 'synthetic' })
+    expect(result.model.modelVersion).toBe('batch3b.1.0')
+    expect(result.model.policy.metadata).toMatchObject({
+      modelVersion: 'batch3b.1.0',
+      questionModelVersion: 'batch2a.1.0',
+      styleModelVersion: 'batch3a.1.0',
+    })
+    expect(result.model.policy.derived).toEqual({
+      baseWeightTotal: 100,
+      maximumScore: 105,
+      scoreScale: 10,
+    })
+    expect(result.model.provenance.scoringPolicy)
+      .toEqual({ origin: 'legacy-production' })
   }, 15_000)
 
   test('question failure prevents style compilation and returns no partial model', () => {
@@ -178,6 +194,8 @@ describe('classification source replacement and compile ordering', () => {
     const result = compileClassification(definition, sourceFile)
 
     expectSuccess(result)
+    expect(result.model.questionModel).toEqual(questionModel)
+    expect(result.model.questionModel.questions).toBe(result.model.questions)
     expect(result.model.questions).toEqual(questionModel.questions)
     expect(result.model.styleModel.metadata.questionModelVersion)
       .toBe(questionModel.metadata.modelVersion)
@@ -186,18 +204,22 @@ describe('classification source replacement and compile ordering', () => {
     expect(result.model.styleModel).toEqual(expectedStyleModel)
   })
 
-  test('fails closed when top-level and style model versions differ', () => {
+  test('allows global/style version decoupling and rejects policy/global mismatch', () => {
+    const valid = compileClassification(productionDefinition(), sourceFile)
     const invalid = productionDefinition()
     invalid.modelVersion = 'batch3a.1.1'
 
     const result = compileClassification(invalid, sourceFile)
 
+    expectSuccess(valid)
+    expect(valid.model.modelVersion).toBe('batch3b.1.0')
+    expect(valid.model.styleModel.metadata.modelVersion).toBe('batch3a.1.0')
     expectFailure(result)
     expect(result.diagnostics).toContainEqual(expect.objectContaining({
-      code: 'STYLE_MODEL_VERSION_MISMATCH',
+      code: 'POLICY_MODEL_VERSION_MISMATCH',
       path: '/modelVersion',
-      expected: 'batch3a.1.0',
-      received: 'batch3a.1.1',
+      expected: 'batch3a.1.1',
+      received: 'batch3b.1.0',
     }))
   })
 })
@@ -230,7 +252,7 @@ describe('classification model composition', () => {
         modelVersion: 'batch3a.1.0',
         ...acceptedStyleHashes,
       },
-      scoringPolicy: { origin: 'synthetic' },
+      scoringPolicy: { origin: 'legacy-production' },
     })
   })
 
@@ -380,7 +402,7 @@ describe('classification data identity', () => {
   test('policy changes affect classification identity without changing compiled styles', () => {
     const baselineDefinition = productionDefinition()
     const changedDefinition = productionDefinition()
-    changedDefinition.policy.bonusCap = 6
+    changedDefinition.policy.adjustments.bonusCap = 6
     const baseline = compileClassification(baselineDefinition, sourceFile)
     const changed = compileClassification(changedDefinition, sourceFile)
 
@@ -434,7 +456,7 @@ describe('preserved question and API boundaries', () => {
       expect.objectContaining({ code: 'OPTION_DUPLICATE_ID' }),
     )
     expect(compileClassification(invalidWeight, sourceFile).diagnostics).toContainEqual(
-      expect.objectContaining({ code: 'POLICY_WEIGHT_TOTAL' }),
+      expect.objectContaining({ code: 'POLICY_QUESTION_WEIGHT_MISMATCH' }),
     )
   })
 

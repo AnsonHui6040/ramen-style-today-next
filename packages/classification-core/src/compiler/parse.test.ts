@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest'
 
+import { legacyScoringPolicy } from '../definitions/policies.js'
 import { questionDefinitions } from '../definitions/questions.js'
 import { styleDefinitionBundle } from '../definitions/styles/index.js'
-import { syntheticPolicy } from '../definitions/synthetic.js'
 import { parseDefinitionBundle } from './parse.js'
 import type { DefinitionBundleSource } from './source-schema.js'
 
@@ -15,15 +15,15 @@ type Mutable<T> = T extends readonly (infer Item)[]
 
 function productionDefinition(): Mutable<DefinitionBundleSource> {
   return structuredClone({
-    modelVersion: 'batch3a.1.0',
+    modelVersion: 'batch3b.1.0',
     provenance: {
       questions: { origin: 'legacy-production' },
       styles: { origin: 'legacy-production' },
-      scoringPolicy: { origin: 'synthetic' },
+      scoringPolicy: { origin: 'legacy-production' },
     },
     questions: questionDefinitions,
     styles: styleDefinitionBundle,
-    policy: syntheticPolicy,
+    policy: legacyScoringPolicy,
   }) as unknown as Mutable<DefinitionBundleSource>
 }
 
@@ -38,15 +38,15 @@ function reverseObjectInsertion(value: unknown): unknown {
 }
 
 describe('definition bundle parsing', () => {
-  test('accepts the strict production style bundle and preserves synthetic policy', () => {
+  test('accepts the strict production bundle and preserves legacy policy', () => {
     const result = parseDefinitionBundle(productionDefinition(), sourceFile)
 
     expect(result.diagnostics).toEqual([])
     expect(result.definition).toMatchObject({
-      modelVersion: 'batch3a.1.0',
+      modelVersion: 'batch3b.1.0',
       provenance: {
         styles: { origin: 'legacy-production' },
-        scoringPolicy: { origin: 'synthetic' },
+        scoringPolicy: { origin: 'legacy-production' },
       },
       styles: {
         modelVersion: 'batch3a.1.0',
@@ -54,7 +54,7 @@ describe('definition bundle parsing', () => {
           expect.objectContaining({ id: 'shoyu-chintan' }),
         ]),
       },
-      policy: syntheticPolicy,
+      policy: legacyScoringPolicy,
     })
   })
 

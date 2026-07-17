@@ -12,6 +12,8 @@
   "scripts": {
     "classification:index": "tsx tools/documentation/generate-classification-index.ts --write",
     "classification:index:check": "tsx tools/documentation/generate-classification-index.ts --check",
+    "classification-model:check": "tsx tools/scoring/generate-classification-model.ts --check",
+    "classification-model:generate": "tsx tools/scoring/generate-classification-model.ts --write",
     "classification:validate": "tsx tools/validation/validate-classification.ts",
     "lint": "eslint . --max-warnings=0",
     "migration:ledger": "tsx tools/migration/check-ledger.ts --write",

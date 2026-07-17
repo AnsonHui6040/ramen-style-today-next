@@ -1,33 +1,35 @@
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import {
   classificationDefinition,
   compileClassification,
+  type ClassificationModel,
 } from '@ramen-style/classification-core/compiler'
 import { verifyCommittedStyleFixtures } from '../parity/styles/verify-fixtures.js'
 
 const sourceFile = 'packages/classification-core/src/definitions/classification.ts'
-const result = compileClassification(classificationDefinition, sourceFile)
 
-if (!result.ok) {
-  console.error(JSON.stringify(result.diagnostics, null, 2))
-  process.exitCode = 1
-} else {
+export function validateClassificationModel(model: ClassificationModel) {
   const fixture = verifyCommittedStyleFixtures()
-  const cores = result.model.styleModel.styles.flatMap(({ cores: values }) => values)
+  const cores = model.styleModel.styles.flatMap(({ cores: values }) => values)
   const subtypes = cores.flatMap(({ subtypes: values }) => values)
   const rules = cores.flatMap(({ rules: values }) => values)
-  const adjustments = result.model.styleModel.styles.flatMap(
+  const adjustments = model.styleModel.styles.flatMap(
     ({ adjustments: values }) => values,
   )
-  const optionCount = result.model.questions.reduce(
+  const optionCount = model.questions.reduce(
     (count, question) => count + question.options.length,
     0,
   )
-  const expectedConceptCount = result.model.questions.length
+  const expectedConceptCount = model.questions.length
     + optionCount
-    + result.model.styleModel.inventory.length
+    + model.styleModel.inventory.length
     + 1
-  const styleMetadata = result.model.styleModel.metadata
-  const styleProvenance = result.model.provenance.styles
+  const questionMetadata = model.questionModel.metadata
+  const styleMetadata = model.styleModel.metadata
+  const policyMetadata = model.policy.metadata
+  const styleProvenance = model.provenance.styles
   const conceptCounts = Object.fromEntries([
     'question',
     'option',
@@ -37,16 +39,25 @@ if (!result.ok) {
     'policy',
   ].map((kind) => [
     kind,
-    result.model.inventory.filter((concept) => concept.kind === kind).length,
+    model.inventory.filter((concept) => concept.kind === kind).length,
   ]))
+
   if (
-    result.model.modelVersion !== styleMetadata.modelVersion
-    || result.model.styleModel.styles.length !== 18
+    model.modelVersion !== policyMetadata.modelVersion
+    || model.questionModel.questions !== model.questions
+    || policyMetadata.questionModelVersion !== questionMetadata.modelVersion
+    || policyMetadata.questionSemanticHash !== questionMetadata.semanticHash
+    || styleMetadata.questionModelVersion !== questionMetadata.modelVersion
+    || styleMetadata.questionSemanticHash !== questionMetadata.semanticHash
+    || policyMetadata.styleModelVersion !== styleMetadata.modelVersion
+    || policyMetadata.styleSemanticHash !== styleMetadata.semanticHash
+    || model.provenance.scoringPolicy.origin !== 'legacy-production'
+    || model.styleModel.styles.length !== 18
     || cores.length !== 54
     || subtypes.length !== 270
     || rules.length !== 378
     || adjustments.length !== 25
-    || result.model.inventory.length !== expectedConceptCount
+    || model.inventory.length !== expectedConceptCount
     || JSON.stringify(conceptCounts) !== JSON.stringify({
       question: 8,
       option: 53,
@@ -73,25 +84,40 @@ if (!result.ok) {
     || fixture.coverage.conflictCopies !== 21
     || fixture.coverage.exclusionTags !== 6
     || fixture.coverage.copyRoles !== 8
-  ) throw new Error('classification style composition validation failed')
+  ) throw new Error('classification composition validation failed')
 
-  console.log(JSON.stringify({
-    modelVersion: result.model.modelVersion,
-    dataVersion: result.model.dataVersion,
-    provenance: result.model.provenance,
-    questionCount: result.model.questions.length,
+  return {
+    modelVersion: model.modelVersion,
+    dataVersion: model.dataVersion,
+    provenance: model.provenance,
+    policy: model.policy.metadata,
+    questionCount: model.questions.length,
     optionCount,
-    styleCount: result.model.styleModel.styles.length,
+    styleCount: model.styleModel.styles.length,
     coreCount: cores.length,
     subtypeCount: subtypes.length,
     ruleCount: rules.length,
     adjustmentCount: adjustments.length,
-    conceptCount: result.model.inventory.length,
+    conceptCount: model.inventory.length,
     styleFixture: {
       casesHash: fixture.casesHash,
       fixtureContentHash: fixture.fixtureContentHash,
       manifestHash: fixture.manifestHash,
       coverage: fixture.coverage,
     },
-  }))
+  }
+}
+
+function main() {
+  const result = compileClassification(classificationDefinition, sourceFile)
+  if (!result.ok) {
+    console.error(JSON.stringify(result.diagnostics, null, 2))
+    process.exitCode = 1
+    return
+  }
+  console.log(JSON.stringify(validateClassificationModel(result.model)))
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main()
 }

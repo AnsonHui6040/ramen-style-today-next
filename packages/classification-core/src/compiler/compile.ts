@@ -17,6 +17,7 @@ import { parseDefinitionBundle } from './parse.js'
 import { compileQuestions } from './questions/compile.js'
 import { extractConditionReferences } from './questions/dependencies.js'
 import { stableJson } from './stable-json.js'
+import { compileScoringPolicy } from './scoring-policy/compile.js'
 import { compileStyles } from './styles/compile.js'
 
 export type CompileResult =
@@ -85,6 +86,7 @@ function classificationDataProjection(
   definition: ParsedDefinition,
   questionModel: ReturnType<typeof compileQuestions> & { readonly ok: true },
   styleModel: ReturnType<typeof compileStyles> & { readonly ok: true },
+  policy: ReturnType<typeof compileScoringPolicy> & { readonly ok: true },
 ) {
   return {
     modelVersion: definition.modelVersion,
@@ -99,13 +101,8 @@ function classificationDataProjection(
       dataVersion: styleModel.model.metadata.dataVersion,
     },
     scoringPolicy: {
-      exactRatio: definition.policy.exactRatio,
-      adjacentRatio: definition.policy.adjacentRatio,
-      partialRatio: definition.policy.partialRatio,
-      bonusCap: definition.policy.bonusCap,
-      penaltyCap: definition.policy.penaltyCap,
-      confidenceThreshold: definition.policy.confidenceThreshold,
-      tieGap: definition.policy.tieGap,
+      semanticHash: policy.model.metadata.semanticHash,
+      dataVersion: policy.model.metadata.dataVersion,
     },
   }
 }
@@ -144,25 +141,6 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
       message: `Unknown question dependency ${reference.referencedQuestionId}`,
     })
   }
-  const totalWeight = definition.questions.reduce((sum, question) => sum + (question.weight ?? 0), 0)
-  if (totalWeight !== 100) collector.error({
-    code: 'POLICY_WEIGHT_TOTAL',
-    sourceFile: definition.policy.sourceFile,
-    path: '/questions',
-    message: `Question weights total ${totalWeight}, expected 100`,
-    expected: 100,
-    received: totalWeight,
-  })
-  if (definition.modelVersion !== definition.styles.modelVersion) collector.error({
-    code: 'STYLE_MODEL_VERSION_MISMATCH',
-    sourceFile,
-    path: '/modelVersion',
-    entityId: definition.modelVersion,
-    message: 'Classification and style model versions must match',
-    expected: definition.styles.modelVersion,
-    received: definition.modelVersion,
-  })
-
   const questionDiagnostics = [
     ...collector.toArray(),
     ...questionCompilation.diagnostics,
@@ -181,6 +159,18 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
     ...styleCompilation.diagnostics,
   ].sort(compareDiagnostics)
   if (!styleCompilation.ok) return { ok: false, diagnostics: styleDiagnostics }
+
+  const policyCompilation = compileScoringPolicy(
+    definition.policy,
+    questionCompilation.model,
+    styleCompilation.model,
+    definition.modelVersion,
+  )
+  const policyDiagnostics = [
+    ...styleDiagnostics,
+    ...policyCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (!policyCompilation.ok) return { ok: false, diagnostics: policyDiagnostics }
 
   const inventory = buildInventory(
     definition,
@@ -201,11 +191,17 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
     ...collector.toArray(),
     ...questionCompilation.diagnostics,
     ...styleCompilation.diagnostics,
+    ...policyCompilation.diagnostics,
   ].sort(compareDiagnostics)
   if (collector.hasErrors()) return { ok: false, diagnostics }
 
   const dataVersion = createHash('sha256').update(stableJson(
-    classificationDataProjection(definition, questionCompilation, styleCompilation),
+    classificationDataProjection(
+      definition,
+      questionCompilation,
+      styleCompilation,
+      policyCompilation,
+    ),
   )).digest('hex')
   const styleMetadata = styleCompilation.model.metadata
   const model = deepFreeze({
@@ -222,9 +218,10 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
       },
       scoringPolicy: definition.provenance.scoringPolicy,
     },
+    questionModel: questionCompilation.model,
     questions: questionCompilation.model.questions,
     styleModel: styleCompilation.model,
-    policy: definition.policy,
+    policy: policyCompilation.model,
     inventory,
   } satisfies ClassificationModel)
   return { ok: true, model, diagnostics }
