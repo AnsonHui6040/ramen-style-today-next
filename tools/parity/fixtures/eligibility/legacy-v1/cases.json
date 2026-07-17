@@ -1,0 +1,2218 @@
+{
+  "cases": [
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": null,
+      "candidateDecisions": [
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "none-noop",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "konbusui-tsukemen",
+        "gyokai-tsukemen",
+        "aburasoba"
+      ],
+      "selectedPrimaryStyleIds": [
+        "shoyu-chintan",
+        "chicken-chintan",
+        "shio-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "light"
+        ],
+        "exclusions": [
+          "pork"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "nori-spinach"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": "tonkotsu",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "tonkotsu"
+            }
+          ],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "hakata"
+            }
+          ],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "jiro"
+            }
+          ],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "iekei"
+            }
+          ],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "aburasoba"
+            }
+          ],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "taiwan-mazesoba"
+            }
+          ],
+          "styleId": "taiwan-mazesoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        }
+      ],
+      "id": "pork-primary-replacement",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "konbusui-tsukemen",
+        "gyokai-tsukemen"
+      ],
+      "selectedPrimaryStyleIds": [
+        "chicken-chintan",
+        "shoyu-chintan",
+        "duck-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "chicken"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": "chicken-chintan",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "chicken",
+              "restrictionTagId": "chicken",
+              "styleId": "chicken-chintan"
+            }
+          ],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "chicken",
+              "restrictionTagId": "chicken",
+              "styleId": "chicken-paitan"
+            }
+          ],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "chicken-primary-replacement",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "konbusui-tsukemen",
+        "aburasoba",
+        "gyokai-tsukemen"
+      ],
+      "selectedPrimaryStyleIds": [
+        "shoyu-chintan",
+        "shio-chintan",
+        "duck-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "duck"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "duck"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": "duck-chintan",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "duck",
+              "restrictionTagId": "duck",
+              "styleId": "duck-chintan"
+            }
+          ],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "duck",
+              "restrictionTagId": "duck",
+              "styleId": "duck-paitan"
+            }
+          ],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "duck-primary-replacement",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "konbusui-tsukemen",
+        "gyokai-tsukemen",
+        "aburasoba"
+      ],
+      "selectedPrimaryStyleIds": [
+        "shoyu-chintan",
+        "shio-chintan",
+        "chicken-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "beef"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": null,
+      "candidateDecisions": [
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "beef-noop",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "konbusui-tsukemen",
+        "gyokai-tsukemen",
+        "aburasoba"
+      ],
+      "selectedPrimaryStyleIds": [
+        "shoyu-chintan",
+        "chicken-chintan",
+        "shio-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "fish-seafood"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thin-straight"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "fish-seafood"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": "gyokai",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "gyokai"
+            }
+          ],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "konbusui-tsukemen"
+            }
+          ],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "gyokai-tsukemen"
+            }
+          ],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "fish-primary-replacement",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "aburasoba",
+        "taiwan-mazesoba"
+      ],
+      "selectedPrimaryStyleIds": [
+        "shellfish-dashi",
+        "shoyu-chintan",
+        "shio-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "konbusui-light"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "fish-seafood"
+        ],
+        "form": [
+          "tsukemen"
+        ],
+        "noodle": [
+          "medium-thick-straight"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "fish-seafood"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": "konbusui-tsukemen",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "konbusui-tsukemen"
+            }
+          ],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "gyokai-tsukemen"
+            }
+          ],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "gyokai"
+            }
+          ],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        }
+      ],
+      "id": "fish-all-primary-blocked",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": true,
+      "selectedAlternativeStyleIds": [
+        "shellfish-dashi",
+        "shoyu-chintan",
+        "shio-chintan"
+      ],
+      "selectedPrimaryStyleIds": []
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "shellfish"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "shellfish"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": "shellfish-dashi",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "shellfish",
+              "restrictionTagId": "shellfish",
+              "styleId": "shellfish-dashi"
+            }
+          ],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "shellfish-primary-replacement",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "konbusui-tsukemen",
+        "gyokai-tsukemen",
+        "aburasoba"
+      ],
+      "selectedPrimaryStyleIds": [
+        "shoyu-chintan",
+        "shio-chintan",
+        "duck-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "shrimp-crab"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": null,
+      "candidateDecisions": [
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "shrimp-crab-noop",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "konbusui-tsukemen",
+        "gyokai-tsukemen",
+        "aburasoba"
+      ],
+      "selectedPrimaryStyleIds": [
+        "shoyu-chintan",
+        "chicken-chintan",
+        "shio-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "rich"
+        ],
+        "exclusions": [
+          "dairy"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thick-wavy"
+        ],
+        "signature": [
+          "corn-butter"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "miso"
+        ]
+      },
+      "blockedLeadStyleId": "sapporo",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "dairy",
+              "restrictionTagId": "dairy",
+              "styleId": "sapporo"
+            }
+          ],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        }
+      ],
+      "id": "dairy-primary-replacement",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "aburasoba",
+        "taiwan-mazesoba",
+        "gyokai-tsukemen"
+      ],
+      "selectedPrimaryStyleIds": [
+        "miso",
+        "jiro",
+        "tonkotsu"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "aburasoba"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "pork"
+        ],
+        "form": [
+          "dry"
+        ],
+        "noodle": [
+          "medium-thick-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": "aburasoba",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "aburasoba"
+            }
+          ],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "taiwan-mazesoba"
+            }
+          ],
+          "styleId": "taiwan-mazesoba"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "jiro"
+            }
+          ],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "iekei"
+            }
+          ],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "tonkotsu"
+            }
+          ],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "hakata"
+            }
+          ],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        }
+      ],
+      "id": "pork-all-dry-primary-blocked",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": true,
+      "selectedAlternativeStyleIds": [
+        "miso",
+        "sapporo",
+        "chicken-paitan"
+      ],
+      "selectedPrimaryStyleIds": []
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "pork"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "blockedLeadStyleId": null,
+      "candidateDecisions": [
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "jiro"
+            }
+          ],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "tonkotsu"
+            }
+          ],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "hakata"
+            }
+          ],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "iekei"
+            }
+          ],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "aburasoba"
+            }
+          ],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "taiwan-mazesoba"
+            }
+          ],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "pork-alternative-filtering",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "konbusui-tsukemen",
+        "gyokai-tsukemen"
+      ],
+      "selectedPrimaryStyleIds": [
+        "shoyu-chintan",
+        "chicken-chintan",
+        "shio-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "light"
+        ],
+        "exclusions": [
+          "fish-seafood",
+          "shellfish"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "duck",
+          "shellfish"
+        ],
+        "tare": [
+          "shio"
+        ]
+      },
+      "blockedLeadStyleId": "shellfish-dashi",
+      "candidateDecisions": [
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "shellfish",
+              "restrictionTagId": "shellfish",
+              "styleId": "shellfish-dashi"
+            }
+          ],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "gyokai"
+            }
+          ],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "jiro"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "konbusui-tsukemen"
+            }
+          ],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "gyokai-tsukemen"
+            }
+          ],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "taiwan-mazesoba"
+        }
+      ],
+      "id": "fish-shellfish-multiple",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": false,
+      "selectedAlternativeStyleIds": [
+        "aburasoba",
+        "taiwan-mazesoba"
+      ],
+      "selectedPrimaryStyleIds": [
+        "duck-chintan",
+        "shio-chintan",
+        "shoyu-chintan"
+      ]
+    },
+    {
+      "answers": {
+        "archetype": [
+          "tsukemen-other"
+        ],
+        "body": [
+          "light"
+        ],
+        "exclusions": [
+          "pork",
+          "chicken",
+          "duck",
+          "beef",
+          "fish-seafood",
+          "shellfish",
+          "shrimp-crab",
+          "dairy"
+        ],
+        "form": [
+          "tsukemen"
+        ],
+        "noodle": [
+          "medium-thin-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "unsure"
+        ],
+        "tare": [
+          "none"
+        ]
+      },
+      "blockedLeadStyleId": "konbusui-tsukemen",
+      "candidateDecisions": [
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "konbusui-tsukemen"
+            }
+          ],
+          "styleId": "konbusui-tsukemen"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "gyokai-tsukemen"
+            }
+          ],
+          "styleId": "gyokai-tsukemen"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "chicken",
+              "restrictionTagId": "chicken",
+              "styleId": "chicken-paitan"
+            }
+          ],
+          "styleId": "chicken-paitan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "duck",
+              "restrictionTagId": "duck",
+              "styleId": "duck-paitan"
+            }
+          ],
+          "styleId": "duck-paitan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "fish-seafood",
+              "restrictionTagId": "fish-seafood",
+              "styleId": "gyokai"
+            }
+          ],
+          "styleId": "gyokai"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "shellfish",
+              "restrictionTagId": "shellfish",
+              "styleId": "shellfish-dashi"
+            }
+          ],
+          "styleId": "shellfish-dashi"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "tonkotsu"
+            }
+          ],
+          "styleId": "tonkotsu"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "hakata"
+            }
+          ],
+          "styleId": "hakata"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "chicken",
+              "restrictionTagId": "chicken",
+              "styleId": "chicken-chintan"
+            }
+          ],
+          "styleId": "chicken-chintan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "duck",
+              "restrictionTagId": "duck",
+              "styleId": "duck-chintan"
+            }
+          ],
+          "styleId": "duck-chintan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "aburasoba"
+            }
+          ],
+          "styleId": "aburasoba"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "iekei"
+            }
+          ],
+          "styleId": "iekei"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shio-chintan"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "shoyu-chintan"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "taiwan-mazesoba"
+            }
+          ],
+          "styleId": "taiwan-mazesoba"
+        },
+        {
+          "decision": "eligible",
+          "reasons": [],
+          "styleId": "miso"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "dairy",
+              "restrictionTagId": "dairy",
+              "styleId": "sapporo"
+            }
+          ],
+          "styleId": "sapporo"
+        },
+        {
+          "decision": "blocked",
+          "reasons": [
+            {
+              "code": "ELIGIBILITY_EXCLUSION_CONFLICT",
+              "exclusionOptionId": "pork",
+              "restrictionTagId": "pork",
+              "styleId": "jiro"
+            }
+          ],
+          "styleId": "jiro"
+        }
+      ],
+      "id": "all-restrictions-boundary",
+      "noEligibleCandidate": false,
+      "noPrimaryEligible": true,
+      "selectedAlternativeStyleIds": [
+        "shio-chintan",
+        "shoyu-chintan",
+        "miso"
+      ],
+      "selectedPrimaryStyleIds": []
+    }
+  ],
+  "projection": "legacy-eligibility-result-projection",
+  "schemaVersion": 1
+}

@@ -135,7 +135,6 @@ export interface ScoringParityVerification {
   fixtureContentHash: string
   verifiedSemanticHash: string
   verifiedDataVersion: string
-  verifiedClassificationDataVersion: string
   implementationSha: string
 }
 
@@ -181,11 +180,56 @@ export interface ScoringDocumentationEvidence {
   verification?: ScoringParityVerification
 }
 
+export interface EligibilityParityVerification {
+  assurance: 'parity-verified'
+  parityScope: 'legacy-eligibility-result-projection'
+  paritySuiteVersion: '1'
+  fixtureManifestHash: string
+  fixtureContentHash: string
+  verifiedSemanticHash: string
+  verifiedDataVersion: string
+  verifiedClassificationDataVersion: string
+  implementationSha: string
+}
+
+export interface EligibilityDocumentationEvidence {
+  sourceRepository: {
+    host: string
+    owner: string
+    repository: string
+  }
+  sourceCommit: string
+  sourceTreeHash: string
+  fixtureManifestPath: string
+  fixtureManifestHash: string
+  fixtureSchemaVersion: string
+  fixtureContentHash: string
+  seedsHash: string
+  extractorHash: string
+  sourceHashes: Readonly<Record<string, string>>
+  semanticHash: string
+  dataVersion: string
+  classificationDataVersion: string
+  paritySuiteVersion: '1'
+  coverage: {
+    exclusionOptions: number
+    activeBlockingTags: number
+    inactiveBlockingTags: number
+    primaryBlockedCases: number
+    alternativeBlockedCases: number
+    allPrimaryBlockedCases: number
+    multiExclusionCases: number
+    noOpOptionCases: number
+  }
+  verification?: EligibilityParityVerification
+}
+
 export interface DocumentationBuildOptions {
   questionEvidence?: QuestionDocumentationEvidence
   persistenceEvidence?: PersistenceDocumentationEvidence
   styleEvidence?: StyleDocumentationEvidence
   scoringEvidence?: ScoringDocumentationEvidence
+  eligibilityEvidence?: EligibilityDocumentationEvidence
   detectedConsumerRegistry?: readonly string[]
 }
 
@@ -548,6 +592,23 @@ export function buildDocumentation(
       message: 'Scoring documentation evidence does not match the compiled model',
     })
   }
+  const eligibilityEvidence = options.eligibilityEvidence
+  if (eligibilityEvidence) {
+    const metadata = model.eligibilityPolicy.metadata
+    if (
+      eligibilityEvidence.semanticHash !== metadata.semanticHash
+      || eligibilityEvidence.dataVersion !== metadata.dataVersion
+      || eligibilityEvidence.classificationDataVersion !== model.dataVersion
+      || eligibilityEvidence.coverage.exclusionOptions !== 9
+      || eligibilityEvidence.coverage.activeBlockingTags !== 6
+      || eligibilityEvidence.coverage.inactiveBlockingTags !== 6
+    ) collector.error({
+      code: 'DOC_RELATION_INVALID',
+      sourceFile: 'tools/documentation/build-index.ts',
+      path: '/eligibilityEvidence',
+      message: 'Eligibility documentation evidence does not match the compiled model',
+    })
+  }
   const provenance = {
     questions: questionProvenance,
     styles: (() => {
@@ -602,8 +663,6 @@ export function buildDocumentation(
           === scoringEvidence.fixtureContentHash
         && scoringEvidence.verification.paritySuiteVersion
           === scoringEvidence.paritySuiteVersion
-        && scoringEvidence.verification.verifiedClassificationDataVersion
-          === scoringEvidence.classificationDataVersion
         ? scoringEvidence.verification
         : undefined
       return {
@@ -638,6 +697,46 @@ export function buildDocumentation(
               styleModelVersion: scoringEvidence.styleModelVersion,
               styleSemanticHash: scoringEvidence.styleSemanticHash,
               coverage: scoringEvidence.coverage,
+              ...(matchingVerification ? { verification: matchingVerification } : {}),
+            }
+          : {}),
+      }
+    })(),
+    eligibilityPolicy: (() => {
+      const matchingVerification = eligibilityEvidence?.verification
+        && eligibilityEvidence.verification.fixtureManifestHash
+          === eligibilityEvidence.fixtureManifestHash
+        && eligibilityEvidence.verification.fixtureContentHash
+          === eligibilityEvidence.fixtureContentHash
+        && eligibilityEvidence.verification.verifiedSemanticHash
+          === eligibilityEvidence.semanticHash
+        && eligibilityEvidence.verification.verifiedDataVersion
+          === eligibilityEvidence.dataVersion
+        && eligibilityEvidence.verification.verifiedClassificationDataVersion
+          === eligibilityEvidence.classificationDataVersion
+        ? eligibilityEvidence.verification
+        : undefined
+      return {
+        origin: model.provenance.eligibilityPolicy.origin,
+        assurance: matchingVerification ? 'parity-verified' : 'compiler-validated',
+        parityScope: 'legacy-eligibility-result-projection',
+        ...(eligibilityEvidence
+          ? {
+              sourceRepository: eligibilityEvidence.sourceRepository,
+              sourceCommit: eligibilityEvidence.sourceCommit,
+              sourceTreeHash: eligibilityEvidence.sourceTreeHash,
+              fixtureManifestPath: eligibilityEvidence.fixtureManifestPath,
+              fixtureManifestHash: eligibilityEvidence.fixtureManifestHash,
+              fixtureSchemaVersion: eligibilityEvidence.fixtureSchemaVersion,
+              fixtureContentHash: eligibilityEvidence.fixtureContentHash,
+              seedsHash: eligibilityEvidence.seedsHash,
+              extractorHash: eligibilityEvidence.extractorHash,
+              sourceHashes: eligibilityEvidence.sourceHashes,
+              semanticHash: eligibilityEvidence.semanticHash,
+              dataVersion: eligibilityEvidence.dataVersion,
+              classificationDataVersion: eligibilityEvidence.classificationDataVersion,
+              paritySuiteVersion: eligibilityEvidence.paritySuiteVersion,
+              coverage: eligibilityEvidence.coverage,
               ...(matchingVerification ? { verification: matchingVerification } : {}),
             }
           : {}),
@@ -707,7 +806,7 @@ export function buildDocumentation(
     '# Classification Index',
     '',
     model.provenance.questions.origin === 'legacy-production'
-      ? '> Production question ownership, compiled style ownership, and compiled scoring ownership.'
+      ? '> Production question ownership, compiled style ownership, compiled scoring ownership, and compiled eligibility ownership.'
       : '> Synthetic inventory — not production classification data.',
     '',
     `Model version: \`${model.modelVersion}\`<br>`,

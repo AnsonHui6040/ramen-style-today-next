@@ -24,6 +24,8 @@
     "parity:questions": "tsx tools/parity/questions/parity.ts",
     "parity:scoring": "tsx tools/parity/scoring/parity.ts",
     "parity:scoring:extract": "tsx tools/parity/scoring/extract.ts",
+    "parity:eligibility": "tsx tools/parity/eligibility/parity.ts",
+    "parity:eligibility:extract": "tsx tools/parity/eligibility/extract.ts",
     "parity:styles": "tsx tools/parity/styles/parity.ts",
     "questions:check": "tsx tools/questions/generate-question-model.ts --check",
     "questions:generate": "tsx tools/questions/generate-question-model.ts --write",
@@ -33,7 +35,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
     "build": "tsc -b packages/classification-core",
-    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run questions:check && npm run styles:check && npm run classification-model:check && npm run runtime:imports:check && npm run parity:questions && npm run parity:persistence && npm run parity:styles && npm run parity:scoring && npm run classification:index:check && npm run migration:ledger:check",
+    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run questions:check && npm run styles:check && npm run classification-model:check && npm run runtime:imports:check && npm run parity:questions && npm run parity:persistence && npm run parity:styles && npm run parity:scoring && npm run parity:eligibility && npm run classification:index:check && npm run migration:ledger:check",
     "verify:acceptance": "npm run verify && tsx tools/acceptance/verify-acceptance.ts"
   },
   "devDependencies": {

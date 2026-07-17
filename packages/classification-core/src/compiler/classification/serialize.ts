@@ -7,6 +7,7 @@ export function renderClassificationArtifact(model: ClassificationModel): string
     dataVersion: model.dataVersion,
     provenance: model.provenance,
     policy: model.policy,
+    eligibilityPolicy: model.eligibilityPolicy,
     inventory: model.inventory,
   }
   const value = JSON.stringify(stableValue(data), null, 2)

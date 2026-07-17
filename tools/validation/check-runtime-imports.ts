@@ -8,12 +8,14 @@ import * as ts from 'typescript'
 const corePackage = '@ramen-style/classification-core'
 const corePersistenceRoot = 'packages/classification-core/src/persistence'
 const coreScoringRoot = 'packages/classification-core/src/scoring'
+const coreEligibilityRoot = 'packages/classification-core/src/eligibility'
 const coreRuntimeEntrypoint = 'packages/classification-core/src/index.ts'
 const coreClassificationRuntimeEntrypoint = 'packages/classification-core/src/classification-model.ts'
 const coreStyleRuntimeEntrypoint = 'packages/classification-core/src/style-model.ts'
 const coreGeneratedClassificationModel = 'packages/classification-core/src/generated/classification-model.ts'
 const coreGeneratedStyleModel = 'packages/classification-core/src/generated/style-model.ts'
 const coreScoringEntrypoint = 'packages/classification-core/src/scoring/score.ts'
+const coreEligibilityEvaluator = 'packages/classification-core/src/eligibility/evaluate.ts'
 const approvedStyleRuntimeSpecifiers = new Map<string, ReadonlySet<string>>([
   [coreStyleRuntimeEntrypoint, new Set(['./generated/style-model.js'])],
   [coreGeneratedStyleModel, new Set(['../contracts/deep-freeze.js'])],
@@ -26,6 +28,7 @@ const approvedStyleRuntimeTargets = new Map<string, ReadonlySet<string>>([
   [coreClassificationRuntimeEntrypoint, new Set([coreGeneratedClassificationModel])],
   [coreGeneratedClassificationModel, new Set([coreGeneratedStyleModel])],
   [coreScoringEntrypoint, new Set([coreGeneratedClassificationModel])],
+  [coreEligibilityEvaluator, new Set([coreGeneratedClassificationModel])],
   [coreStyleRuntimeEntrypoint, new Set([coreGeneratedStyleModel])],
 ])
 const protectedStyleRuntimeTargets = new Set([
@@ -120,6 +123,7 @@ export type RuntimeImportReason =
   | 'forbidden-path:outside-repository'
   | 'forbidden-public-export'
   | 'forbidden-style-runtime-edge'
+  | 'forbidden-scoring-eligibility-edge'
   | 'nonliteral-dynamic-module-load'
   | 'unresolved-local-import'
 
@@ -229,6 +233,7 @@ function forbiddenPathReason(
   relativePath: string,
   allowCorePersistence: boolean,
   allowCoreScoring: boolean,
+  allowCoreEligibility: boolean,
 ): RuntimeImportReason | undefined {
   const segments = relativePath.split('/').filter(Boolean)
   const fileName = segments.at(-1)?.toLowerCase() ?? ''
@@ -258,6 +263,13 @@ function forbiddenPathReason(
     if (reason === 'forbidden-path:scoring' && allowCoreScoring && isCoreScoring) {
       continue
     }
+    const isCoreEligibility = relativePath === coreEligibilityRoot
+      || relativePath.startsWith(`${coreEligibilityRoot}/`)
+    if (
+      reason === 'forbidden-path:eligibility'
+        && allowCoreEligibility
+        && isCoreEligibility
+    ) continue
     if (reason) return reason
   }
   return undefined
@@ -450,6 +462,7 @@ export function checkRuntimeImports(
   const styleBoundary = entryRelative === coreStyleRuntimeEntrypoint
   const allowCorePersistence = !styleBoundary
   const allowCoreScoring = !styleBoundary
+  const allowCoreEligibility = !styleBoundary
   const pending = [entry]
   while (pending.length > 0) {
     const current = pending.pop()!
@@ -520,11 +533,24 @@ export function checkRuntimeImports(
         resolvedRelative,
         allowCorePersistence,
         allowCoreScoring,
+        allowCoreEligibility,
       )
       if (pathReason) forbidden.push({
         from: currentRelative,
         specifier,
         reason: pathReason,
+      })
+      const scoringEligibilityEdge = (
+        currentRelative === coreScoringRoot
+          || currentRelative.startsWith(`${coreScoringRoot}/`)
+      ) && (
+        resolvedRelative === coreEligibilityRoot
+          || resolvedRelative.startsWith(`${coreEligibilityRoot}/`)
+      )
+      if (scoringEligibilityEdge) forbidden.push({
+        from: currentRelative,
+        specifier,
+        reason: 'forbidden-scoring-eligibility-edge',
       })
       const approvedStyleTargets = approvedStyleRuntimeTargets.get(currentRelative)
       const violatesExactStyleSource = approvedStyleSpecifiers

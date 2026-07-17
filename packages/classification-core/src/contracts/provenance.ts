@@ -23,6 +23,7 @@ export interface ClassificationSourceProvenance {
   readonly questions: { readonly origin: SourceOrigin }
   readonly styles: ClassificationStyleProvenance
   readonly scoringPolicy: { readonly origin: SourceOrigin }
+  readonly eligibilityPolicy: { readonly origin: SourceOrigin }
 }
 
 export const persistenceVerificationScope =

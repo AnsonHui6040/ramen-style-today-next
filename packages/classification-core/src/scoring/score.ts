@@ -77,8 +77,7 @@ function hasAcceptedIdentity(model: ClassificationModel): boolean {
       acceptedModel.policy.metadata as unknown as Record<string, unknown>,
       ['schemaVersion', 'compilerVersion', 'modelVersion', 'questionModelVersion', 'questionSemanticHash', 'styleModelVersion', 'styleSemanticHash', 'sourceHash', 'semanticHash', 'dataVersion'],
     )) return false
-    return model.policy.metadata.modelVersion === model.modelVersion
-      && model.policy.metadata.questionModelVersion === model.questionModel.metadata.modelVersion
+    return model.policy.metadata.questionModelVersion === model.questionModel.metadata.modelVersion
       && model.policy.metadata.questionSemanticHash === model.questionModel.metadata.semanticHash
       && model.policy.metadata.styleModelVersion === model.styleModel.metadata.modelVersion
       && model.policy.metadata.styleSemanticHash === model.styleModel.metadata.semanticHash

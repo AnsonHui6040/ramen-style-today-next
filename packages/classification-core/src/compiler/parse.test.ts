@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
+import { legacyEligibilityPolicy } from '../definitions/eligibility-policy.js'
 import { legacyScoringPolicy } from '../definitions/policies.js'
 import { questionDefinitions } from '../definitions/questions.js'
 import { styleDefinitionBundle } from '../definitions/styles/index.js'
@@ -15,15 +16,17 @@ type Mutable<T> = T extends readonly (infer Item)[]
 
 function productionDefinition(): Mutable<DefinitionBundleSource> {
   return structuredClone({
-    modelVersion: 'batch3b.1.0',
+    modelVersion: 'batch3c.1.0',
     provenance: {
       questions: { origin: 'legacy-production' },
       styles: { origin: 'legacy-production' },
       scoringPolicy: { origin: 'legacy-production' },
+      eligibilityPolicy: { origin: 'legacy-production' },
     },
     questions: questionDefinitions,
     styles: styleDefinitionBundle,
     policy: legacyScoringPolicy,
+    eligibilityPolicy: legacyEligibilityPolicy,
   }) as unknown as Mutable<DefinitionBundleSource>
 }
 
@@ -43,10 +46,11 @@ describe('definition bundle parsing', () => {
 
     expect(result.diagnostics).toEqual([])
     expect(result.definition).toMatchObject({
-      modelVersion: 'batch3b.1.0',
+      modelVersion: 'batch3c.1.0',
       provenance: {
         styles: { origin: 'legacy-production' },
         scoringPolicy: { origin: 'legacy-production' },
+        eligibilityPolicy: { origin: 'legacy-production' },
       },
       styles: {
         modelVersion: 'batch3a.1.0',
@@ -55,6 +59,7 @@ describe('definition bundle parsing', () => {
         ]),
       },
       policy: legacyScoringPolicy,
+      eligibilityPolicy: legacyEligibilityPolicy,
     })
   })
 

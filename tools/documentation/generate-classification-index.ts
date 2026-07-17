@@ -35,8 +35,10 @@ import {
 import {
   verifyScoringFixtureSet,
 } from '../parity/scoring/verify-fixtures.js'
+import { verifyEligibilityFixtureSet } from '../parity/eligibility/verify-fixtures.js'
 import {
   buildDocumentation,
+  type EligibilityDocumentationEvidence,
   type PersistenceDocumentationEvidence,
   type ScoringDocumentationEvidence,
 } from './build-index.js'
@@ -220,8 +222,13 @@ const scoringArtifactPath =
 const expectedScoringManifestHash =
   '8379cbb14588d5ba586bda895e8791edf8cfd98dc3bdffcb4512e6e8fb71101f'
 const expectedScoringArtifactHash =
-  '74d211d18d4d005ad2cc95443527e7a2046a5a9a72e624b0dda1c62fe47ae4b4'
+  'b722685fb1b5bb6427e4ff9ecc1edd50244aa2e22a8d8ac9f158da404d94b591'
 const scoringParitySuiteVersion = '1' as const
+const eligibilityFixtureManifestPath =
+  'tools/parity/fixtures/eligibility/legacy-v1/manifest.json' as const
+const eligibilityFixtureCasesPath =
+  'tools/parity/fixtures/eligibility/legacy-v1/cases.json' as const
+const eligibilityParitySuiteVersion = '1' as const
 const expectedStyleManifestHash =
   'fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b'
 const expectedStyleArtifactHash =
@@ -276,6 +283,19 @@ const acceptanceScoringEntryProjectionSchema = z.object({
   status: z.literal('complete'),
   implementationSha: sha40Schema,
   scoringFixtureManifestHash: sha256Schema,
+  verification: z.array(z.object({
+    gate: z.string(),
+    command: z.string(),
+    outcome: z.string(),
+    commitSha: sha40Schema.optional(),
+    runUrl: z.string().url().optional(),
+  }).passthrough()),
+}).passthrough()
+const acceptanceEligibilityEntryProjectionSchema = z.object({
+  batch: z.literal('3C'),
+  status: z.literal('complete'),
+  implementationSha: sha40Schema,
+  eligibilityFixtureManifestHash: sha256Schema,
   verification: z.array(z.object({
     gate: z.string(),
     command: z.string(),
@@ -415,7 +435,6 @@ export function projectScoringParityVerification(
     fixtureContentHash: string
     semanticHash: string
     dataVersion: string
-    classificationDataVersion: string
   },
 ) {
   const ledger = acceptanceLedgerProjectionSchema.safeParse(validatedLedger)
@@ -455,6 +474,60 @@ export function projectScoringParityVerification(
     parityScope: 'legacy-scoring-result-projection' as const,
     paritySuiteVersion: scoringParitySuiteVersion,
     fixtureManifestHash: scoringFixtureManifestHash,
+    fixtureContentHash: identity.fixtureContentHash,
+    verifiedSemanticHash: identity.semanticHash,
+    verifiedDataVersion: identity.dataVersion,
+    implementationSha,
+  }
+}
+
+export function projectEligibilityParityVerification(
+  validatedLedger: unknown,
+  identity: {
+    fixtureManifestHash: string
+    fixtureContentHash: string
+    semanticHash: string
+    dataVersion: string
+    classificationDataVersion: string
+  },
+) {
+  const ledger = acceptanceLedgerProjectionSchema.safeParse(validatedLedger)
+  if (!ledger.success) return undefined
+  const candidates = ledger.data.entries.filter((entry) => (
+    typeof entry === 'object'
+    && entry !== null
+    && 'batch' in entry
+    && entry.batch === '3C'
+  ))
+  if (candidates.length !== 1) return undefined
+  const projected = acceptanceEligibilityEntryProjectionSchema.safeParse(candidates[0])
+  if (!projected.success) return undefined
+  const {
+    eligibilityFixtureManifestHash,
+    implementationSha,
+    verification,
+  } = projected.data
+  if (
+    eligibilityFixtureManifestHash !== identity.fixtureManifestHash
+      || verification.length !== 2
+  ) return undefined
+  const local = verification.filter(({ gate }) => gate === 'batch3c-local-verify')
+  const remote = verification.filter(({ gate }) => gate === 'batch3c-remote-ci')
+  if (
+    local.length !== 1
+      || remote.length !== 1
+      || local[0]!.command !== 'npm run verify'
+      || local[0]!.outcome !== 'passed'
+      || remote[0]!.command !== 'GitHub Actions CI / verify'
+      || remote[0]!.outcome !== 'passed'
+      || remote[0]!.commitSha !== implementationSha
+      || !remote[0]!.runUrl
+  ) return undefined
+  return {
+    assurance: 'parity-verified' as const,
+    parityScope: 'legacy-eligibility-result-projection' as const,
+    paritySuiteVersion: eligibilityParitySuiteVersion,
+    fixtureManifestHash: eligibilityFixtureManifestHash,
     fixtureContentHash: identity.fixtureContentHash,
     verifiedSemanticHash: identity.semanticHash,
     verifiedDataVersion: identity.dataVersion,
@@ -655,7 +728,6 @@ export function loadScoringEvidence(
     fixtureContentHash: result.fixtureContentHash,
     semanticHash: policyMetadata.semanticHash,
     dataVersion: policyMetadata.dataVersion,
-    classificationDataVersion,
   })
   return {
     sourceRepository: manifest.source.repository,
@@ -677,6 +749,48 @@ export function loadScoringEvidence(
     classificationDataVersion,
     paritySuiteVersion: scoringParitySuiteVersion,
     coverage: result.coverage,
+    ...(verification ? { verification } : {}),
+  }
+}
+
+export function loadEligibilityEvidence(
+  repoRoot: string,
+  metadata: { readonly semanticHash: string; readonly dataVersion: string },
+  classificationDataVersion: string,
+  validatedLedger: unknown,
+): EligibilityDocumentationEvidence {
+  const verified = verifyEligibilityFixtureSet({
+    casesBytes: readRequiredBytes(repoRoot, eligibilityFixtureCasesPath),
+    manifestBytes: readRequiredBytes(repoRoot, eligibilityFixtureManifestPath),
+  })
+  const verification = projectEligibilityParityVerification(validatedLedger, {
+    fixtureManifestHash: verified.verification.manifestHash,
+    fixtureContentHash: verified.verification.fixtureContentHash,
+    semanticHash: metadata.semanticHash,
+    dataVersion: metadata.dataVersion,
+    classificationDataVersion,
+  })
+  const manifest = verified.manifest
+  return {
+    sourceRepository: {
+      host: manifest.legacy.host,
+      owner: manifest.legacy.owner,
+      repository: manifest.legacy.repository,
+    },
+    sourceCommit: manifest.legacy.commit,
+    sourceTreeHash: manifest.legacy.treeHash,
+    fixtureManifestPath: eligibilityFixtureManifestPath,
+    fixtureManifestHash: verified.verification.manifestHash,
+    fixtureSchemaVersion: String(manifest.schemaVersion),
+    fixtureContentHash: verified.verification.fixtureContentHash,
+    seedsHash: manifest.seedsHash,
+    extractorHash: manifest.extractorHash,
+    sourceHashes: manifest.sourceHashes,
+    semanticHash: metadata.semanticHash,
+    dataVersion: metadata.dataVersion,
+    classificationDataVersion,
+    paritySuiteVersion: eligibilityParitySuiteVersion,
+    coverage: manifest.coverage,
     ...(verification ? { verification } : {}),
   }
 }
@@ -747,6 +861,12 @@ async function run() {
       scoringEvidence: loadScoringEvidence(
         repoRoot,
         compiled.model.policy.metadata,
+        compiled.model.dataVersion,
+        validatedLedger,
+      ),
+      eligibilityEvidence: loadEligibilityEvidence(
+        repoRoot,
+        compiled.model.eligibilityPolicy.metadata,
         compiled.model.dataVersion,
         validatedLedger,
       ),

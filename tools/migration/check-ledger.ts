@@ -17,6 +17,7 @@ import {
 } from './ledger-check.js'
 import {
   migrationLedgerSchema,
+  eligibilityFixtureManifestPath,
   persistenceFixtureManifestPath,
   scoringFixtureManifestPath,
   styleFixtureManifestPath,
@@ -235,6 +236,27 @@ function readBatch3BIdentities() {
   }
 }
 
+function readBatch3CIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    provenance?: { eligibilityPolicy?: { fixtureManifestHash?: unknown } }
+  }
+  const classificationEligibilityFixtureManifestHash =
+    manifest.provenance?.eligibilityPolicy?.fixtureManifestHash
+  if (typeof classificationEligibilityFixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing eligibility fixture identity')
+  }
+  return {
+    eligibilityFixtureManifestHash: sha256File(resolve(
+      repoRoot,
+      eligibilityFixtureManifestPath,
+    )),
+    classificationEligibilityFixtureManifestHash,
+  }
+}
+
 function pathExists(path: string) {
   try {
     lstatSync(path)
@@ -389,6 +411,7 @@ async function run() {
     const batch2BEntry = parsedLedger.entries.find(({ batch }) => batch === '2B')
     const batch3AEntry = parsedLedger.entries.find(({ batch }) => batch === '3A')
     const batch3BEntry = parsedLedger.entries.find(({ batch }) => batch === '3B')
+    const batch3CEntry = parsedLedger.entries.find(({ batch }) => batch === '3C')
     const batch2AIdentities = batch2AEntry
       ? readBatch2AIdentities(batch2AEntry.maintenance !== undefined)
       : {
@@ -415,10 +438,17 @@ async function run() {
         implementationSha,
         headSha,
       ),
+      committedChangedPathsBetween: (implementationSha, headSha) => collectGitChangedPaths(
+        repoRoot,
+        implementationSha,
+        headSha,
+        false,
+      ),
       ...batch2AIdentities,
       ...(batch2BEntry ? readBatch2BIdentities() : {}),
       ...(batch3AEntry ? readBatch3AIdentities() : {}),
       ...(batch3BEntry ? readBatch3BIdentities() : {}),
+      ...(batch3CEntry ? readBatch3CIdentities() : {}),
     })
   }
   if (!result.ok || result.markdown === undefined) {

@@ -1,4 +1,5 @@
 import type { DeepReadonly } from './deep-freeze.js'
+import type { CompiledEligibilityPolicy } from './eligibility-policy.js'
 import type { CompiledQuestion, CompiledQuestionModel } from './question-model.js'
 import type { ClassificationSourceProvenance } from './provenance.js'
 import type { CompiledScoringPolicy } from './scoring-policy.js'
@@ -26,5 +27,6 @@ export interface ClassificationModel {
   readonly questions: DeepReadonly<readonly CompiledQuestion[]>
   readonly styleModel: CompiledStyleModel
   readonly policy: CompiledScoringPolicy
+  readonly eligibilityPolicy: CompiledEligibilityPolicy
   readonly inventory: readonly ConceptRecord[]
 }

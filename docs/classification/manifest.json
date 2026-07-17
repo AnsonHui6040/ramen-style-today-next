@@ -17614,6 +17614,44 @@
       ]
     },
     {
+      "canonicalSource": "packages/classification-core/src/definitions/eligibility-policy.ts",
+      "consumers": [
+        "packages/classification-core/src/classification-model.ts",
+        "packages/classification-core/src/eligibility/evaluate.ts",
+        "packages/classification-core/src/index.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "evidence": [
+        "tools/parity/eligibility/parity.ts",
+        "tools/parity/eligibility/verify-fixtures.ts",
+        "tools/parity/fixtures/eligibility/legacy-v1/manifest.json"
+      ],
+      "generatedArtifacts": [
+        "packages/classification-core/src/generated/classification-model.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "eligibility",
+      "key": "policy/eligibility",
+      "kind": "policy",
+      "messageIds": [],
+      "messageSources": [],
+      "migrations": [],
+      "provenanceSources": [],
+      "tests": [
+        "packages/classification-core/src/compiler/eligibility-policy/compile.test.ts",
+        "packages/classification-core/src/eligibility/evaluate.test.ts",
+        "tools/parity/eligibility/parity.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/eligibility-policy/compile.ts",
+        "packages/classification-core/src/compiler/eligibility-policy/proof.ts",
+        "packages/classification-core/src/compiler/eligibility-policy/source-schema.ts"
+      ]
+    },
+    {
       "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
       "consumers": [
         "packages/classification-core/src/flow/evaluate.ts"
@@ -18734,8 +18772,8 @@
       ]
     }
   ],
-  "dataVersion": "70eb1d54c3073db4a6241234b5842d887de3c35c41d076584cc411cfccfaf5c2",
-  "modelVersion": "batch3b.1.0",
+  "dataVersion": "7476f4b8ebd1232b435b3478bb6ae170f805d1b9a462c6e045590cb13022c840",
+  "modelVersion": "batch3c.1.0",
   "persistence": {
     "assurance": "contract-verified",
     "fixtureManifestHash": "71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd",
@@ -18756,6 +18794,43 @@
     "verificationScope": "pure persistence restore and payload contracts"
   },
   "provenance": {
+    "eligibilityPolicy": {
+      "assurance": "compiler-validated",
+      "classificationDataVersion": "7476f4b8ebd1232b435b3478bb6ae170f805d1b9a462c6e045590cb13022c840",
+      "coverage": {
+        "activeBlockingTags": 6,
+        "allPrimaryBlockedCases": 3,
+        "alternativeBlockedCases": 7,
+        "exclusionOptions": 9,
+        "inactiveBlockingTags": 6,
+        "multiExclusionCases": 2,
+        "noOpOptionCases": 4,
+        "primaryBlockedCases": 11
+      },
+      "dataVersion": "5c4281f571105e1a76398aadfb5e62b36584766c053883c6887bd687fcc43562",
+      "extractorHash": "8799d33611e7548ad791916f1241600eab087f7e8407688f6258a45b88decb18",
+      "fixtureContentHash": "b96d59285f6725dec5da2dda77776fbf877a5258b8ae5ee821fb5ca5618de1c9",
+      "fixtureManifestHash": "fb189722968020fb0aa8eb91674a94f5ee0448d910a786cd9021cb216e06706d",
+      "fixtureManifestPath": "tools/parity/fixtures/eligibility/legacy-v1/manifest.json",
+      "fixtureSchemaVersion": "1",
+      "origin": "legacy-production",
+      "parityScope": "legacy-eligibility-result-projection",
+      "paritySuiteVersion": "1",
+      "seedsHash": "7ba21d85d3bd4838a29351771301033a628bca6014aa580811a250ab9d0896f6",
+      "semanticHash": "249b0c6e34297153fd0fae0c99d04157073391dc1a6e974f718156082d7d8694",
+      "sourceCommit": "eebf00b7ddfbbe6f01ff598e57f1e17197068a37",
+      "sourceHashes": {
+        "questions": "0136f6f71fdc0f09da8da045aa97303069631882ef2a240dd1a9fbc48a8992f2",
+        "scorer": "befc80c7d648712968a2fee74eab8825feb1d583f4e3bbd35478684c27846cfe",
+        "styles": "207293e50bae4c9459d5506b445f50a798a58439ba52c54e710b3d10ff7d09d3"
+      },
+      "sourceRepository": {
+        "host": "github.com",
+        "owner": "AnsonHui6040",
+        "repository": "ramen-style-today"
+      },
+      "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a"
+    },
     "questions": {
       "assurance": "compiler-validated",
       "extractorVersion": "1",
@@ -18785,10 +18860,10 @@
       }
     },
     "scoringPolicy": {
-      "artifactHash": "74d211d18d4d005ad2cc95443527e7a2046a5a9a72e624b0dda1c62fe47ae4b4",
+      "artifactHash": "b722685fb1b5bb6427e4ff9ecc1edd50244aa2e22a8d8ac9f158da404d94b591",
       "artifactPath": "packages/classification-core/src/generated/classification-model.ts",
       "assurance": "parity-verified",
-      "classificationDataVersion": "70eb1d54c3073db4a6241234b5842d887de3c35c41d076584cc411cfccfaf5c2",
+      "classificationDataVersion": "7476f4b8ebd1232b435b3478bb6ae170f805d1b9a462c6e045590cb13022c840",
       "coverage": {
         "bonuses": 18,
         "cases": 26,
@@ -18833,7 +18908,6 @@
         "implementationSha": "8807a18003a84039c99ae4a77b6f16fffc9dfe41",
         "parityScope": "legacy-scoring-result-projection",
         "paritySuiteVersion": "1",
-        "verifiedClassificationDataVersion": "70eb1d54c3073db4a6241234b5842d887de3c35c41d076584cc411cfccfaf5c2",
         "verifiedDataVersion": "36ad616a2f709fe2bb6ddcfd5e0cb0eb16ecdea15f42e41640588cf61e068ed7",
         "verifiedSemanticHash": "76c768181a4a402abb33e7c4b30f7a8b4aa159db14ea827898e79b380cd132f6"
       }

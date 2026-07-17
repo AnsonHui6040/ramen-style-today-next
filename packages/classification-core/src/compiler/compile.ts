@@ -13,6 +13,7 @@ import type {
 } from '../contracts/question-model.js'
 import { compareCodePoints } from '../contracts/source-path.js'
 import { DiagnosticCollector } from './collector.js'
+import { compileEligibilityPolicy } from './eligibility-policy/compile.js'
 import { parseDefinitionBundle } from './parse.js'
 import { compileQuestions } from './questions/compile.js'
 import { extractConditionReferences } from './questions/dependencies.js'
@@ -79,6 +80,13 @@ function buildInventory(
     sourceFile: definition.policy.sourceFile,
     messageIds: [],
   })
+  records.push({
+    key: 'policy/eligibility',
+    kind: 'policy',
+    id: 'eligibility',
+    sourceFile: definition.eligibilityPolicy.sourceFile,
+    messageIds: [],
+  })
   return records.sort((left, right) => compareCodePoints(left.key, right.key))
 }
 
@@ -87,6 +95,7 @@ function classificationDataProjection(
   questionModel: ReturnType<typeof compileQuestions> & { readonly ok: true },
   styleModel: ReturnType<typeof compileStyles> & { readonly ok: true },
   policy: ReturnType<typeof compileScoringPolicy> & { readonly ok: true },
+  eligibilityPolicy: ReturnType<typeof compileEligibilityPolicy> & { readonly ok: true },
 ) {
   return {
     modelVersion: definition.modelVersion,
@@ -103,6 +112,10 @@ function classificationDataProjection(
     scoringPolicy: {
       semanticHash: policy.model.metadata.semanticHash,
       dataVersion: policy.model.metadata.dataVersion,
+    },
+    eligibilityPolicy: {
+      semanticHash: eligibilityPolicy.model.metadata.semanticHash,
+      dataVersion: eligibilityPolicy.model.metadata.dataVersion,
     },
   }
 }
@@ -172,6 +185,21 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
   ].sort(compareDiagnostics)
   if (!policyCompilation.ok) return { ok: false, diagnostics: policyDiagnostics }
 
+  const eligibilityCompilation = compileEligibilityPolicy(
+    definition.eligibilityPolicy,
+    questionCompilation.model,
+    styleCompilation.model,
+    policyCompilation.model,
+    definition.modelVersion,
+  )
+  const eligibilityDiagnostics = [
+    ...policyDiagnostics,
+    ...eligibilityCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (!eligibilityCompilation.ok) {
+    return { ok: false, diagnostics: eligibilityDiagnostics }
+  }
+
   const inventory = buildInventory(
     definition,
     questionCompilation.model.questions,
@@ -192,6 +220,7 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
     ...questionCompilation.diagnostics,
     ...styleCompilation.diagnostics,
     ...policyCompilation.diagnostics,
+    ...eligibilityCompilation.diagnostics,
   ].sort(compareDiagnostics)
   if (collector.hasErrors()) return { ok: false, diagnostics }
 
@@ -201,6 +230,7 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
       questionCompilation,
       styleCompilation,
       policyCompilation,
+      eligibilityCompilation,
     ),
   )).digest('hex')
   const styleMetadata = styleCompilation.model.metadata
@@ -217,11 +247,13 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
         dataVersion: styleMetadata.dataVersion,
       },
       scoringPolicy: definition.provenance.scoringPolicy,
+      eligibilityPolicy: definition.provenance.eligibilityPolicy,
     },
     questionModel: questionCompilation.model,
     questions: questionCompilation.model.questions,
     styleModel: styleCompilation.model,
     policy: policyCompilation.model,
+    eligibilityPolicy: eligibilityCompilation.model,
     inventory,
   } satisfies ClassificationModel)
   return { ok: true, model, diagnostics }

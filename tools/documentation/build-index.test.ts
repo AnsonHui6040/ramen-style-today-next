@@ -135,7 +135,6 @@ const completedScoringVerification = {
   fixtureContentHash: scoringEvidenceBase.fixtureContentHash,
   verifiedSemanticHash: scoringEvidenceBase.semanticHash,
   verifiedDataVersion: scoringEvidenceBase.dataVersion,
-  verifiedClassificationDataVersion: scoringEvidenceBase.classificationDataVersion,
   implementationSha: 'e'.repeat(40),
 } as const
 
@@ -276,6 +275,7 @@ describe('classification documentation index', () => {
     'packages/classification-core/src/classification-model.ts',
     'packages/classification-core/src/index.ts',
     'packages/classification-core/src/scoring/score.ts',
+    'packages/classification-core/src/eligibility/evaluate.ts',
     'packages/classification-core/src/style-model.ts',
     'packages/classification-core/src/flow/evaluate.ts',
     'tools/validation/validate-classification.ts',
@@ -622,9 +622,9 @@ describe('classification documentation index', () => {
       style: 18,
       intensity: 54,
       noodle: 270,
-      policy: 1,
+      policy: 2,
     })
-    expect(manifest.concepts).toHaveLength(404)
+    expect(manifest.concepts).toHaveLength(405)
     expect(manifest.concepts.some(({ kind }: { kind: string }) => (
       ['rule', 'adjustment', 'bonus', 'conflict'].includes(kind)
     ))).toBe(false)
@@ -1043,10 +1043,6 @@ describe('classification documentation index', () => {
     for (const verification of [
       { ...completedScoringVerification, paritySuiteVersion: '2' },
       { ...completedScoringVerification, fixtureContentHash: '0'.repeat(64) },
-      {
-        ...completedScoringVerification,
-        verifiedClassificationDataVersion: '0'.repeat(64),
-      },
       { ...completedScoringVerification, verifiedSemanticHash: '0'.repeat(64) },
       { ...completedScoringVerification, verifiedDataVersion: '0'.repeat(64) },
     ]) {

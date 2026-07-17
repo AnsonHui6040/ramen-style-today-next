@@ -759,6 +759,91 @@
           "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29579704273"
         }
       ]
+    },
+    {
+      "batch": "3C",
+      "status": "in-progress",
+      "implementationPaths": [
+        "docs/superpowers/specs/2026-07-17-batch-3c-eligibility-design.md",
+        "packages/classification-core/src/compiler/eligibility-policy/**",
+        "packages/classification-core/src/contracts/eligibility-policy.ts",
+        "packages/classification-core/src/contracts/eligibility.ts",
+        "packages/classification-core/src/definitions/eligibility-policy.ts",
+        "packages/classification-core/src/eligibility/**",
+        "tools/parity/eligibility/**",
+        "tools/parity/fixtures/eligibility/**",
+        "packages/classification-core/src/compiler/classification/**",
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/compiler/parse.test.ts",
+        "packages/classification-core/src/compiler/scoring-policy/compile.ts",
+        "packages/classification-core/src/compiler/scoring-policy/proof.ts",
+        "packages/classification-core/src/contracts/diagnostic-codes.ts",
+        "packages/classification-core/src/contracts/model.ts",
+        "packages/classification-core/src/contracts/provenance.ts",
+        "packages/classification-core/src/definitions/classification.ts",
+        "packages/classification-core/src/generated/classification-model.ts",
+        "packages/classification-core/src/scoring/score.ts",
+        "packages/classification-core/src/index.ts",
+        "packages/classification-core/src/index.test.ts",
+        "packages/classification-core/src/compiler/styles/serialize.test.ts"
+      ],
+      "verificationPaths": [
+        "package.json",
+        "tools/acceptance/**",
+        "tools/documentation/**",
+        "tools/migration/**",
+        "tools/validation/check-runtime-imports.ts",
+        "tools/validation/check-runtime-imports.test.ts",
+        "tools/validation/validate-classification.ts",
+        "tools/validation/validate-classification.test.ts"
+      ],
+      "acceptanceMetadataPaths": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json",
+        "docs/migration/ledger.json",
+        "docs/migration/ledger.md"
+      ],
+      "eligibilityFixtureManifestHash": "fb189722968020fb0aa8eb91674a94f5ee0448d910a786cd9021cb216e06706d",
+      "legacySources": [
+        "src/App.tsx",
+        "src/config/styles.ts",
+        "src/data/questions.json",
+        "src/data/styles.json",
+        "src/domain/schema.ts",
+        "src/domain/types.ts",
+        "src/features/map/RamenFinderMap.tsx",
+        "src/features/results/ResultsPanel.tsx",
+        "src/lib/catalog/enricher.ts",
+        "src/lib/scoring/explainer.ts",
+        "src/lib/scoring/scorer.ts"
+      ],
+      "ownedScopes": [],
+      "newOwners": [
+        "docs/superpowers/specs/2026-07-17-batch-3c-eligibility-design.md",
+        "packages/classification-core/src/compiler/eligibility-policy/compile.test.ts",
+        "packages/classification-core/src/compiler/eligibility-policy/compile.ts",
+        "packages/classification-core/src/compiler/eligibility-policy/proof.ts",
+        "packages/classification-core/src/compiler/eligibility-policy/source-schema.ts",
+        "packages/classification-core/src/contracts/eligibility-policy.ts",
+        "packages/classification-core/src/contracts/eligibility.ts",
+        "packages/classification-core/src/definitions/eligibility-policy.ts",
+        "packages/classification-core/src/eligibility/evaluate.test.ts",
+        "packages/classification-core/src/eligibility/evaluate.ts",
+        "packages/classification-core/src/eligibility/index.ts",
+        "tools/parity/eligibility/contracts.ts",
+        "tools/parity/eligibility/extract.ts",
+        "tools/parity/eligibility/parity.test.ts",
+        "tools/parity/eligibility/parity.ts",
+        "tools/parity/eligibility/seeds.json",
+        "tools/parity/eligibility/verify-fixtures.ts",
+        "tools/parity/fixtures/eligibility/legacy-v1/cases.json",
+        "tools/parity/fixtures/eligibility/legacy-v1/manifest.json"
+      ],
+      "transformation": "Legacy production exclusion blocking and result selection are compiled into a deterministic post-scoring eligibility policy with immutable structured decisions, warning facts, traces, and offline parity evidence.",
+      "behavior": "no-production-runtime-change",
+      "verification": []
     }
   ]
 }

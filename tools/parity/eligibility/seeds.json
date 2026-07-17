@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    { "id": "none-noop", "baseCaseId": "style-top-shoyu-chintan", "exclusions": ["none"] },
+    { "id": "pork-primary-replacement", "baseCaseId": "style-top-tonkotsu", "exclusions": ["pork"] },
+    { "id": "chicken-primary-replacement", "baseCaseId": "style-top-chicken-chintan", "exclusions": ["chicken"] },
+    { "id": "duck-primary-replacement", "baseCaseId": "style-top-duck-chintan", "exclusions": ["duck"] },
+    { "id": "beef-noop", "baseCaseId": "style-top-shoyu-chintan", "exclusions": ["beef"] },
+    { "id": "fish-primary-replacement", "baseCaseId": "style-top-gyokai", "exclusions": ["fish-seafood"] },
+    { "id": "fish-all-primary-blocked", "baseCaseId": "style-top-konbusui-tsukemen", "exclusions": ["fish-seafood"] },
+    { "id": "shellfish-primary-replacement", "baseCaseId": "style-top-shellfish-dashi", "exclusions": ["shellfish"] },
+    { "id": "shrimp-crab-noop", "baseCaseId": "style-top-shoyu-chintan", "exclusions": ["shrimp-crab"] },
+    { "id": "dairy-primary-replacement", "baseCaseId": "style-top-sapporo", "exclusions": ["dairy"] },
+    { "id": "pork-all-dry-primary-blocked", "baseCaseId": "style-top-aburasoba", "exclusions": ["pork"] },
+    { "id": "pork-alternative-filtering", "baseCaseId": "style-top-shoyu-chintan", "exclusions": ["pork"] },
+    { "id": "fish-shellfish-multiple", "baseCaseId": "legacy-native-duck-shellfish", "exclusions": ["fish-seafood", "shellfish"] },
+    { "id": "all-restrictions-boundary", "baseCaseId": "boundary-low-confidence", "exclusions": ["pork", "chicken", "duck", "beef", "fish-seafood", "shellfish", "shrimp-crab", "dairy"] }
+  ]
+}

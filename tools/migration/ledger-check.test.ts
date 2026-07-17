@@ -32,6 +32,8 @@ import {
   batch2BImplementationPaths,
   batch2BVerificationPaths,
   acceptedBatch3AMetadataSha,
+  acceptedBatch3BMetadataSha,
+  acceptedEligibilityFixtureManifestHash,
   acceptedScoringFixtureManifestHash,
   batch3BAcceptanceMetadataPaths,
   batch3BApprovedDependencyTestPaths,
@@ -39,6 +41,10 @@ import {
   batch3BNewOwners,
   batch3BRetiredOwners,
   batch3BVerificationPaths,
+  batch3CAcceptanceMetadataPaths,
+  batch3CImplementationPaths,
+  batch3CNewOwners,
+  batch3CVerificationPaths,
   migrationLedgerSchema,
   protectedQuestionBaseline,
 } from './ledger-schema.js'
@@ -308,6 +314,56 @@ function batch3BLedger(entry: Record<string, unknown> = batch3BEntry()) {
       ...batch3ALedger({ batch3A: completeBatch3A() }).entries,
       entry,
     ],
+  }
+}
+
+function completeBatch3B(overrides: Record<string, unknown> = {}) {
+  return batch3BEntry({
+    status: 'complete',
+    implementationSha: candidateSha,
+    verification: [
+      {
+        gate: 'batch3b-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'all Batch 3B local candidate gates passed',
+      },
+      {
+        gate: 'batch3b-remote-ci',
+        command: 'GitHub Actions CI / verify',
+        outcome: 'passed',
+        evidence: 'the exact Batch 3B candidate passed canonical CI',
+        commitSha: candidateSha,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+    ],
+    ...overrides,
+  })
+}
+
+function batch3CEntry(overrides: Record<string, unknown> = {}) {
+  return {
+    batch: '3C',
+    status: 'in-progress',
+    implementationPaths: [...batch3CImplementationPaths],
+    verificationPaths: [...batch3CVerificationPaths],
+    acceptanceMetadataPaths: [...batch3CAcceptanceMetadataPaths],
+    eligibilityFixtureManifestHash: acceptedEligibilityFixtureManifestHash,
+    legacySources: ['src/App.tsx'],
+    ownedScopes: [],
+    newOwners: [...batch3CNewOwners],
+    transformation: 'Legacy eligibility policy compiled into deterministic decisions.',
+    behavior: 'no-production-runtime-change',
+    verification: [],
+    ...overrides,
+  }
+}
+
+function batch3CLedger(entry: Record<string, unknown> = batch3CEntry()) {
+  const preceding = batch3BLedger(completeBatch3B())
+  return {
+    ...preceding,
+    entries: [...preceding.entries, entry],
   }
 }
 
@@ -1071,6 +1127,30 @@ describe('migration ledger repository checks', () => {
     })
   })
 
+  test('promotes Batch 3C atomically with exact candidate-bound gates', async () => {
+    const verified = await verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      githubFetch(),
+    )
+    const updated = recordSuccessfulCi(batch3CLedger(), '3C', verified)
+    const entry = updated.entries.find(({ batch }) => batch === '3C')
+
+    expect(entry).toMatchObject({
+      status: 'complete',
+      implementationSha: candidateSha,
+      verification: [
+        { gate: 'batch3c-local-verify', command: 'npm run verify' },
+        {
+          gate: 'batch3c-remote-ci',
+          command: 'GitHub Actions CI / verify',
+          commitSha: candidateSha,
+          runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+        },
+      ],
+    })
+  })
+
   test.each([
     [
       'Task 7 branch',
@@ -1690,6 +1770,83 @@ describe('Batch 3B scoring ownership and transaction boundary', () => {
   })
 })
 
+describe('Batch 3C eligibility ownership and transaction boundary', () => {
+  test('accepts only the exact in-progress closed ownership shape', () => {
+    expect(migrationLedgerSchema.safeParse(batch3CLedger()).success).toBe(true)
+    for (const overrides of [
+      { implementationPaths: batch3CImplementationPaths.slice(1) },
+      { verificationPaths: batch3CVerificationPaths.slice(1) },
+      { acceptanceMetadataPaths: batch3CAcceptanceMetadataPaths.slice(1) },
+      { eligibilityFixtureManifestHash: '0'.repeat(64) },
+      { newOwners: batch3CNewOwners.slice(1) },
+      { retiredOwners: [] },
+      { implementationSha: candidateSha },
+      {
+        verification: [{
+          gate: 'batch3c-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'premature evidence',
+        }],
+      },
+    ]) expect(migrationLedgerSchema.safeParse(
+      batch3CLedger(batch3CEntry(overrides)),
+    ).success).toBe(false)
+  })
+
+  test('requires exact candidate-bound completion evidence', () => {
+    const complete = batch3CEntry({
+      status: 'complete',
+      implementationSha: candidateSha,
+      verification: [
+        {
+          gate: 'batch3c-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'all Batch 3C local candidate gates passed',
+        },
+        {
+          gate: 'batch3c-remote-ci',
+          command: 'GitHub Actions CI / verify',
+          outcome: 'passed',
+          evidence: 'the exact Batch 3C candidate passed canonical CI',
+          commitSha: candidateSha,
+          runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+        },
+      ],
+    })
+    expect(migrationLedgerSchema.safeParse(batch3CLedger(complete)).success).toBe(true)
+    expect(migrationLedgerSchema.safeParse(batch3CLedger({
+      ...complete,
+      verification: (complete.verification as Array<Record<string, unknown>>).map(
+        (item) => item.gate === 'batch3c-remote-ci'
+          ? { ...item, commitSha: 'f'.repeat(40) }
+          : item,
+      ),
+    })).success).toBe(false)
+  })
+
+  test('binds the accepted Batch 3B metadata and future Batch 3C metadata directly', async () => {
+    await expect(verifyExactMetadataBoundary({
+      implementationSha: candidateSha,
+      metadataSha: acceptedBatch3BMetadataSha,
+      expectedPaths: batch3BAcceptanceMetadataPaths,
+      directParentsOf: async () => [candidateSha],
+      changedPathsBetween: async () => [...batch3BAcceptanceMetadataPaths],
+      label: 'Batch 3B accepted boundary',
+    })).resolves.toBeUndefined()
+
+    await expect(verifyExactMetadataBoundary({
+      implementationSha: candidateSha,
+      metadataSha: 'b'.repeat(40),
+      expectedPaths: batch3CAcceptanceMetadataPaths,
+      directParentsOf: async () => [candidateSha],
+      changedPathsBetween: async () => [...batch3CAcceptanceMetadataPaths],
+      label: 'Batch 3C completion',
+    })).resolves.toBeUndefined()
+  })
+})
+
 describe('Batch 2B ownership and acceptance invariants', () => {
   test('accepts only the exact in-progress path groups without implementation evidence', () => {
     expect(migrationLedgerSchema.safeParse(batch2BLedger()).success).toBe(true)
@@ -2285,6 +2442,12 @@ describe('local Git semantic changed-path collection', () => {
         revertedPath,
       ]))
       expect(changedPaths).toHaveLength(8)
+      expect(collectGitChangedPaths(
+        repoRoot,
+        implementationSha,
+        currentHeadSha,
+        false,
+      )).toEqual([committedPath, revertedPath].sort())
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
     }

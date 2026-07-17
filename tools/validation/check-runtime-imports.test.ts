@@ -41,6 +41,7 @@ describe('runtime import boundary', () => {
     )) as { scripts: Record<string, string> }
     expect(rootPackage.scripts.verify).toContain('npm run classification-model:check')
     expect(rootPackage.scripts.verify).toContain('npm run parity:scoring')
+    expect(rootPackage.scripts.verify).toContain('npm run parity:eligibility')
   })
 
   test('keeps the real public runtime dependency graph browser-neutral', () => {
@@ -55,6 +56,8 @@ describe('runtime import boundary', () => {
       'packages/classification-core/src/contracts/deep-freeze.ts',
       'packages/classification-core/src/generated/classification-model.ts',
       'packages/classification-core/src/generated/style-model.ts',
+      'packages/classification-core/src/eligibility/evaluate.ts',
+      'packages/classification-core/src/eligibility/index.ts',
       'packages/classification-core/src/persistence/index.ts',
       'packages/classification-core/src/persistence/create-payload.ts',
       'packages/classification-core/src/persistence/restore.ts',

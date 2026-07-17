@@ -14,6 +14,7 @@ import {
   classificationModel,
   createStoredClassificationPayloadV1,
   decodeAnswerDraft,
+  evaluateEligibility,
   evaluateFlow,
   getFirstActionableQuestion,
   getNextInteractiveQuestion,
@@ -50,6 +51,7 @@ import type {
 } from './persistence/contracts.js'
 import { restoreClassification as restoreImplementation } from './persistence/restore.js'
 import { scoreCompletedAnswers as scoreImplementation } from './scoring/score.js'
+import { evaluateEligibility as eligibilityImplementation } from './eligibility/evaluate.js'
 
 type SubpathStyleTypeSurface = {
   readonly CompiledAdjustment: SubpathStyleTypes.CompiledAdjustment
@@ -226,6 +228,21 @@ const batch3bRuntimeTypeExports = [
   'SubtypeResolutionTrace',
 ] as const
 
+const batch3cRuntimeTypeExports = [
+  'CompiledEligibilityPolicy',
+  'CompiledEligibilityPolicyMetadata',
+  'CompiledEligibilityRule',
+  'EligibilityCandidate',
+  'EligibilityCandidateEvaluation',
+  'EligibilityDiagnostic',
+  'EligibilityDiagnosticCode',
+  'EligibilityOutcome',
+  'EligibilityReason',
+  'EligibilityRuleEvaluation',
+  'EligibilityTrace',
+  'EvaluateEligibilityResult',
+] as const
+
 const task10CompilerValueExports = [
   'DiagnosticCollector',
   'classificationDefinition',
@@ -352,6 +369,7 @@ describe('classification-core runtime package', () => {
       'classificationModel',
       'createStoredClassificationPayloadV1',
       'decodeAnswerDraft',
+      'evaluateEligibility',
       'evaluateFlow',
       'getFirstActionableQuestion',
       'getNextInteractiveQuestion',
@@ -366,6 +384,7 @@ describe('classification-core runtime package', () => {
     expect(restoreClassification).toBe(restoreImplementation)
     expect(classificationModel).toBe(classificationModelImplementation)
     expect(scoreCompletedAnswers).toBe(scoreImplementation)
+    expect(evaluateEligibility).toBe(eligibilityImplementation)
     expectTypeOf(questionModel).toMatchTypeOf<CompiledQuestionModel>()
     expect(Object.isFrozen(questionModel)).toBe(true)
     expect(Object.isFrozen(questionModel.questions)).toBe(true)
@@ -398,6 +417,7 @@ describe('classification-core runtime package', () => {
         'classificationModel',
         'createStoredClassificationPayloadV1',
         'decodeAnswerDraft',
+        'evaluateEligibility',
         'evaluateFlow',
         'getFirstActionableQuestion',
         'getNextInteractiveQuestion',
@@ -412,6 +432,7 @@ describe('classification-core runtime package', () => {
         ...existingRuntimeTypeExports,
         ...approvedStyleTypeExports,
         ...batch3bRuntimeTypeExports,
+        ...batch3cRuntimeTypeExports,
       ].sort(),
     })
     expect(exportedSurface('./compiler/index.ts')).toEqual({

@@ -22,6 +22,7 @@ export const documentationSourceFile =
   'packages/classification-core/src/definitions/questions.ts'
 
 export const documentationDetectedConsumers = [
+  'tools/parity/eligibility/parity.ts',
   'tools/parity/questions/observable-trace.ts',
   'tools/parity/questions/parity.ts',
   'tools/parity/scoring/parity.ts',
@@ -111,6 +112,28 @@ const scoringEvidence = [
   'tools/parity/scoring/parity.ts',
 ] as const
 
+const eligibilityValidators = [
+  'packages/classification-core/src/compiler/eligibility-policy/source-schema.ts',
+  'packages/classification-core/src/compiler/eligibility-policy/compile.ts',
+  'packages/classification-core/src/compiler/eligibility-policy/proof.ts',
+] as const
+const eligibilityConsumers = [
+  'packages/classification-core/src/eligibility/evaluate.ts',
+  'packages/classification-core/src/classification-model.ts',
+  'packages/classification-core/src/index.ts',
+  'tools/validation/validate-classification.ts',
+] as const
+const eligibilityTests = [
+  'packages/classification-core/src/compiler/eligibility-policy/compile.test.ts',
+  'packages/classification-core/src/eligibility/evaluate.test.ts',
+  'tools/parity/eligibility/parity.test.ts',
+] as const
+const eligibilityEvidence = [
+  'tools/parity/fixtures/eligibility/legacy-v1/manifest.json',
+  'tools/parity/eligibility/verify-fixtures.ts',
+  'tools/parity/eligibility/parity.ts',
+] as const
+
 function uniqueSources(values: readonly { readonly sourceFile: string }[]) {
   return [...new Set(values.map(({ sourceFile }) => sourceFile))]
 }
@@ -181,12 +204,20 @@ export function createDocumentationRelations(
         ? {
             conceptKey: concept.key,
             canonicalSource: concept.sourceFile,
-            validators: scoringValidators,
-            consumers: scoringConsumers,
-            tests: scoringTests,
+            validators: concept.id === 'eligibility'
+              ? eligibilityValidators
+              : scoringValidators,
+            consumers: concept.id === 'eligibility'
+              ? eligibilityConsumers
+              : scoringConsumers,
+            tests: concept.id === 'eligibility'
+              ? eligibilityTests
+              : scoringTests,
             migrations: [],
             generatedArtifacts: scoringGeneratedArtifacts,
-            evidence: scoringEvidence,
+            evidence: concept.id === 'eligibility'
+              ? eligibilityEvidence
+              : scoringEvidence,
           }
         : {
           conceptKey: concept.key,

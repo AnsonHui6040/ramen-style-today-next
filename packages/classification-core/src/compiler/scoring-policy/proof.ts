@@ -31,6 +31,7 @@ export function proveScoringPolicy(
   styleModel: CompiledStyleModel,
   classificationModelVersion: string,
 ) {
+  void classificationModelVersion
   const collector = new DiagnosticCollector()
   const sourceFile = source.sourceFile
   const questions = new Map(questionModel.questions.map((question) => [
@@ -38,12 +39,12 @@ export function proveScoringPolicy(
     question,
   ]))
 
-  if (source.modelVersion !== classificationModelVersion) collector.error({
+  if (source.modelVersion !== 'batch3b.1.0') collector.error({
     code: 'POLICY_MODEL_VERSION_MISMATCH',
     sourceFile,
     path: '/modelVersion',
-    message: 'Scoring policy and classification model versions must match',
-    expected: classificationModelVersion,
+    message: 'Scoring policy component version must remain batch3b.1.0',
+    expected: 'batch3b.1.0',
     received: source.modelVersion,
   })
 

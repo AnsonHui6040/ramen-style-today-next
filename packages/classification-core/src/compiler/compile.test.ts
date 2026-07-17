@@ -9,10 +9,12 @@ import type {
 } from '../contracts/question-model.js'
 import type { CompiledStyleModel } from '../contracts/style-model.js'
 import { classificationDefinition } from '../definitions/classification.js'
+import { legacyEligibilityPolicy } from '../definitions/eligibility-policy.js'
 import { legacyScoringPolicy } from '../definitions/policies.js'
 import { questionDefinitions } from '../definitions/questions.js'
 import { styleDefinitionBundle } from '../definitions/styles/index.js'
 import { compileClassification, type CompileResult } from './compile.js'
+import { compileEligibilityPolicy } from './eligibility-policy/compile.js'
 import { compileQuestions } from './questions/compile.js'
 import { compileScoringPolicy } from './scoring-policy/compile.js'
 import type { DefinitionBundleSource } from './source-schema.js'
@@ -35,15 +37,17 @@ type Mutable<T> = T extends readonly (infer Item)[]
 
 function productionDefinition(): Mutable<DefinitionBundleSource> {
   return structuredClone({
-    modelVersion: 'batch3b.1.0',
+    modelVersion: 'batch3c.1.0',
     provenance: {
       questions: { origin: 'legacy-production' },
       styles: { origin: 'legacy-production' },
       scoringPolicy: { origin: 'legacy-production' },
+      eligibilityPolicy: { origin: 'legacy-production' },
     },
     questions: questionDefinitions,
     styles: styleDefinitionBundle,
     policy: legacyScoringPolicy,
+    eligibilityPolicy: legacyEligibilityPolicy,
   }) as unknown as Mutable<DefinitionBundleSource>
 }
 
@@ -92,6 +96,14 @@ function expectedClassificationDataVersion(
     definition.modelVersion,
   )
   if (!policy.ok) throw new Error('test policy source must compile')
+  const eligibilityPolicy = compileEligibilityPolicy(
+    definition.eligibilityPolicy,
+    questionModel,
+    styleModel,
+    policy.model,
+    definition.modelVersion,
+  )
+  if (!eligibilityPolicy.ok) throw new Error('test eligibility policy must compile')
   return sha256(stableJson({
     modelVersion: definition.modelVersion,
     questionModel: {
@@ -108,6 +120,10 @@ function expectedClassificationDataVersion(
       semanticHash: policy.model.metadata.semanticHash,
       dataVersion: policy.model.metadata.dataVersion,
     },
+    eligibilityPolicy: {
+      semanticHash: eligibilityPolicy.model.metadata.semanticHash,
+      dataVersion: eligibilityPolicy.model.metadata.dataVersion,
+    },
   }))
 }
 
@@ -123,6 +139,10 @@ function reverseSourceOrder(definition: Mutable<DefinitionBundleSource>) {
   definition.policy.scoredQuestions.reverse()
   definition.policy.tiers.reverse()
   definition.policy.confidence.uncertainty.reverse()
+  definition.eligibilityPolicy.rules.reverse()
+  for (const rule of definition.eligibilityPolicy.rules) {
+    rule.restrictionTagIds.reverse()
+  }
   for (const style of definition.styles.definitions) {
     style.supportedIntensityIds.reverse()
     style.supportedNoodleIds.reverse()
@@ -142,7 +162,7 @@ describe('classification source replacement and compile ordering', () => {
     const result = compileClassification(classificationDefinition, sourceFile)
 
     expectSuccess(result)
-    expect(result.model.modelVersion).toBe('batch3b.1.0')
+    expect(result.model.modelVersion).toBe('batch3c.1.0')
     expect(result.model.policy.metadata).toMatchObject({
       modelVersion: 'batch3b.1.0',
       questionModelVersion: 'batch2a.1.0',
@@ -154,6 +174,8 @@ describe('classification source replacement and compile ordering', () => {
       scoreScale: 10,
     })
     expect(result.model.provenance.scoringPolicy)
+      .toEqual({ origin: 'legacy-production' })
+    expect(result.model.provenance.eligibilityPolicy)
       .toEqual({ origin: 'legacy-production' })
   }, 15_000)
 
@@ -204,7 +226,7 @@ describe('classification source replacement and compile ordering', () => {
     expect(result.model.styleModel).toEqual(expectedStyleModel)
   })
 
-  test('allows global/style version decoupling and rejects policy/global mismatch', () => {
+  test('allows global/component version decoupling and rejects eligibility/global mismatch', () => {
     const valid = compileClassification(productionDefinition(), sourceFile)
     const invalid = productionDefinition()
     invalid.modelVersion = 'batch3a.1.1'
@@ -212,14 +234,15 @@ describe('classification source replacement and compile ordering', () => {
     const result = compileClassification(invalid, sourceFile)
 
     expectSuccess(valid)
-    expect(valid.model.modelVersion).toBe('batch3b.1.0')
+    expect(valid.model.modelVersion).toBe('batch3c.1.0')
+    expect(valid.model.policy.metadata.modelVersion).toBe('batch3b.1.0')
     expect(valid.model.styleModel.metadata.modelVersion).toBe('batch3a.1.0')
     expectFailure(result)
     expect(result.diagnostics).toContainEqual(expect.objectContaining({
-      code: 'POLICY_MODEL_VERSION_MISMATCH',
+      code: 'ELIGIBILITY_POLICY_MODEL_VERSION_MISMATCH',
       path: '/modelVersion',
       expected: 'batch3a.1.1',
-      received: 'batch3b.1.0',
+      received: 'batch3c.1.0',
     }))
   })
 })
@@ -253,6 +276,7 @@ describe('classification model composition', () => {
         ...acceptedStyleHashes,
       },
       scoringPolicy: { origin: 'legacy-production' },
+      eligibilityPolicy: { origin: 'legacy-production' },
     })
   })
 
@@ -267,6 +291,7 @@ describe('classification model composition', () => {
     expect(Object.isFrozen(result.model.styleModel)).toBe(true)
     expect(Object.isFrozen(result.model.styleModel.styles[0]!.cores)).toBe(true)
     expect(Object.isFrozen(result.model.policy)).toBe(true)
+    expect(Object.isFrozen(result.model.eligibilityPolicy)).toBe(true)
     expect(Object.isFrozen(result.model.inventory)).toBe(true)
   })
 
@@ -289,13 +314,13 @@ describe('classification model composition', () => {
       style: 18,
       intensity: 54,
       noodle: 270,
-      policy: 1,
+      policy: 2,
     })
-    expect(inventory).toHaveLength(404)
+    expect(inventory).toHaveLength(405)
     expect(inventory.map(({ key }) => key)).toEqual(
       [...inventory.map(({ key }) => key)].sort(),
     )
-    expect(new Set(inventory.map(({ key }) => key)).size).toBe(404)
+    expect(new Set(inventory.map(({ key }) => key)).size).toBe(405)
     expect(inventory.filter(({ kind }) => (
       kind === 'style' || kind === 'intensity' || kind === 'noodle'
     ))).toEqual(result.model.styleModel.inventory)

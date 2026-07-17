@@ -27,10 +27,11 @@ export function validateClassificationModel(model: ClassificationModel) {
   const expectedConceptCount = model.questions.length
     + optionCount
     + model.styleModel.inventory.length
-    + 1
+    + 2
   const questionMetadata = model.questionModel.metadata
   const styleMetadata = model.styleModel.metadata
   const policyMetadata = model.policy.metadata
+  const eligibilityMetadata = model.eligibilityPolicy.metadata
   const styleProvenance = model.provenance.styles
   const conceptCounts = Object.fromEntries([
     'question',
@@ -45,7 +46,7 @@ export function validateClassificationModel(model: ClassificationModel) {
   ]))
 
   if (
-    model.modelVersion !== policyMetadata.modelVersion
+    model.modelVersion !== eligibilityMetadata.modelVersion
     || model.questionModel.questions !== model.questions
     || policyMetadata.questionModelVersion !== questionMetadata.modelVersion
     || policyMetadata.questionSemanticHash !== questionMetadata.semanticHash
@@ -53,7 +54,16 @@ export function validateClassificationModel(model: ClassificationModel) {
     || styleMetadata.questionSemanticHash !== questionMetadata.semanticHash
     || policyMetadata.styleModelVersion !== styleMetadata.modelVersion
     || policyMetadata.styleSemanticHash !== styleMetadata.semanticHash
+    || eligibilityMetadata.questionModelVersion !== questionMetadata.modelVersion
+    || eligibilityMetadata.questionSemanticHash !== questionMetadata.semanticHash
+    || eligibilityMetadata.styleModelVersion !== styleMetadata.modelVersion
+    || eligibilityMetadata.styleSemanticHash !== styleMetadata.semanticHash
+    || eligibilityMetadata.styleDataVersion !== styleMetadata.dataVersion
+    || eligibilityMetadata.scoringPolicyModelVersion !== policyMetadata.modelVersion
+    || eligibilityMetadata.scoringPolicySemanticHash !== policyMetadata.semanticHash
+    || eligibilityMetadata.scoringPolicyDataVersion !== policyMetadata.dataVersion
     || model.provenance.scoringPolicy.origin !== 'legacy-production'
+    || model.provenance.eligibilityPolicy.origin !== 'legacy-production'
     || model.styleModel.styles.length !== 18
     || cores.length !== 54
     || subtypes.length !== 270
@@ -66,7 +76,7 @@ export function validateClassificationModel(model: ClassificationModel) {
       style: 18,
       intensity: 54,
       noodle: 270,
-      policy: 1,
+      policy: 2,
     })
     || styleProvenance.modelVersion !== styleMetadata.modelVersion
     || styleProvenance.sourceHash !== styleMetadata.sourceHash
@@ -106,6 +116,7 @@ export function validateClassificationModel(model: ClassificationModel) {
     dataVersion: model.dataVersion,
     provenance: model.provenance,
     policy: model.policy.metadata,
+    eligibilityPolicy: model.eligibilityPolicy.metadata,
     questionCount: model.questions.length,
     optionCount,
     styleCount: model.styleModel.styles.length,

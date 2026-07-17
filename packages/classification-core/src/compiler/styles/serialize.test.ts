@@ -299,6 +299,7 @@ describe('Task 10 compiler and runtime boundaries', () => {
       'classificationModel',
       'createStoredClassificationPayloadV1',
       'decodeAnswerDraft',
+      'evaluateEligibility',
       'evaluateFlow',
       'getFirstActionableQuestion',
       'getNextInteractiveQuestion',

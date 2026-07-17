@@ -104,7 +104,7 @@ export function compileScoringPolicy(
     },
   }
   const semanticProjection = {
-    modelVersion: classificationModelVersion,
+    modelVersion: source.modelVersion,
     ...componentIdentity,
     policy: behavior,
     derived,
@@ -124,7 +124,7 @@ export function compileScoringPolicy(
     metadata: {
       schemaVersion: '1',
       compilerVersion: '1',
-      modelVersion: classificationModelVersion,
+      modelVersion: source.modelVersion,
       questionModelVersion: questionModel.metadata.modelVersion,
       questionSemanticHash: questionModel.metadata.semanticHash,
       styleModelVersion: styleModel.metadata.modelVersion,

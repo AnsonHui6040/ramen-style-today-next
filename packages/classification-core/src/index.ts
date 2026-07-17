@@ -15,6 +15,7 @@ export {
   restoreClassification,
 } from './persistence/index.js'
 export { scoreCompletedAnswers } from './scoring/index.js'
+export { evaluateEligibility } from './eligibility/index.js'
 export type {
   Diagnostic,
   DiagnosticReference,
@@ -88,6 +89,22 @@ export type {
   SubtypeId,
 } from './style-model.js'
 export type { ClassificationModel } from './contracts/model.js'
+export type {
+  EligibilityCandidate,
+  EligibilityCandidateEvaluation,
+  EligibilityDiagnostic,
+  EligibilityDiagnosticCode,
+  EligibilityOutcome,
+  EligibilityReason,
+  EligibilityRuleEvaluation,
+  EligibilityTrace,
+  EvaluateEligibilityResult,
+} from './contracts/eligibility.js'
+export type {
+  CompiledEligibilityPolicy,
+  CompiledEligibilityPolicyMetadata,
+  CompiledEligibilityRule,
+} from './contracts/eligibility-policy.js'
 export type {
   CompiledScoringPolicy,
   CompiledScoringPolicyMetadata,

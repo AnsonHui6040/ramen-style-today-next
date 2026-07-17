@@ -132,6 +132,41 @@ function styleProjectionFunction() {
   return project
 }
 
+function eligibilityProjectionFunction() {
+  const project = (generatorModule as unknown as {
+    projectEligibilityParityVerification?: (
+      ledger: unknown,
+      identity: {
+        fixtureManifestHash: string
+        fixtureContentHash: string
+        semanticHash: string
+        dataVersion: string
+        classificationDataVersion: string
+      },
+    ) => unknown
+  }).projectEligibilityParityVerification
+  expect(project).toBeTypeOf('function')
+  if (!project) throw new Error('projectEligibilityParityVerification is unavailable')
+  return project
+}
+
+function scoringProjectionFunction() {
+  const project = (generatorModule as unknown as {
+    projectScoringParityVerification?: (
+      ledger: unknown,
+      identity: {
+        fixtureManifestHash: string
+        fixtureContentHash: string
+        semanticHash: string
+        dataVersion: string
+      },
+    ) => unknown
+  }).projectScoringParityVerification
+  expect(project).toBeTypeOf('function')
+  if (!project) throw new Error('projectScoringParityVerification is unavailable')
+  return project
+}
+
 function batch3AEntry(overrides: Record<string, unknown> = {}) {
   return {
     batch: '3A',
@@ -206,6 +241,7 @@ function batch2BEntry(
 
 function writeRegisteredConsumers(repoRoot: string) {
   for (const [file, importedPackage] of [
+    ['tools/parity/eligibility/parity.ts', '@ramen-style/classification-core'],
     ['tools/parity/questions/observable-trace.ts', '@ramen-style/classification-core/compiler'],
     ['tools/parity/questions/parity.ts', '@ramen-style/classification-core/compiler'],
     ['tools/parity/scoring/parity.ts', '@ramen-style/classification-core'],
@@ -266,6 +302,10 @@ function writeDocumentationFixture(repoRoot: string) {
     'tools/parity/fixtures/scoring/legacy-v1/cases.json',
     'tools/parity/fixtures/scoring/legacy-v1/manifest.json',
     'packages/classification-core/src/generated/classification-model.ts',
+    'tools/parity/eligibility/contracts.ts',
+    'tools/parity/eligibility/verify-fixtures.ts',
+    'tools/parity/fixtures/eligibility/legacy-v1/cases.json',
+    'tools/parity/fixtures/eligibility/legacy-v1/manifest.json',
   ]) {
     const target = join(repoRoot, file)
     mkdirSync(resolve(target, '..'), { recursive: true })
@@ -281,6 +321,7 @@ function writeDocumentationFixture(repoRoot: string) {
     'packages/classification-core/src/definitions/questions.test.ts',
     'packages/classification-core/src/definitions/synthetic.ts',
     'packages/classification-core/src/definitions/policies.ts',
+    'packages/classification-core/src/definitions/eligibility-policy.ts',
     'packages/classification-core/src/definitions/styles/definitions.test.ts',
     'packages/classification-core/src/compiler/questions/source-schema.ts',
     'packages/classification-core/src/compiler/questions/compile.ts',
@@ -302,10 +343,16 @@ function writeDocumentationFixture(repoRoot: string) {
     'packages/classification-core/src/compiler/scoring-policy/source-schema.test.ts',
     'packages/classification-core/src/compiler/scoring-policy/compile.test.ts',
     'packages/classification-core/src/compiler/scoring-policy/proof.test.ts',
+    'packages/classification-core/src/compiler/eligibility-policy/source-schema.ts',
+    'packages/classification-core/src/compiler/eligibility-policy/compile.ts',
+    'packages/classification-core/src/compiler/eligibility-policy/proof.ts',
+    'packages/classification-core/src/compiler/eligibility-policy/compile.test.ts',
     'packages/classification-core/src/flow/evaluate.ts',
     'packages/classification-core/src/classification-model.ts',
     'packages/classification-core/src/scoring/score.ts',
     'packages/classification-core/src/scoring/score.test.ts',
+    'packages/classification-core/src/eligibility/evaluate.ts',
+    'packages/classification-core/src/eligibility/evaluate.test.ts',
     'packages/classification-core/src/style-model.ts',
     'packages/classification-core/src/index.ts',
     'packages/classification-core/src/definitions/styles/taxonomy.ts',
@@ -313,6 +360,9 @@ function writeDocumentationFixture(repoRoot: string) {
     'tools/parity/styles/parity.ts',
     'tools/parity/styles/parity.test.ts',
     'tools/parity/scoring/parity.test.ts',
+    'tools/parity/eligibility/parity.test.ts',
+    'tools/parity/eligibility/verify-fixtures.ts',
+    'tools/parity/fixtures/eligibility/legacy-v1/manifest.json',
     'tools/scoring/generate-classification-model.test.ts',
     'tools/styles/generate-style-model.test.ts',
     ...styleDefinitions.map((style) => style.sourceFile),
@@ -480,6 +530,105 @@ test('projects style parity verification only from completed exact candidate evi
   })
 })
 
+test('projects eligibility parity only from completed exact candidate evidence', () => {
+  const project = eligibilityProjectionFunction()
+  const identity = {
+    fixtureManifestHash: currentFixtureManifestHash,
+    fixtureContentHash: 'd'.repeat(64),
+    semanticHash: currentSemanticHash,
+    dataVersion: 'e'.repeat(64),
+    classificationDataVersion: 'f'.repeat(64),
+  }
+  const complete = {
+    batch: '3C',
+    status: 'complete',
+    implementationSha,
+    eligibilityFixtureManifestHash: currentFixtureManifestHash,
+    verification: [
+      {
+        gate: 'batch3c-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'all Batch 3C local candidate gates passed',
+      },
+      {
+        gate: 'batch3c-remote-ci',
+        command: 'GitHub Actions CI / verify',
+        outcome: 'passed',
+        evidence: 'the exact Batch 3C candidate passed canonical CI',
+        commitSha: implementationSha,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+    ],
+  }
+
+  expect(project(validatedFutureLedger(complete), identity)).toEqual({
+    assurance: 'parity-verified',
+    parityScope: 'legacy-eligibility-result-projection',
+    paritySuiteVersion: '1',
+    fixtureManifestHash: currentFixtureManifestHash,
+    fixtureContentHash: identity.fixtureContentHash,
+    verifiedSemanticHash: currentSemanticHash,
+    verifiedDataVersion: identity.dataVersion,
+    verifiedClassificationDataVersion: identity.classificationDataVersion,
+    implementationSha,
+  })
+  expect(project(validatedFutureLedger({
+    ...complete,
+    status: 'in-progress',
+    implementationSha: undefined,
+    verification: [],
+  }), identity)).toBeUndefined()
+  expect(project(validatedFutureLedger({
+    ...complete,
+    eligibilityFixtureManifestHash: '0'.repeat(64),
+  }), identity)).toBeUndefined()
+})
+
+test('keeps Batch 3B scoring proof component-bound across a new global version', () => {
+  const project = scoringProjectionFunction()
+  const entry = {
+    batch: '3B',
+    status: 'complete',
+    implementationSha,
+    scoringFixtureManifestHash: currentFixtureManifestHash,
+    verification: [
+      {
+        gate: 'batch3b-local-verify',
+        command: 'npm run verify',
+        outcome: 'passed',
+        evidence: 'all Batch 3B local candidate gates passed',
+      },
+      {
+        gate: 'batch3b-remote-ci',
+        command: 'GitHub Actions CI / verify',
+        outcome: 'passed',
+        evidence: 'the exact Batch 3B candidate passed canonical CI',
+        commitSha: implementationSha,
+        runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+      },
+    ],
+  }
+  const verification = project(validatedFutureLedger(entry), {
+    fixtureManifestHash: currentFixtureManifestHash,
+    fixtureContentHash: 'd'.repeat(64),
+    semanticHash: currentSemanticHash,
+    dataVersion: 'e'.repeat(64),
+  })
+
+  expect(verification).toEqual({
+    assurance: 'parity-verified',
+    parityScope: 'legacy-scoring-result-projection',
+    paritySuiteVersion: '1',
+    fixtureManifestHash: currentFixtureManifestHash,
+    fixtureContentHash: 'd'.repeat(64),
+    verifiedSemanticHash: currentSemanticHash,
+    verifiedDataVersion: 'e'.repeat(64),
+    implementationSha,
+  })
+  expect(verification).not.toHaveProperty('verifiedClassificationDataVersion')
+})
+
 test.each([
   ['in progress', { status: 'in-progress', implementationSha: undefined, verification: [] }],
   ['missing implementation SHA', { implementationSha: undefined }],
@@ -613,6 +762,7 @@ test('pre-wires style artifact and parity gates without removing existing verify
     'npm run parity:persistence',
     'npm run parity:styles',
     'npm run parity:scoring',
+    'npm run parity:eligibility',
     'npm run classification:index:check',
     'npm run migration:ledger:check',
   ].join(' && '))

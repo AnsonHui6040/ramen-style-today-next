@@ -41,6 +41,10 @@ export function renderLedger(ledger: MigrationLedger) {
         `- ${entry.batch === '3A' ? 'Style' : 'Persistence'} fixture manifest hash: \`${entry.fixtureManifestHash}\``,
         '',
       ] : []),
+      ...(entry.eligibilityFixtureManifestHash ? [
+        `- Eligibility fixture manifest hash: \`${entry.eligibilityFixtureManifestHash}\``,
+        '',
+      ] : []),
       ...(entry.implementationPaths?.length ? [
         '### Implementation paths',
         '',

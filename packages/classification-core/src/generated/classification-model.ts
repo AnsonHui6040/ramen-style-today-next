@@ -5,7 +5,131 @@ import { questionModel } from './question-model.js'
 import { styleModel } from './style-model.js'
 
 const compiledClassificationData = {
-  "dataVersion": "70eb1d54c3073db4a6241234b5842d887de3c35c41d076584cc411cfccfaf5c2",
+  "dataVersion": "7476f4b8ebd1232b435b3478bb6ae170f805d1b9a462c6e045590cb13022c840",
+  "eligibilityPolicy": {
+    "exclusionsQuestionId": "exclusions",
+    "metadata": {
+      "compilerVersion": "1",
+      "dataVersion": "5c4281f571105e1a76398aadfb5e62b36584766c053883c6887bd687fcc43562",
+      "modelVersion": "batch3c.1.0",
+      "questionModelVersion": "batch2a.1.0",
+      "questionSemanticHash": "d1bd2fcecabcfde8a7512b530d9cbec7f2fc0bb1d62ad65cbece2799be753c0d",
+      "schemaVersion": "1",
+      "scoringPolicyDataVersion": "36ad616a2f709fe2bb6ddcfd5e0cb0eb16ecdea15f42e41640588cf61e068ed7",
+      "scoringPolicyModelVersion": "batch3b.1.0",
+      "scoringPolicySemanticHash": "76c768181a4a402abb33e7c4b30f7a8b4aa159db14ea827898e79b380cd132f6",
+      "semanticHash": "249b0c6e34297153fd0fae0c99d04157073391dc1a6e974f718156082d7d8694",
+      "sourceHash": "9d3ad687ce7c72aa5e36c79b69f264b543658f7dfd117e7d7e6fa4c5e422cb3d",
+      "styleDataVersion": "c5b3b3353b42618875f1c20d64449ec513601b60215351f757dbd1e48d1fee28",
+      "styleModelVersion": "batch3a.1.0",
+      "styleSemanticHash": "9fb9832c434b22fcd8397809b14117a47c358a266694df24ba68fd290fc5f585"
+    },
+    "noneOptionId": "none",
+    "rules": [
+      {
+        "blockedStyleIds": [
+          "tonkotsu",
+          "iekei",
+          "jiro",
+          "hakata",
+          "aburasoba",
+          "taiwan-mazesoba"
+        ],
+        "exclusionOptionId": "pork",
+        "id": "exclusion:pork",
+        "priority": 0,
+        "restrictionTagIds": [
+          "pork"
+        ]
+      },
+      {
+        "blockedStyleIds": [
+          "chicken-chintan",
+          "chicken-paitan"
+        ],
+        "exclusionOptionId": "chicken",
+        "id": "exclusion:chicken",
+        "priority": 1,
+        "restrictionTagIds": [
+          "chicken"
+        ]
+      },
+      {
+        "blockedStyleIds": [
+          "duck-chintan",
+          "duck-paitan"
+        ],
+        "exclusionOptionId": "duck",
+        "id": "exclusion:duck",
+        "priority": 2,
+        "restrictionTagIds": [
+          "duck"
+        ]
+      },
+      {
+        "blockedStyleIds": [],
+        "exclusionOptionId": "beef",
+        "id": "exclusion:beef",
+        "priority": 3,
+        "restrictionTagIds": []
+      },
+      {
+        "blockedStyleIds": [
+          "gyokai",
+          "konbusui-tsukemen",
+          "gyokai-tsukemen"
+        ],
+        "exclusionOptionId": "fish-seafood",
+        "id": "exclusion:fish-seafood",
+        "priority": 4,
+        "restrictionTagIds": [
+          "fish-seafood"
+        ]
+      },
+      {
+        "blockedStyleIds": [
+          "shellfish-dashi"
+        ],
+        "exclusionOptionId": "shellfish",
+        "id": "exclusion:shellfish",
+        "priority": 5,
+        "restrictionTagIds": [
+          "shellfish"
+        ]
+      },
+      {
+        "blockedStyleIds": [],
+        "exclusionOptionId": "shrimp-crab",
+        "id": "exclusion:shrimp-crab",
+        "priority": 6,
+        "restrictionTagIds": []
+      },
+      {
+        "blockedStyleIds": [
+          "sapporo"
+        ],
+        "exclusionOptionId": "dairy",
+        "id": "exclusion:dairy",
+        "priority": 7,
+        "restrictionTagIds": [
+          "dairy"
+        ]
+      },
+      {
+        "blockedStyleIds": [],
+        "exclusionOptionId": "none",
+        "id": "exclusion:none",
+        "priority": 8,
+        "restrictionTagIds": []
+      }
+    ],
+    "selection": {
+      "alternativeLimit": 3,
+      "blockedLead": "highest-blocked-primary-gte-eligible-lead",
+      "ordering": "scoring-rank-stable-subsequence",
+      "primaryLimit": 3
+    }
+  },
   "inventory": [
     {
       "id": "aburasoba:clean",
@@ -3838,6 +3962,13 @@ const compiledClassificationData = {
       "sourceFile": "packages/classification-core/src/definitions/policies.ts"
     },
     {
+      "id": "eligibility",
+      "key": "policy/eligibility",
+      "kind": "policy",
+      "messageIds": [],
+      "sourceFile": "packages/classification-core/src/definitions/eligibility-policy.ts"
+    },
+    {
       "id": "archetype",
       "key": "question/archetype",
       "kind": "question",
@@ -4098,7 +4229,7 @@ const compiledClassificationData = {
       "sourceFile": "packages/classification-core/src/definitions/styles/tonkotsu.ts"
     }
   ],
-  "modelVersion": "batch3b.1.0",
+  "modelVersion": "batch3c.1.0",
   "policy": {
     "adjustments": {
       "bonusCap": 5,
@@ -4239,6 +4370,9 @@ const compiledClassificationData = {
     ]
   },
   "provenance": {
+    "eligibilityPolicy": {
+      "origin": "legacy-production"
+    },
     "questions": {
       "origin": "legacy-production"
     },
