@@ -4,7 +4,7 @@
 
 Model version: `batch3c.1.0`<br>
 Data version: `7476f4b8ebd1232b435b3478bb6ae170f805d1b9a462c6e045590cb13022c840`<br>
-Eligibility assurance: `compiler-validated`<br>
+Eligibility assurance: `parity-verified`<br>
 Eligibility parity scope: `legacy-eligibility-result-projection`
 
 ## Persistence

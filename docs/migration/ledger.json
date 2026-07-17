@@ -762,7 +762,8 @@
     },
     {
       "batch": "3C",
-      "status": "in-progress",
+      "status": "complete",
+      "implementationSha": "011df13ca4f87333db54d3386b26f5987ffa14b7",
       "implementationPaths": [
         "docs/superpowers/specs/2026-07-17-batch-3c-eligibility-design.md",
         "packages/classification-core/src/compiler/eligibility-policy/**",
@@ -843,7 +844,22 @@
       ],
       "transformation": "Legacy production exclusion blocking and result selection are compiled into a deterministic post-scoring eligibility policy with immutable structured decisions, warning facts, traces, and offline parity evidence.",
       "behavior": "no-production-runtime-change",
-      "verification": []
+      "verification": [
+        {
+          "gate": "batch3c-local-verify",
+          "command": "npm run verify",
+          "outcome": "passed",
+          "evidence": "all Batch 3C local candidate gates passed"
+        },
+        {
+          "gate": "batch3c-remote-ci",
+          "command": "GitHub Actions CI / verify",
+          "outcome": "passed",
+          "evidence": "the exact Batch 3C candidate passed canonical CI",
+          "commitSha": "011df13ca4f87333db54d3386b26f5987ffa14b7",
+          "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29598120984"
+        }
+      ]
     }
   ]
 }

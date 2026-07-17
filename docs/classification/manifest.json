@@ -18795,7 +18795,7 @@
   },
   "provenance": {
     "eligibilityPolicy": {
-      "assurance": "compiler-validated",
+      "assurance": "parity-verified",
       "classificationDataVersion": "7476f4b8ebd1232b435b3478bb6ae170f805d1b9a462c6e045590cb13022c840",
       "coverage": {
         "activeBlockingTags": 6,
@@ -18829,7 +18829,18 @@
         "owner": "AnsonHui6040",
         "repository": "ramen-style-today"
       },
-      "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a"
+      "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a",
+      "verification": {
+        "assurance": "parity-verified",
+        "fixtureContentHash": "b96d59285f6725dec5da2dda77776fbf877a5258b8ae5ee821fb5ca5618de1c9",
+        "fixtureManifestHash": "fb189722968020fb0aa8eb91674a94f5ee0448d910a786cd9021cb216e06706d",
+        "implementationSha": "011df13ca4f87333db54d3386b26f5987ffa14b7",
+        "parityScope": "legacy-eligibility-result-projection",
+        "paritySuiteVersion": "1",
+        "verifiedClassificationDataVersion": "7476f4b8ebd1232b435b3478bb6ae170f805d1b9a462c6e045590cb13022c840",
+        "verifiedDataVersion": "5c4281f571105e1a76398aadfb5e62b36584766c053883c6887bd687fcc43562",
+        "verifiedSemanticHash": "249b0c6e34297153fd0fae0c99d04157073391dc1a6e974f718156082d7d8694"
+      }
     },
     "questions": {
       "assurance": "compiler-validated",

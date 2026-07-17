@@ -667,10 +667,11 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `8807a18003a84039c99ae4a77b6f16fffc9dfe41`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29579704273
 
-## Batch 3C — in-progress
+## Batch 3C — complete
 
 - Behavior: `no-production-runtime-change`
 - Transformation: Legacy production exclusion blocking and result selection are compiled into a deterministic post-scoring eligibility policy with immutable structured decisions, warning facts, traces, and offline parity evidence.
+- Implementation SHA: `011df13ca4f87333db54d3386b26f5987ffa14b7`
 
 ### Legacy sources
 
@@ -757,4 +758,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Verification
 
-- Pending.
+- `batch3c-local-verify`: `npm run verify` — passed; all Batch 3C local candidate gates passed
+- `batch3c-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 3C candidate passed canonical CI
+  - Commit: `011df13ca4f87333db54d3386b26f5987ffa14b7`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29598120984
