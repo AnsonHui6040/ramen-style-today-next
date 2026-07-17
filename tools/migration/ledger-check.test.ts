@@ -989,7 +989,7 @@ describe('migration ledger repository checks', () => {
       candidateSha,
       githubFetch(),
     )
-    const updated = recordSuccessfulCi(ledger, '3B', verified)
+    const updated = recordSuccessfulCi(batch3BLedger(), '3B', verified)
     const entry = updated.entries.find(({ batch }) => batch === '3B')
 
     expect(entry).toMatchObject({
