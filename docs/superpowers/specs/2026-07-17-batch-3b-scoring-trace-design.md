@@ -1098,6 +1098,23 @@ The Batch 3B ledger entry will distinguish:
 - verification paths: package scripts, acceptance, documentation, migration, runtime import validation, and classification validation;
 - acceptance metadata paths: exactly `docs/classification/index.md`, `docs/classification/manifest.json`, `docs/migration/ledger.json`, and `docs/migration/ledger.md`.
 
+Two accepted-owner test files form an exact closed shared-maintenance exception:
+
+```text
+packages/classification-core/src/persistence/contracts.test.ts
+packages/classification-core/src/compiler/styles/serialize.test.ts
+```
+
+They remain owned by Batch 2B and Batch 3A respectively. Batch 3B may update
+only their verification assertions so the persistence diagnostic namespace
+remains independently checked after scoring diagnostics are introduced and the
+style compiler/runtime public-surface test recognizes the approved Batch 3B
+exports. The ledger contract names this closed set
+`batch3BApprovedDependencyTestPaths`; the offline protected-path checker and
+the implementation-plan baseline command must use that same set. No adjacent
+path, production semantics, generated artifact, fixture, parity corpus, or
+accepted question/style/persistence identity is excepted or transferred.
+
 The local implementation candidate includes complete code, fixtures, offline
 verification, ownership wiring, and candidate-state generated metadata. It
 records no remote success and does not remove the scoring blocker. After user
@@ -1148,7 +1165,9 @@ Implementation stops for user adjudication if:
 - the generated model requires a runtime compiler/definition/Node dependency;
 - the public API needs definitions, localized text, catalog data, or eligibility overrides;
 - persistence identity would need to change;
-- ownership paths overlap an accepted ledger owner without an explicit Batch 3B transfer;
+- ownership paths overlap an accepted ledger owner without an explicit Batch 3B
+  transfer or the exact approved retained-owner dependency-test maintenance
+  contract;
 - exact-SHA candidate/metadata acceptance forms a CI dependency cycle; or
 - an independent review requires an unapproved experimental production change.
 
@@ -1176,4 +1195,5 @@ Approval of this design approves these decisions:
 7. normalize invalid answers/models and missing subtype to bounded failures rather than legacy fallback/throws;
 8. bind parity to valid `exclusions:['none']` observations and defer every eligibility effect to Batch 3C;
 9. permit no valid-case parity waiver; and
-10. use a candidate/exact-SHA/metadata exact-SHA acceptance transaction that removes only the scoring readiness blocker.
+10. use a candidate/exact-SHA/metadata exact-SHA acceptance transaction that removes only the scoring readiness blocker; and
+11. retain Batch 2B/3A ownership of the two exact dependency tests while permitting only their bounded Batch 3B verification-assertion maintenance.

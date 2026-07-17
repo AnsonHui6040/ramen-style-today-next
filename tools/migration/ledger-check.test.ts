@@ -31,8 +31,10 @@ import {
   batch2BAcceptanceMetadataPaths,
   batch2BImplementationPaths,
   batch2BVerificationPaths,
+  acceptedBatch3AMetadataSha,
   acceptedScoringFixtureManifestHash,
   batch3BAcceptanceMetadataPaths,
+  batch3BApprovedDependencyTestPaths,
   batch3BImplementationPaths,
   batch3BNewOwners,
   batch3BRetiredOwners,
@@ -306,6 +308,68 @@ function batch3BLedger(entry: Record<string, unknown> = batch3BEntry()) {
       ...batch3ALedger({ batch3A: completeBatch3A() }).entries,
       entry,
     ],
+  }
+}
+
+function batch3BDependencyMaintenanceRepositoryState(overrides: {
+  persistenceChanges?: readonly string[]
+  styleChanges?: readonly string[]
+} = {}) {
+  const parsed = migrationLedgerSchema.parse(batch3BLedger())
+  const retired = new Set(parsed.entries.flatMap((entry) => entry.retiredOwners ?? []))
+  const owners = new Set(parsed.entries.flatMap((entry) => (
+    entry.newOwners.filter((owner) => !retired.has(owner))
+  )))
+  const currentHeadSha = 'd'.repeat(40)
+  const persistenceChanges = overrides.persistenceChanges
+    ?? [batch3BApprovedDependencyTestPaths[0]]
+  const styleChanges = overrides.styleChanges
+    ?? [batch3BApprovedDependencyTestPaths[1]]
+
+  return {
+    repoFiles: owners,
+    existingFiles: owners,
+    repoDirectories: parentDirectories(owners),
+    currentMarkdown: undefined,
+    currentHeadSha,
+    isCommitAncestor: async () => true,
+    directParentsOf: async (sha: string) => {
+      if (sha === acceptedBatch2BMetadataSha) return [acceptedBatch2BImplementationSha]
+      if (sha === persistenceIdentityChangeSha) return [persistenceIdentityChangeParentSha]
+      if (sha === acceptedBatch3AMetadataSha) return [candidateSha]
+      return []
+    },
+    changedPathsBetween: async (ancestorSha: string, targetSha: string) => {
+      if (ancestorSha === acceptedBatch2BImplementationSha
+        && targetSha === acceptedBatch2BMetadataSha) {
+        return [...batch2BAcceptanceMetadataPaths]
+      }
+      if (ancestorSha === acceptedBatch2BMetadataSha) {
+        return [persistenceIdentityPath, ...persistenceChanges]
+      }
+      if (ancestorSha === persistenceIdentityChangeParentSha
+        && targetSha === persistenceIdentityChangeSha) {
+        return [persistenceIdentityPath]
+      }
+      if (ancestorSha === persistenceIdentityChangeSha) return persistenceChanges
+      if (ancestorSha === candidateSha && targetSha === acceptedBatch3AMetadataSha) {
+        return [...batch3AAcceptanceMetadataPaths]
+      }
+      if (ancestorSha === acceptedBatch3AMetadataSha) return styleChanges
+      return []
+    },
+    questionSemanticHash: '',
+    classificationSemanticHash: '',
+    fixtureManifestHash: '',
+    classificationFixtureManifestHash: '',
+    persistenceFixtureManifestHash: maintainedPersistenceManifestHash,
+    classificationPersistenceFixtureManifestHash: maintainedPersistenceManifestHash,
+    persistenceFixtureCasesHash: persistenceCasesHash,
+    persistenceFixtureExtractorHash: maintainedPersistenceExtractorHash,
+    styleFixtureManifestHash,
+    classificationStyleFixtureManifestHash: styleFixtureManifestHash,
+    scoringFixtureManifestHash: acceptedScoringFixtureManifestHash,
+    classificationScoringFixtureManifestHash: acceptedScoringFixtureManifestHash,
   }
 }
 
@@ -1522,6 +1586,43 @@ describe('Batch 3A ownership, completion, and persistence identity closure', () 
 })
 
 describe('Batch 3B scoring ownership and transaction boundary', () => {
+  test('permits only the two retained-owner dependency test maintenance paths', async () => {
+    expect(batch3BApprovedDependencyTestPaths).toEqual([
+      'packages/classification-core/src/persistence/contracts.test.ts',
+      'packages/classification-core/src/compiler/styles/serialize.test.ts',
+    ])
+
+    const valid = await checkLedgerOffline(
+      batch3BLedger(),
+      batch3BDependencyMaintenanceRepositoryState() as Parameters<
+        typeof checkLedgerOffline
+      >[1],
+    )
+    expect(valid.errors).toEqual([])
+
+    const persistencePath = 'packages/classification-core/src/persistence/contracts.ts'
+    const persistenceInvalid = await checkLedgerOffline(
+      batch3BLedger(),
+      batch3BDependencyMaintenanceRepositoryState({
+        persistenceChanges: [persistencePath],
+      }) as Parameters<typeof checkLedgerOffline>[1],
+    )
+    expect(persistenceInvalid.errors).toContain(
+      `Batch 2B protected persistence path changed after identity payload SHA: ${persistencePath}`,
+    )
+
+    const stylePath = 'packages/classification-core/src/compiler/styles/serialize.ts'
+    const styleInvalid = await checkLedgerOffline(
+      batch3BLedger(),
+      batch3BDependencyMaintenanceRepositoryState({
+        styleChanges: [stylePath],
+      }) as Parameters<typeof checkLedgerOffline>[1],
+    )
+    expect(styleInvalid.errors).toContain(
+      `Batch 3A protected style path changed after accepted metadata SHA: ${stylePath}`,
+    )
+  })
+
   test('requires the metadata commit to have the candidate as its direct parent', async () => {
     await expect(verifyExactMetadataBoundary({
       implementationSha: candidateSha,

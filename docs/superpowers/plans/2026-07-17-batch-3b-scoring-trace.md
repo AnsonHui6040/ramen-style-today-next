@@ -87,10 +87,20 @@ git diff --exit-code 93f10161f1b2a24bb90fbb233d0fee41705c9f3a -- \
   tools/parity/persistence \
   tools/parity/fixtures/persistence \
   tools/parity/styles \
-  tools/parity/fixtures/styles
+  tools/parity/fixtures/styles \
+  ':(exclude)packages/classification-core/src/persistence/contracts.test.ts' \
+  ':(exclude)packages/classification-core/src/compiler/styles/serialize.test.ts'
 ```
 
-Every task also compares generated question/style artifact hashes with the accepted baseline. A protected diff is never updated as an expected file.
+The exclusions are the exact closed `batch3BApprovedDependencyTestPaths`
+verification-only maintenance set. They remain owned by their accepted Batch
+2B/3A entries and permit only assertion updates needed to recognize the new
+scoring diagnostic namespace and approved compiler/runtime exports. They do not
+transfer semantic ownership and do not permit an adjacent path, implementation
+file, generated artifact, fixture, parity corpus, or accepted component hash to
+change. Every task also compares generated question/style artifact hashes with
+the accepted baseline. A protected semantic or artifact diff is never updated
+as an expected file.
 
 Before live metadata is intentionally regenerated, the full command has two
 known transaction gates, in script order:
@@ -154,7 +164,8 @@ Stop and report instead of redesigning when:
 - an expected valid-case divergence or waiver is needed;
 - a runtime import needs Node, Zod, React, DOM, storage, network, file I/O, Date, random, locale, or legacy code;
 - an allowlist is insufficient;
-- ownership overlaps an accepted ledger entry without an explicit transfer;
+- ownership overlaps an accepted ledger entry without an explicit transfer or
+  the exact approved dependency-test maintenance contract;
 - a reviewer requires unapproved production experimentation; or
 - candidate/metadata exact-SHA acceptance becomes cyclic.
 
@@ -1179,6 +1190,21 @@ docs/migration/ledger.md
 ```
 
 Existing question, persistence, and style paths are dependencies, not transferred owners.
+
+The only retained-owner shared dependency-test maintenance paths are:
+
+```text
+packages/classification-core/src/persistence/contracts.test.ts
+packages/classification-core/src/compiler/styles/serialize.test.ts
+```
+
+They are verification-only exceptions represented by the exact closed
+`batch3BApprovedDependencyTestPaths` ledger contract. The first preserves the
+persistence diagnostic assertions after the disjoint scoring namespace is
+added; the second preserves the accepted exact public-surface assertions after
+the approved Batch 3B compiler/runtime exports are added. Neither path transfers
+to Batch 3B, and no production implementation, artifact, fixture, or component
+identity is excepted.
 
 ## 4. Verification matrix
 
