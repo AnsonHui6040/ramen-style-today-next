@@ -18787,7 +18787,7 @@
     "scoringPolicy": {
       "artifactHash": "74d211d18d4d005ad2cc95443527e7a2046a5a9a72e624b0dda1c62fe47ae4b4",
       "artifactPath": "packages/classification-core/src/generated/classification-model.ts",
-      "assurance": "compiler-validated",
+      "assurance": "parity-verified",
       "classificationDataVersion": "70eb1d54c3073db4a6241234b5842d887de3c35c41d076584cc411cfccfaf5c2",
       "coverage": {
         "bonuses": 18,
@@ -18825,7 +18825,18 @@
       },
       "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a",
       "styleModelVersion": "batch3a.1.0",
-      "styleSemanticHash": "9fb9832c434b22fcd8397809b14117a47c358a266694df24ba68fd290fc5f585"
+      "styleSemanticHash": "9fb9832c434b22fcd8397809b14117a47c358a266694df24ba68fd290fc5f585",
+      "verification": {
+        "assurance": "parity-verified",
+        "fixtureContentHash": "01e59203b0d0519245dc5438c627ff8de62400ca64f9aafa68498f3dcd98fe83",
+        "fixtureManifestHash": "8379cbb14588d5ba586bda895e8791edf8cfd98dc3bdffcb4512e6e8fb71101f",
+        "implementationSha": "8807a18003a84039c99ae4a77b6f16fffc9dfe41",
+        "parityScope": "legacy-scoring-result-projection",
+        "paritySuiteVersion": "1",
+        "verifiedClassificationDataVersion": "70eb1d54c3073db4a6241234b5842d887de3c35c41d076584cc411cfccfaf5c2",
+        "verifiedDataVersion": "36ad616a2f709fe2bb6ddcfd5e0cb0eb16ecdea15f42e41640588cf61e068ed7",
+        "verifiedSemanticHash": "76c768181a4a402abb33e7c4b30f7a8b4aa159db14ea827898e79b380cd132f6"
+      }
     },
     "styles": {
       "artifactHash": "46a63367179ce8874b10f2c6fc828a5816460bf463abac9d087ec77d8acfad3e",
@@ -18877,7 +18888,6 @@
     "blockers": [
       "persistence-adapter-not-integrated",
       "persisted-data-cutover-incomplete",
-      "scoring-not-production-verified",
       "runtime-cutover-incomplete"
     ],
     "status": "migration-only"

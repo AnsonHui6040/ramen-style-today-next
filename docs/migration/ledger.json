@@ -623,7 +623,8 @@
     },
     {
       "batch": "3B",
-      "status": "in-progress",
+      "status": "complete",
+      "implementationSha": "8807a18003a84039c99ae4a77b6f16fffc9dfe41",
       "implementationPaths": [
         "docs/superpowers/specs/2026-07-17-batch-3b-scoring-trace-design.md",
         "docs/superpowers/plans/2026-07-17-batch-3b-scoring-trace.md",
@@ -742,7 +743,22 @@
       ],
       "transformation": "Legacy production scoring policy and result projection compiled into deterministic integer-unit scoring with inert structured traces and frozen offline parity evidence.",
       "behavior": "no-production-runtime-change",
-      "verification": []
+      "verification": [
+        {
+          "gate": "batch3b-local-verify",
+          "command": "npm run verify",
+          "outcome": "passed",
+          "evidence": "all Batch 3B local candidate gates passed"
+        },
+        {
+          "gate": "batch3b-remote-ci",
+          "command": "GitHub Actions CI / verify",
+          "outcome": "passed",
+          "evidence": "the exact Batch 3B candidate passed canonical CI",
+          "commitSha": "8807a18003a84039c99ae4a77b6f16fffc9dfe41",
+          "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29579704273"
+        }
+      ]
     }
   ]
 }

@@ -538,10 +538,11 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `8378f8cf05a4756698f92f6fb2f49fb52782d712`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29532093331
 
-## Batch 3B — in-progress
+## Batch 3B — complete
 
 - Behavior: `no-production-runtime-change`
 - Transformation: Legacy production scoring policy and result projection compiled into deterministic integer-unit scoring with inert structured traces and frozen offline parity evidence.
+- Implementation SHA: `8807a18003a84039c99ae4a77b6f16fffc9dfe41`
 
 ### Legacy sources
 
@@ -661,4 +662,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### Verification
 
-- Pending.
+- `batch3b-local-verify`: `npm run verify` — passed; all Batch 3B local candidate gates passed
+- `batch3b-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 3B candidate passed canonical CI
+  - Commit: `8807a18003a84039c99ae4a77b6f16fffc9dfe41`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29579704273

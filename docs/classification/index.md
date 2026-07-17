@@ -16,7 +16,7 @@ Verification scope: `pure persistence restore and payload contracts`<br>
 Legacy source: `github.com/AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`<br>
 Legacy source tree: `3e527de876cfeccfd3154ddc492830d71c4cfd9a`<br>
 Readiness: `migration-only`<br>
-Readiness blockers: `persistence-adapter-not-integrated`<br>`persisted-data-cutover-incomplete`<br>`scoring-not-production-verified`<br>`runtime-cutover-incomplete`
+Readiness blockers: `persistence-adapter-not-integrated`<br>`persisted-data-cutover-incomplete`<br>`runtime-cutover-incomplete`
 
 | Concept | Canonical source | Provenance sources | Validators | Consumers | Migrations | Generated artifacts | Generated owners | Message sources | Messages | Evidence | Tests |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
