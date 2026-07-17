@@ -6,6 +6,7 @@ import { compileClassification } from '@ramen-style/classification-core/compiler
 import { styleModel } from '@ramen-style/classification-core/generated/style-model'
 import {
   buildDocumentation,
+  type EligibilityDocumentationEvidence,
   type ScoringDocumentationEvidence,
   type StyleDocumentationEvidence,
 } from './build-index.js'
@@ -136,6 +137,49 @@ const completedScoringVerification = {
   verifiedSemanticHash: scoringEvidenceBase.semanticHash,
   verifiedDataVersion: scoringEvidenceBase.dataVersion,
   implementationSha: 'e'.repeat(40),
+} as const
+
+const eligibilityEvidenceBase = {
+  sourceRepository: {
+    host: 'github.com',
+    owner: 'AnsonHui6040',
+    repository: 'ramen-style-today',
+  },
+  sourceCommit: 'eebf00b7ddfbbe6f01ff598e57f1e17197068a37',
+  sourceTreeHash: '3e527de876cfeccfd3154ddc492830d71c4cfd9a',
+  fixtureManifestPath: 'tools/parity/fixtures/eligibility/legacy-v1/manifest.json',
+  fixtureManifestHash: 'fb189722968020fb0aa8eb91674a94f5ee0448d910a786cd9021cb216e06706d',
+  fixtureSchemaVersion: '1',
+  fixtureContentHash: 'b96d59285f6725dec5da2dda77776fbf877a5258b8ae5ee821fb5ca5618de1c9',
+  seedsHash: 'a'.repeat(64),
+  extractorHash: 'b'.repeat(64),
+  sourceHashes: { 'src/App.tsx': 'c'.repeat(64) },
+  semanticHash: compiledModel.eligibilityPolicy.metadata.semanticHash,
+  dataVersion: compiledModel.eligibilityPolicy.metadata.dataVersion,
+  classificationDataVersion: compiledModel.dataVersion,
+  paritySuiteVersion: '1',
+  coverage: {
+    exclusionOptions: 9,
+    activeBlockingTags: 6,
+    inactiveBlockingTags: 6,
+    primaryBlockedCases: 11,
+    alternativeBlockedCases: 7,
+    allPrimaryBlockedCases: 3,
+    multiExclusionCases: 2,
+    noOpOptionCases: 4,
+  },
+} as const satisfies EligibilityDocumentationEvidence
+
+const completedEligibilityVerification = {
+  assurance: 'parity-verified',
+  parityScope: 'legacy-eligibility-result-projection',
+  paritySuiteVersion: '1',
+  fixtureManifestHash: eligibilityEvidenceBase.fixtureManifestHash,
+  fixtureContentHash: eligibilityEvidenceBase.fixtureContentHash,
+  verifiedSemanticHash: eligibilityEvidenceBase.semanticHash,
+  verifiedDataVersion: eligibilityEvidenceBase.dataVersion,
+  verifiedClassificationDataVersion: eligibilityEvidenceBase.classificationDataVersion,
+  implementationSha: 'f'.repeat(40),
 } as const
 
 function allRelationPaths() {
@@ -303,6 +347,7 @@ describe('classification documentation index', () => {
 
     expect(result.diagnostics).toEqual([])
     expect(result.markdown).toContain('Production question ownership')
+    expect(result.markdown).toContain('Eligibility assurance: `compiler-validated`')
     const manifest = JSON.parse(result.manifest) as { concepts: unknown[]; synthetic: boolean }
     expect(manifest.concepts).toHaveLength(compiled.model.inventory.length)
     expect(manifest.synthetic).toBe(false)
@@ -1060,5 +1105,36 @@ describe('classification documentation index', () => {
       expect(drifted.provenance.scoringPolicy).not.toHaveProperty('verification')
       expect(drifted.readiness.blockers).toContain('scoring-not-production-verified')
     }
+  })
+
+  test('renders the eligibility assurance transition in the generated index', () => {
+    const compilerValidated = buildDocumentation(
+      compiledModel,
+      documentationRelations,
+      new Set(detectedCoreConsumers),
+      allRelationPaths(),
+      { eligibilityEvidence: eligibilityEvidenceBase },
+    )
+    const parityVerified = buildDocumentation(
+      compiledModel,
+      documentationRelations,
+      new Set(detectedCoreConsumers),
+      allRelationPaths(),
+      {
+        eligibilityEvidence: {
+          ...eligibilityEvidenceBase,
+          verification: completedEligibilityVerification,
+        },
+      },
+    )
+
+    expect(compilerValidated.markdown)
+      .toContain('Eligibility assurance: `compiler-validated`')
+    expect(parityVerified.markdown)
+      .toContain('Eligibility assurance: `parity-verified`')
+    expect(parityVerified.markdown).toContain(
+      'Eligibility parity scope: `legacy-eligibility-result-projection`',
+    )
+    expect(parityVerified.markdown).not.toBe(compilerValidated.markdown)
   })
 })
