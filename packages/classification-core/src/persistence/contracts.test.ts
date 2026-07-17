@@ -90,7 +90,7 @@ describe('persistence contracts', () => {
       'PERSISTENCE_SUBMITTED_ANSWER_FOR_FORCED_QUESTION',
       'PERSISTENCE_CURSOR_INVALID',
     ])
-    expect(diagnosticCodes.slice(-persistenceDiagnosticCodes.length)).toEqual(
+    expect(diagnosticCodes.filter((code) => code.startsWith('PERSISTENCE_'))).toEqual(
       persistenceDiagnosticCodes,
     )
     expect(diagnosticCodes.filter((code) => code.startsWith('ANSWER_'))).toEqual([

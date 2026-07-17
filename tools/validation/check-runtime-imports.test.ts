@@ -41,11 +41,15 @@ describe('runtime import boundary', () => {
     )
     expect(result.forbidden).toEqual([])
     expect(result.visited).toEqual(expect.arrayContaining([
+      'packages/classification-core/src/classification-model.ts',
       'packages/classification-core/src/contracts/deep-freeze.ts',
+      'packages/classification-core/src/generated/classification-model.ts',
       'packages/classification-core/src/generated/style-model.ts',
       'packages/classification-core/src/persistence/index.ts',
       'packages/classification-core/src/persistence/create-payload.ts',
       'packages/classification-core/src/persistence/restore.ts',
+      'packages/classification-core/src/scoring/score.ts',
+      'packages/classification-core/src/scoring/trace.ts',
       'packages/classification-core/src/style-model.ts',
     ]))
     expect(result.visited.some((path) => path.endsWith('.test.ts'))).toBe(false)

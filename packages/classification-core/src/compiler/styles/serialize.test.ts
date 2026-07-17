@@ -296,6 +296,7 @@ describe('Task 10 compiler and runtime boundaries', () => {
 
     expect(Object.keys(runtime).sort()).toEqual([
       'applyAnswer',
+      'classificationModel',
       'createStoredClassificationPayloadV1',
       'decodeAnswerDraft',
       'evaluateFlow',
@@ -304,6 +305,7 @@ describe('Task 10 compiler and runtime boundaries', () => {
       'getPreviousInteractiveQuestion',
       'questionModel',
       'restoreClassification',
+      'scoreCompletedAnswers',
       'styleModel',
       'updatePendingSelection',
     ].sort())

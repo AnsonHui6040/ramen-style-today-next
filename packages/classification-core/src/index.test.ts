@@ -11,6 +11,7 @@ import type * as ContractStyleTypes from './contracts/style-model.js'
 import type * as RootStyleTypes from './index.js'
 import {
   applyAnswer,
+  classificationModel,
   createStoredClassificationPayloadV1,
   decodeAnswerDraft,
   evaluateFlow,
@@ -19,6 +20,7 @@ import {
   getPreviousInteractiveQuestion,
   questionModel,
   restoreClassification,
+  scoreCompletedAnswers,
   updatePendingSelection,
   type AppliedMigration,
   type ClassificationRestoreSource,
@@ -32,6 +34,7 @@ import {
   type RestoreResult,
   type StoredClassificationPayloadV1,
 } from './index.js'
+import { classificationModel as classificationModelImplementation } from './classification-model.js'
 import { createStoredClassificationPayloadV1 as createPayloadImplementation } from './persistence/create-payload.js'
 import type {
   AppliedMigration as ContractAppliedMigration,
@@ -46,6 +49,7 @@ import type {
   StoredClassificationPayloadV1 as ContractStoredClassificationPayloadV1,
 } from './persistence/contracts.js'
 import { restoreClassification as restoreImplementation } from './persistence/restore.js'
+import { scoreCompletedAnswers as scoreImplementation } from './scoring/score.js'
 
 type SubpathStyleTypeSurface = {
   readonly CompiledAdjustment: SubpathStyleTypes.CompiledAdjustment
@@ -196,6 +200,32 @@ const existingRuntimeTypeExports = [
   'StoredClassificationPayloadV1',
 ] as const
 
+const batch3bRuntimeTypeExports = [
+  'AdjustmentScoreTraceLine',
+  'AdjustmentTraceStatus',
+  'ClassificationModel',
+  'CompiledScoringPolicy',
+  'CompiledScoringPolicyMetadata',
+  'ConditionScoreTrace',
+  'ConfidenceDeductionTrace',
+  'ConfidenceTrace',
+  'CoreRankingKeys',
+  'CoreScoreTrace',
+  'LowConfidenceTrace',
+  'QuestionScoreTraceLine',
+  'RankingTraceEntry',
+  'ScoreCompletedAnswersResult',
+  'ScoredStyleResult',
+  'ScoreTrace',
+  'ScoringDiagnostic',
+  'ScoringDiagnosticCode',
+  'ScoringMatchTier',
+  'ScoringOutcome',
+  'StyleRankingKeys',
+  'StyleScoreTrace',
+  'SubtypeResolutionTrace',
+] as const
+
 const task10CompilerValueExports = [
   'DiagnosticCollector',
   'classificationDefinition',
@@ -319,6 +349,7 @@ describe('classification-core runtime package', () => {
   test('exports the exact frozen runtime surface without compiler APIs', () => {
     expect(Object.keys(runtime).sort()).toEqual([
       'applyAnswer',
+      'classificationModel',
       'createStoredClassificationPayloadV1',
       'decodeAnswerDraft',
       'evaluateFlow',
@@ -327,11 +358,14 @@ describe('classification-core runtime package', () => {
       'getPreviousInteractiveQuestion',
       'questionModel',
       'restoreClassification',
+      'scoreCompletedAnswers',
       'styleModel',
       'updatePendingSelection',
     ])
     expect(createStoredClassificationPayloadV1).toBe(createPayloadImplementation)
     expect(restoreClassification).toBe(restoreImplementation)
+    expect(classificationModel).toBe(classificationModelImplementation)
+    expect(scoreCompletedAnswers).toBe(scoreImplementation)
     expectTypeOf(questionModel).toMatchTypeOf<CompiledQuestionModel>()
     expect(Object.isFrozen(questionModel)).toBe(true)
     expect(Object.isFrozen(questionModel.questions)).toBe(true)
@@ -361,6 +395,7 @@ describe('classification-core runtime package', () => {
     expect(exportedSurface('./index.ts')).toEqual({
       values: [
         'applyAnswer',
+        'classificationModel',
         'createStoredClassificationPayloadV1',
         'decodeAnswerDraft',
         'evaluateFlow',
@@ -369,10 +404,15 @@ describe('classification-core runtime package', () => {
         'getPreviousInteractiveQuestion',
         'questionModel',
         'restoreClassification',
+        'scoreCompletedAnswers',
         'styleModel',
         'updatePendingSelection',
       ].sort(),
-      types: [...existingRuntimeTypeExports, ...approvedStyleTypeExports].sort(),
+      types: [
+        ...existingRuntimeTypeExports,
+        ...approvedStyleTypeExports,
+        ...batch3bRuntimeTypeExports,
+      ].sort(),
     })
     expect(exportedSurface('./compiler/index.ts')).toEqual({
       values: [...task10CompilerValueExports].sort(),

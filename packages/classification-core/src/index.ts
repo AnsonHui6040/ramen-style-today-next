@@ -1,3 +1,4 @@
+export { classificationModel } from './classification-model.js'
 export { questionModel } from './generated/question-model.js'
 export { styleModel } from './style-model.js'
 export {
@@ -13,6 +14,7 @@ export {
   createStoredClassificationPayloadV1,
   restoreClassification,
 } from './persistence/index.js'
+export { scoreCompletedAnswers } from './scoring/index.js'
 export type {
   Diagnostic,
   DiagnosticReference,
@@ -85,3 +87,30 @@ export type {
   StyleSourceReference,
   SubtypeId,
 } from './style-model.js'
+export type { ClassificationModel } from './contracts/model.js'
+export type {
+  CompiledScoringPolicy,
+  CompiledScoringPolicyMetadata,
+} from './contracts/scoring-policy.js'
+export type {
+  AdjustmentScoreTraceLine,
+  AdjustmentTraceStatus,
+  ConditionScoreTrace,
+  ConfidenceDeductionTrace,
+  ConfidenceTrace,
+  CoreRankingKeys,
+  CoreScoreTrace,
+  LowConfidenceTrace,
+  QuestionScoreTraceLine,
+  RankingTraceEntry,
+  ScoreCompletedAnswersResult,
+  ScoredStyleResult,
+  ScoreTrace,
+  ScoringDiagnostic,
+  ScoringDiagnosticCode,
+  ScoringMatchTier,
+  ScoringOutcome,
+  StyleRankingKeys,
+  StyleScoreTrace,
+  SubtypeResolutionTrace,
+} from './contracts/scoring.js'
