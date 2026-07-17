@@ -18,6 +18,7 @@ import {
 import {
   migrationLedgerSchema,
   persistenceFixtureManifestPath,
+  scoringFixtureManifestPath,
   styleFixtureManifestPath,
 } from './ledger-schema.js'
 import { recordSuccessfulCiFile } from './record-ci.js'
@@ -216,6 +217,24 @@ function readBatch3AIdentities() {
   }
 }
 
+function readBatch3BIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    provenance?: { scoringPolicy?: { fixtureManifestHash?: unknown } }
+  }
+  const classificationScoringFixtureManifestHash =
+    manifest.provenance?.scoringPolicy?.fixtureManifestHash
+  if (typeof classificationScoringFixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing scoring fixture identity')
+  }
+  return {
+    scoringFixtureManifestHash: sha256File(resolve(repoRoot, scoringFixtureManifestPath)),
+    classificationScoringFixtureManifestHash,
+  }
+}
+
 function pathExists(path: string) {
   try {
     lstatSync(path)
@@ -369,6 +388,7 @@ async function run() {
     const batch2AEntry = parsedLedger.entries.find(({ batch }) => batch === '2A')
     const batch2BEntry = parsedLedger.entries.find(({ batch }) => batch === '2B')
     const batch3AEntry = parsedLedger.entries.find(({ batch }) => batch === '3A')
+    const batch3BEntry = parsedLedger.entries.find(({ batch }) => batch === '3B')
     const batch2AIdentities = batch2AEntry
       ? readBatch2AIdentities(batch2AEntry.maintenance !== undefined)
       : {
@@ -398,6 +418,7 @@ async function run() {
       ...batch2AIdentities,
       ...(batch2BEntry ? readBatch2BIdentities() : {}),
       ...(batch3AEntry ? readBatch3AIdentities() : {}),
+      ...(batch3BEntry ? readBatch3BIdentities() : {}),
     })
   }
   if (!result.ok || result.markdown === undefined) {

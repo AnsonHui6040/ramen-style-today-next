@@ -1,4 +1,5 @@
 import {
+  readFileSync,
   mkdirSync,
   mkdtempSync,
   rmSync,
@@ -33,6 +34,15 @@ const filesystemSpecifierFamilies = [
 ] as const
 
 describe('runtime import boundary', () => {
+  test('keeps classification artifact and scoring parity in the root verify gate', () => {
+    const rootPackage = JSON.parse(readFileSync(
+      new URL('../../package.json', import.meta.url),
+      'utf8',
+    )) as { scripts: Record<string, string> }
+    expect(rootPackage.scripts.verify).toContain('npm run classification-model:check')
+    expect(rootPackage.scripts.verify).toContain('npm run parity:scoring')
+  })
+
   test('keeps the real public runtime dependency graph browser-neutral', () => {
     const repoRoot = resolve(import.meta.dirname, '../..')
     const result = checkRuntimeImports(

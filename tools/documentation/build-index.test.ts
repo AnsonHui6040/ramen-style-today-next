@@ -6,6 +6,7 @@ import { compileClassification } from '@ramen-style/classification-core/compiler
 import { styleModel } from '@ramen-style/classification-core/generated/style-model'
 import {
   buildDocumentation,
+  type ScoringDocumentationEvidence,
   type StyleDocumentationEvidence,
 } from './build-index.js'
 import {
@@ -85,6 +86,59 @@ const completedStyleVerification = {
   implementationSha: '9'.repeat(40),
 } as const
 
+const scoringEvidenceBase = {
+  sourceRepository: {
+    host: 'github.com',
+    owner: 'AnsonHui6040',
+    repository: 'ramen-style-today',
+  },
+  sourceCommit: 'eebf00b7ddfbbe6f01ff598e57f1e17197068a37',
+  sourceTreeHash: '3e527de876cfeccfd3154ddc492830d71c4cfd9a',
+  fixtureManifestPath: 'tools/parity/fixtures/scoring/legacy-v1/manifest.json',
+  fixtureManifestHash: '8379cbb14588d5ba586bda895e8791edf8cfd98dc3bdffcb4512e6e8fb71101f',
+  fixtureSchemaVersion: '1',
+  fixtureCasesHash: '7f79b5d9833d354671043f093d2d694614231195ad2fe167dbe348c50718d291',
+  fixtureContentHash: '01e59203b0d0519245dc5438c627ff8de62400ca64f9aafa68498f3dcd98fe83',
+  extractorVersion: '1',
+  extractorHash: '73a2b211ae88e91eaf255ffdac468c311f05f0c7e12ea42fcb6b0715d47b92aa',
+  instrumentationVersion: '1',
+  instrumentationHash: 'f5369d650f20b9027df8e543a6eb86d4b47340b3ceeb5d23d239bd394ceaa536',
+  seedsHash: 'eaa143935ac61e9c622c500991d03cd3dc35c03d1ff9bd4d2c5dd39376f7bb57',
+  artifactPath: 'packages/classification-core/src/generated/classification-model.ts',
+  artifactHash: '74d211d18d4d005ad2cc95443527e7a2046a5a9a72e624b0dda1c62fe47ae4b4',
+  sourceHash: compiledModel.policy.metadata.sourceHash,
+  semanticHash: compiledModel.policy.metadata.semanticHash,
+  dataVersion: compiledModel.policy.metadata.dataVersion,
+  classificationDataVersion: compiledModel.dataVersion,
+  paritySuiteVersion: '1',
+  modelVersion: compiledModel.policy.metadata.modelVersion,
+  questionModelVersion: compiledModel.policy.metadata.questionModelVersion,
+  questionSemanticHash: compiledModel.policy.metadata.questionSemanticHash,
+  styleModelVersion: compiledModel.policy.metadata.styleModelVersion,
+  styleSemanticHash: compiledModel.policy.metadata.styleSemanticHash,
+  coverage: {
+    styles: 18,
+    cores: 54,
+    rules: 378,
+    bonuses: 18,
+    conflicts: 7,
+    cases: 26,
+    observedRuleTiers: 1155,
+  },
+} as const satisfies ScoringDocumentationEvidence
+
+const completedScoringVerification = {
+  assurance: 'parity-verified',
+  parityScope: 'legacy-scoring-result-projection',
+  paritySuiteVersion: scoringEvidenceBase.paritySuiteVersion,
+  fixtureManifestHash: scoringEvidenceBase.fixtureManifestHash,
+  fixtureContentHash: scoringEvidenceBase.fixtureContentHash,
+  verifiedSemanticHash: scoringEvidenceBase.semanticHash,
+  verifiedDataVersion: scoringEvidenceBase.dataVersion,
+  verifiedClassificationDataVersion: scoringEvidenceBase.classificationDataVersion,
+  implementationSha: 'e'.repeat(40),
+} as const
+
 function allRelationPaths() {
   return new Set(documentationRelations.flatMap((relation) => {
     const expanded = relation as typeof relation & {
@@ -114,7 +168,9 @@ function buildStyleDocumentation(
     compiledModel,
     documentationRelations,
     new Set([
+      'packages/classification-core/src/classification-model.ts',
       'packages/classification-core/src/index.ts',
+      'packages/classification-core/src/scoring/score.ts',
       'packages/classification-core/src/style-model.ts',
       'packages/classification-core/src/flow/evaluate.ts',
       'tools/validation/validate-classification.ts',
@@ -128,7 +184,9 @@ function buildStyleDocumentation(
       },
       styleEvidence,
       detectedConsumerRegistry: [
+        'packages/classification-core/src/classification-model.ts',
         'packages/classification-core/src/index.ts',
+        'packages/classification-core/src/scoring/score.ts',
         'packages/classification-core/src/style-model.ts',
         'packages/classification-core/src/flow/evaluate.ts',
         'tools/validation/validate-classification.ts',
@@ -215,7 +273,9 @@ function deterministicSnapshot(locale: string) {
 
 describe('classification documentation index', () => {
   const detectedCoreConsumers = [
+    'packages/classification-core/src/classification-model.ts',
     'packages/classification-core/src/index.ts',
+    'packages/classification-core/src/scoring/score.ts',
     'packages/classification-core/src/style-model.ts',
     'packages/classification-core/src/flow/evaluate.ts',
     'tools/validation/validate-classification.ts',
@@ -272,7 +332,7 @@ describe('classification documentation index', () => {
       parityScope: 'legacy-observable-transition-projection',
     })
     expect(manifest.provenance.styles.assurance).toBe('compiler-validated')
-    expect(manifest.provenance.scoringPolicy.assurance).toBe('structurally-validated')
+    expect(manifest.provenance.scoringPolicy.assurance).toBe('compiler-validated')
     expect(manifest.readiness).toEqual({
       status: 'migration-only',
       blockers: [
@@ -818,8 +878,9 @@ describe('classification documentation index', () => {
       implementationSha: 'd'.repeat(40),
     })
     expect(manifest.provenance.scoringPolicy).toEqual({
-      origin: 'synthetic',
-      assurance: 'structurally-validated',
+      origin: 'legacy-production',
+      assurance: 'compiler-validated',
+      parityScope: 'legacy-scoring-result-projection',
     })
     expect(manifest.readiness).toEqual({
       status: 'migration-only',
@@ -864,5 +925,144 @@ describe('classification documentation index', () => {
       code: 'DOC_RELATION_INVALID',
       message: 'Style documentation evidence does not match the compiled model',
     }))
+  })
+
+  test('documents the scoring policy relation and truth-bound candidate evidence', () => {
+    const policyRelation = documentationRelations.find(({ conceptKey }) => (
+      conceptKey === 'policy/default'
+    ))
+    expect(policyRelation).toMatchObject({
+      canonicalSource: 'packages/classification-core/src/definitions/policies.ts',
+      generatedArtifacts: [
+        'packages/classification-core/src/generated/classification-model.ts',
+      ],
+    })
+    expect(policyRelation?.validators).toContain(
+      'packages/classification-core/src/compiler/scoring-policy/compile.ts',
+    )
+    expect(policyRelation?.consumers).toContain(
+      'packages/classification-core/src/scoring/score.ts',
+    )
+    expect(policyRelation?.tests).toContain('tools/parity/scoring/parity.test.ts')
+    expect(policyRelation?.evidence).toContain(
+      'tools/parity/fixtures/scoring/legacy-v1/manifest.json',
+    )
+
+    const built = buildDocumentation(
+      compiledModel,
+      documentationRelations,
+      new Set(detectedCoreConsumers),
+      allRelationPaths(),
+      {
+        persistenceEvidence: {
+          ...persistenceEvidenceBase,
+          assurance: 'contract-verified',
+          implementationSha: 'd'.repeat(40),
+        },
+        styleEvidence: {
+          ...styleEvidenceBase,
+          verification: completedStyleVerification,
+        },
+        scoringEvidence: scoringEvidenceBase,
+        detectedConsumerRegistry: detectedCoreConsumers,
+      },
+    )
+    expect(built.diagnostics).toEqual([])
+    const manifest = JSON.parse(built.manifest)
+    expect(manifest.provenance.scoringPolicy).toMatchObject({
+      origin: 'legacy-production',
+      assurance: 'compiler-validated',
+      parityScope: 'legacy-scoring-result-projection',
+      fixtureManifestHash: scoringEvidenceBase.fixtureManifestHash,
+      artifactHash: scoringEvidenceBase.artifactHash,
+      semanticHash: scoringEvidenceBase.semanticHash,
+      dataVersion: scoringEvidenceBase.dataVersion,
+    })
+    expect(manifest.provenance.scoringPolicy).not.toHaveProperty('verification')
+    expect(manifest.readiness.blockers).toEqual([
+      'persistence-adapter-not-integrated',
+      'persisted-data-cutover-incomplete',
+      'scoring-not-production-verified',
+      'runtime-cutover-incomplete',
+    ])
+  })
+
+  test('rejects scoring evidence not bound to the compiled policy model', () => {
+    const built = buildDocumentation(
+      compiledModel,
+      documentationRelations,
+      new Set(detectedCoreConsumers),
+      allRelationPaths(),
+      {
+        scoringEvidence: {
+          ...scoringEvidenceBase,
+          semanticHash: '0'.repeat(64),
+        },
+        detectedConsumerRegistry: detectedCoreConsumers,
+      },
+    )
+    expect(built.diagnostics).toContainEqual(expect.objectContaining({
+      code: 'DOC_RELATION_INVALID',
+      message: 'Scoring documentation evidence does not match the compiled model',
+    }))
+  })
+
+  test('upgrades only exact fully-bound scoring verification and removes one blocker', () => {
+    const options = {
+      persistenceEvidence: {
+        ...persistenceEvidenceBase,
+        assurance: 'contract-verified' as const,
+        implementationSha: 'd'.repeat(40),
+      },
+      styleEvidence: {
+        ...styleEvidenceBase,
+        verification: completedStyleVerification,
+      },
+      scoringEvidence: {
+        ...scoringEvidenceBase,
+        verification: completedScoringVerification,
+      },
+      detectedConsumerRegistry: detectedCoreConsumers,
+    }
+    const manifest = JSON.parse(buildDocumentation(
+      compiledModel,
+      documentationRelations,
+      new Set(detectedCoreConsumers),
+      allRelationPaths(),
+      options,
+    ).manifest)
+    expect(manifest.provenance.scoringPolicy.assurance).toBe('parity-verified')
+    expect(manifest.provenance.scoringPolicy.verification)
+      .toEqual(completedScoringVerification)
+    expect(manifest.readiness.blockers).toEqual([
+      'persistence-adapter-not-integrated',
+      'persisted-data-cutover-incomplete',
+      'runtime-cutover-incomplete',
+    ])
+
+    for (const verification of [
+      { ...completedScoringVerification, paritySuiteVersion: '2' },
+      { ...completedScoringVerification, fixtureContentHash: '0'.repeat(64) },
+      {
+        ...completedScoringVerification,
+        verifiedClassificationDataVersion: '0'.repeat(64),
+      },
+      { ...completedScoringVerification, verifiedSemanticHash: '0'.repeat(64) },
+      { ...completedScoringVerification, verifiedDataVersion: '0'.repeat(64) },
+    ]) {
+      const drifted = JSON.parse(buildDocumentation(
+        compiledModel,
+        documentationRelations,
+        new Set(detectedCoreConsumers),
+        allRelationPaths(),
+        {
+          ...options,
+          scoringEvidence: { ...scoringEvidenceBase, verification },
+        },
+      ).manifest)
+      expect(drifted.provenance.scoringPolicy.assurance).toBe('compiler-validated')
+      expect(drifted.provenance.scoringPolicy).not.toHaveProperty('verification')
+      expect(drifted.readiness.blockers).toContain('scoring-not-production-verified')
+    }
   })
 })

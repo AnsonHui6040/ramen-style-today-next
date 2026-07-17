@@ -4,9 +4,13 @@ import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
 import type { MigrationLedger } from './ledger-schema.js'
 import {
+  acceptedBatch3AMetadataSha,
   batch2BAcceptanceMetadataPaths,
   batch2BProtectedPersistencePaths,
   batch3AAcceptanceMetadataPaths,
+  batch3AProtectedStylePaths,
+  batch3BAcceptanceMetadataPaths,
+  batch3BApprovedDependencyTestPaths,
   migrationLedgerSchema,
   protectedQuestionBaseline,
 } from './ledger-schema.js'
@@ -55,6 +59,8 @@ export interface LedgerRepositoryState extends Omit<LedgerCheckInput, 'input'> {
   persistenceFixtureExtractorHash?: string
   styleFixtureManifestHash?: string
   classificationStyleFixtureManifestHash?: string
+  scoringFixtureManifestHash?: string
+  classificationScoringFixtureManifestHash?: string
   questionBaseline?: {
     readonly [Key in keyof typeof protectedQuestionBaseline]: string
   }
@@ -157,6 +163,29 @@ export async function verifySemanticAncestry(
   }
 }
 
+export async function verifyExactMetadataBoundary(input: {
+  implementationSha: string
+  metadataSha: string
+  expectedPaths: readonly string[]
+  directParentsOf: LedgerRepositoryState['directParentsOf']
+  changedPathsBetween: LedgerRepositoryState['changedPathsBetween']
+  label: string
+}): Promise<void> {
+  const parents = await input.directParentsOf(input.metadataSha)
+  if (parents.length !== 1 || parents[0] !== input.implementationSha) {
+    throw new Error(
+      `${input.label} metadata SHA ${input.metadataSha} must have exactly one parent ${input.implementationSha}`,
+    )
+  }
+  const changedPaths = [
+    ...await input.changedPathsBetween(input.implementationSha, input.metadataSha),
+  ].sort(compareCodePoints)
+  const expectedPaths = [...input.expectedPaths].sort(compareCodePoints)
+  if (JSON.stringify(changedPaths) !== JSON.stringify(expectedPaths)) {
+    throw new Error(`${input.label} requires the exact acceptance metadata path set`)
+  }
+}
+
 export async function checkLedgerOffline(
   input: unknown,
   state: LedgerRepositoryState,
@@ -164,6 +193,7 @@ export async function checkLedgerOffline(
   const base = checkLedger({ input, ...state })
   if (!base.ledger) return base
   const errors = [...base.errors]
+  const hasBatch3B = base.ledger.entries.some(({ batch }) => batch === '3B')
 
   if (!fullShaPattern.test(state.currentHeadSha)) {
     errors.push('Current repository HEAD must be a full lowercase SHA')
@@ -218,7 +248,9 @@ export async function checkLedgerOffline(
         for (const file of changedPaths) {
           if (batch2BProtectedPersistencePaths.some(
             (path) => matchesSemanticPath(file, path),
-          ) && !identityMaintenance?.paths.includes(
+          ) && !(hasBatch3B && batch3BApprovedDependencyTestPaths.includes(
+            file as typeof batch3BApprovedDependencyTestPaths[number],
+          )) && !identityMaintenance?.paths.includes(
             file as typeof identityMaintenance.paths[number],
           )) {
             errors.push(
@@ -259,7 +291,9 @@ export async function checkLedgerOffline(
             for (const file of changedAfterPayload) {
               if (batch2BProtectedPersistencePaths.some(
                 (path) => matchesSemanticPath(file, path),
-              )) errors.push(
+              ) && !(hasBatch3B && batch3BApprovedDependencyTestPaths.includes(
+                file as typeof batch3BApprovedDependencyTestPaths[number],
+              ))) errors.push(
                 `Batch 2B protected persistence path changed after identity payload SHA: ${file}`,
               )
             }
@@ -311,7 +345,43 @@ export async function checkLedgerOffline(
       errors.push('classification manifest style fixture manifest hash is inconsistent')
     }
     if (batch3A.status === 'complete' && batch3A.implementationSha) {
-      if (!await state.isCommitAncestor(batch3A.implementationSha, state.currentHeadSha)) {
+      if (hasBatch3B) {
+        const parents = await state.directParentsOf(acceptedBatch3AMetadataSha)
+        if (parents.length !== 1 || parents[0] !== batch3A.implementationSha) {
+          errors.push(
+            `Batch 3A accepted metadata SHA ${acceptedBatch3AMetadataSha} must have exactly one parent ${batch3A.implementationSha}`,
+          )
+        }
+        const acceptedPaths = [
+          ...await state.changedPathsBetween(
+            batch3A.implementationSha,
+            acceptedBatch3AMetadataSha,
+          ),
+        ].sort(compareCodePoints)
+        const expectedPaths = [...batch3AAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(acceptedPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3A accepted boundary requires the exact acceptance metadata path set')
+        }
+        if (!await state.isCommitAncestor(acceptedBatch3AMetadataSha, state.currentHeadSha)) {
+          errors.push(
+            `Batch 3A accepted metadata SHA ${acceptedBatch3AMetadataSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+          )
+        } else {
+          const changedAfterAcceptance = await state.changedPathsBetween(
+            acceptedBatch3AMetadataSha,
+            state.currentHeadSha,
+          )
+          for (const file of changedAfterAcceptance) {
+            if (batch3AProtectedStylePaths.some(
+              (path) => matchesSemanticPath(file, path),
+            ) && !batch3BApprovedDependencyTestPaths.includes(
+              file as typeof batch3BApprovedDependencyTestPaths[number],
+            )) errors.push(
+              `Batch 3A protected style path changed after accepted metadata SHA: ${file}`,
+            )
+          }
+        }
+      } else if (!await state.isCommitAncestor(batch3A.implementationSha, state.currentHeadSha)) {
         errors.push(
           `Batch 3A implementation SHA ${batch3A.implementationSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
         )
@@ -336,6 +406,61 @@ export async function checkLedgerOffline(
         const expectedPaths = [...batch3AAcceptanceMetadataPaths].sort(compareCodePoints)
         if (JSON.stringify(completionPaths) !== JSON.stringify(expectedPaths)) {
           errors.push('Batch 3A completion requires the exact acceptance metadata path set')
+        }
+      }
+    }
+  }
+
+  const batch3B = base.ledger.entries.find(({ batch }) => batch === '3B')
+  if (batch3B) {
+    if (!batch3A || batch3A.status !== 'complete') {
+      errors.push('Batch 3B requires completed Batch 3A')
+    }
+    if (batch3B.scoringFixtureManifestHash !== state.scoringFixtureManifestHash) {
+      errors.push('Batch 3B scoring fixture manifest hash is inconsistent with tracked bytes')
+    }
+    if (state.classificationScoringFixtureManifestHash
+      !== state.scoringFixtureManifestHash) {
+      errors.push('classification manifest scoring fixture manifest hash is inconsistent')
+    }
+    if (batch3B.status === 'complete' && batch3B.implementationSha) {
+      if (!await state.isCommitAncestor(batch3B.implementationSha, state.currentHeadSha)) {
+        errors.push(
+          `Batch 3B implementation SHA ${batch3B.implementationSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+        )
+      } else {
+        const completionPaths = [
+          ...await state.changedPathsBetween(
+            batch3B.implementationSha,
+            state.currentHeadSha,
+          ),
+        ].sort(compareCodePoints)
+        const frozenPath = completionPaths.find((file) => (
+          [
+            ...(batch3B.implementationPaths ?? []),
+            ...(batch3B.verificationPaths ?? []),
+          ].some((path) => matchesSemanticPath(file, path))
+        ))
+        if (frozenPath) errors.push(
+          `Batch 3B candidate completion changed a frozen path: ${frozenPath}`,
+        )
+        const expectedPaths = [...batch3BAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(completionPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3B completion requires the exact acceptance metadata path set')
+        }
+        if (state.currentHeadSha !== batch3B.implementationSha) {
+          try {
+            await verifyExactMetadataBoundary({
+              implementationSha: batch3B.implementationSha,
+              metadataSha: state.currentHeadSha,
+              expectedPaths: batch3BAcceptanceMetadataPaths,
+              directParentsOf: state.directParentsOf,
+              changedPathsBetween: state.changedPathsBetween,
+              label: 'Batch 3B completion',
+            })
+          } catch (error) {
+            errors.push(error instanceof Error ? error.message : String(error))
+          }
         }
       }
     }
@@ -441,6 +566,9 @@ export function checkLedger(input: LedgerCheckInput): LedgerCheckResult {
     ...parsed.data.entries.flatMap((entry) => entry.newOwners),
     ...maintenanceOwners.map(({ file }) => file),
   ])
+  const retiredOwners = new Set(parsed.data.entries.flatMap(
+    (entry) => entry.retiredOwners ?? [],
+  ))
   for (const owner of maintenanceOwners) {
     if (!input.existingFiles.has(owner.file)) {
       errors.push(
@@ -450,7 +578,11 @@ export function checkLedger(input: LedgerCheckInput): LedgerCheckResult {
   }
   for (const entry of parsed.data.entries) {
     for (const owner of entry.newOwners) {
-      if (!input.repoFiles.has(owner) || !input.existingFiles.has(owner)) {
+      if (retiredOwners.has(owner)) {
+        if (input.repoFiles.has(owner) || input.existingFiles.has(owner)) {
+          errors.push(`Retired migration-ledger owner still exists: ${owner}`)
+        }
+      } else if (!input.repoFiles.has(owner) || !input.existingFiles.has(owner)) {
         errors.push(`Batch ${entry.batch} owner is not an existing repository file: ${owner}`)
       }
     }

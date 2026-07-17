@@ -33,7 +33,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
     "build": "tsc -b packages/classification-core",
-    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run questions:check && npm run styles:check && npm run runtime:imports:check && npm run parity:questions && npm run parity:persistence && npm run parity:styles && npm run classification:index:check && npm run migration:ledger:check",
+    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run questions:check && npm run styles:check && npm run classification-model:check && npm run runtime:imports:check && npm run parity:questions && npm run parity:persistence && npm run parity:styles && npm run parity:scoring && npm run classification:index:check && npm run migration:ledger:check",
     "verify:acceptance": "npm run verify && tsx tools/acceptance/verify-acceptance.ts"
   },
   "devDependencies": {

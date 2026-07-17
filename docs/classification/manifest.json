@@ -17573,12 +17573,21 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "canonicalSource": "packages/classification-core/src/definitions/policies.ts",
       "consumers": [
+        "packages/classification-core/src/classification-model.ts",
+        "packages/classification-core/src/index.ts",
+        "packages/classification-core/src/scoring/score.ts",
         "tools/validation/validate-classification.ts"
       ],
-      "evidence": [],
-      "generatedArtifacts": [],
+      "evidence": [
+        "tools/parity/fixtures/scoring/legacy-v1/manifest.json",
+        "tools/parity/scoring/parity.ts",
+        "tools/parity/scoring/verify-fixtures.ts"
+      ],
+      "generatedArtifacts": [
+        "packages/classification-core/src/generated/classification-model.ts"
+      ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
@@ -17591,11 +17600,17 @@
       "migrations": [],
       "provenanceSources": [],
       "tests": [
-        "packages/classification-core/src/compiler/compile.test.ts"
+        "packages/classification-core/src/compiler/scoring-policy/compile.test.ts",
+        "packages/classification-core/src/compiler/scoring-policy/proof.test.ts",
+        "packages/classification-core/src/compiler/scoring-policy/source-schema.test.ts",
+        "packages/classification-core/src/scoring/score.test.ts",
+        "tools/parity/scoring/parity.test.ts",
+        "tools/scoring/generate-classification-model.test.ts"
       ],
       "validators": [
-        "packages/classification-core/src/compiler/compile.ts",
-        "packages/classification-core/src/compiler/source-schema.ts"
+        "packages/classification-core/src/compiler/scoring-policy/compile.ts",
+        "packages/classification-core/src/compiler/scoring-policy/proof.ts",
+        "packages/classification-core/src/compiler/scoring-policy/source-schema.ts"
       ]
     },
     {
@@ -18719,8 +18734,8 @@
       ]
     }
   ],
-  "dataVersion": "680524648ef00492e29fe0721879b6fa4a04fdb6deaa6710899998f91970b74f",
-  "modelVersion": "batch3a.1.0",
+  "dataVersion": "70eb1d54c3073db4a6241234b5842d887de3c35c41d076584cc411cfccfaf5c2",
+  "modelVersion": "batch3b.1.0",
   "persistence": {
     "assurance": "contract-verified",
     "fixtureManifestHash": "71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd",
@@ -18770,8 +18785,47 @@
       }
     },
     "scoringPolicy": {
-      "assurance": "structurally-validated",
-      "origin": "synthetic"
+      "artifactHash": "74d211d18d4d005ad2cc95443527e7a2046a5a9a72e624b0dda1c62fe47ae4b4",
+      "artifactPath": "packages/classification-core/src/generated/classification-model.ts",
+      "assurance": "compiler-validated",
+      "classificationDataVersion": "70eb1d54c3073db4a6241234b5842d887de3c35c41d076584cc411cfccfaf5c2",
+      "coverage": {
+        "bonuses": 18,
+        "cases": 26,
+        "conflicts": 7,
+        "cores": 54,
+        "observedRuleTiers": 1155,
+        "rules": 378,
+        "styles": 18
+      },
+      "dataVersion": "36ad616a2f709fe2bb6ddcfd5e0cb0eb16ecdea15f42e41640588cf61e068ed7",
+      "extractorHash": "73a2b211ae88e91eaf255ffdac468c311f05f0c7e12ea42fcb6b0715d47b92aa",
+      "extractorVersion": "1",
+      "fixtureCasesHash": "7f79b5d9833d354671043f093d2d694614231195ad2fe167dbe348c50718d291",
+      "fixtureContentHash": "01e59203b0d0519245dc5438c627ff8de62400ca64f9aafa68498f3dcd98fe83",
+      "fixtureManifestHash": "8379cbb14588d5ba586bda895e8791edf8cfd98dc3bdffcb4512e6e8fb71101f",
+      "fixtureManifestPath": "tools/parity/fixtures/scoring/legacy-v1/manifest.json",
+      "fixtureSchemaVersion": "1",
+      "instrumentationHash": "f5369d650f20b9027df8e543a6eb86d4b47340b3ceeb5d23d239bd394ceaa536",
+      "instrumentationVersion": "1",
+      "modelVersion": "batch3b.1.0",
+      "origin": "legacy-production",
+      "parityScope": "legacy-scoring-result-projection",
+      "paritySuiteVersion": "1",
+      "questionModelVersion": "batch2a.1.0",
+      "questionSemanticHash": "d1bd2fcecabcfde8a7512b530d9cbec7f2fc0bb1d62ad65cbece2799be753c0d",
+      "seedsHash": "eaa143935ac61e9c622c500991d03cd3dc35c03d1ff9bd4d2c5dd39376f7bb57",
+      "semanticHash": "76c768181a4a402abb33e7c4b30f7a8b4aa159db14ea827898e79b380cd132f6",
+      "sourceCommit": "eebf00b7ddfbbe6f01ff598e57f1e17197068a37",
+      "sourceHash": "1b81b64df9c040fa54ed5f09db3846d6a2fda56c5cd687a6308bcdc77597a14f",
+      "sourceRepository": {
+        "host": "github.com",
+        "owner": "AnsonHui6040",
+        "repository": "ramen-style-today"
+      },
+      "sourceTreeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a",
+      "styleModelVersion": "batch3a.1.0",
+      "styleSemanticHash": "9fb9832c434b22fcd8397809b14117a47c358a266694df24ba68fd290fc5f585"
     },
     "styles": {
       "artifactHash": "46a63367179ce8874b10f2c6fc828a5816460bf463abac9d087ec77d8acfad3e",

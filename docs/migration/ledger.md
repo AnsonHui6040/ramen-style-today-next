@@ -537,3 +537,128 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `batch3a-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 3A candidate passed canonical CI
   - Commit: `8378f8cf05a4756698f92f6fb2f49fb52782d712`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29532093331
+
+## Batch 3B — in-progress
+
+- Behavior: `no-production-runtime-change`
+- Transformation: Legacy production scoring policy and result projection compiled into deterministic integer-unit scoring with inert structured traces and frozen offline parity evidence.
+
+### Legacy sources
+
+- `src/data/questions.json`
+- `src/data/styles.json`
+- `src/lib/scoring/explainer.ts`
+- `src/lib/scoring/scorer.ts`
+
+### New owners
+
+- `docs/superpowers/plans/2026-07-17-batch-3b-scoring-trace.md`
+- `docs/superpowers/specs/2026-07-17-batch-3b-scoring-trace-design.md`
+- `packages/classification-core/src/classification-model.ts`
+- `packages/classification-core/src/compiler/classification/serialize.test.ts`
+- `packages/classification-core/src/compiler/classification/serialize.ts`
+- `packages/classification-core/src/compiler/scoring-policy/compile.test.ts`
+- `packages/classification-core/src/compiler/scoring-policy/compile.ts`
+- `packages/classification-core/src/compiler/scoring-policy/proof.test.ts`
+- `packages/classification-core/src/compiler/scoring-policy/proof.ts`
+- `packages/classification-core/src/compiler/scoring-policy/source-schema.test.ts`
+- `packages/classification-core/src/compiler/scoring-policy/source-schema.ts`
+- `packages/classification-core/src/contracts/scoring-policy.ts`
+- `packages/classification-core/src/contracts/scoring.ts`
+- `packages/classification-core/src/definitions/policies.test.ts`
+- `packages/classification-core/src/definitions/policies.ts`
+- `packages/classification-core/src/generated/classification-model.ts`
+- `packages/classification-core/src/scoring/adjustments.test.ts`
+- `packages/classification-core/src/scoring/adjustments.ts`
+- `packages/classification-core/src/scoring/answers.test.ts`
+- `packages/classification-core/src/scoring/answers.ts`
+- `packages/classification-core/src/scoring/confidence.test.ts`
+- `packages/classification-core/src/scoring/confidence.ts`
+- `packages/classification-core/src/scoring/contracts.test.ts`
+- `packages/classification-core/src/scoring/core.test.ts`
+- `packages/classification-core/src/scoring/core.ts`
+- `packages/classification-core/src/scoring/index.ts`
+- `packages/classification-core/src/scoring/invariants.test.ts`
+- `packages/classification-core/src/scoring/ranking.test.ts`
+- `packages/classification-core/src/scoring/ranking.ts`
+- `packages/classification-core/src/scoring/rules.test.ts`
+- `packages/classification-core/src/scoring/rules.ts`
+- `packages/classification-core/src/scoring/score.test.ts`
+- `packages/classification-core/src/scoring/score.ts`
+- `packages/classification-core/src/scoring/selection.test.ts`
+- `packages/classification-core/src/scoring/selection.ts`
+- `packages/classification-core/src/scoring/subtype.test.ts`
+- `packages/classification-core/src/scoring/subtype.ts`
+- `packages/classification-core/src/scoring/test-fixtures.ts`
+- `packages/classification-core/src/scoring/trace.test.ts`
+- `packages/classification-core/src/scoring/trace.ts`
+- `tools/parity/fixtures/scoring/legacy-v1/cases.json`
+- `tools/parity/fixtures/scoring/legacy-v1/manifest.json`
+- `tools/parity/scoring/contracts.test.ts`
+- `tools/parity/scoring/contracts.ts`
+- `tools/parity/scoring/extract.test.ts`
+- `tools/parity/scoring/extract.ts`
+- `tools/parity/scoring/extractor.test.ts`
+- `tools/parity/scoring/extractor.ts`
+- `tools/parity/scoring/legacy-instrumentation.patch`
+- `tools/parity/scoring/parity.test.ts`
+- `tools/parity/scoring/parity.ts`
+- `tools/parity/scoring/seeds.json`
+- `tools/parity/scoring/verify-fixtures.test.ts`
+- `tools/parity/scoring/verify-fixtures.ts`
+- `tools/scoring/generate-classification-model.test.ts`
+- `tools/scoring/generate-classification-model.ts`
+- `tools/validation/validate-classification.test.ts`
+
+### Implementation paths
+
+- `docs/superpowers/specs/2026-07-17-batch-3b-scoring-trace-design.md`
+- `docs/superpowers/plans/2026-07-17-batch-3b-scoring-trace.md`
+- `packages/classification-core/src/contracts/scoring-policy.ts`
+- `packages/classification-core/src/contracts/scoring.ts`
+- `packages/classification-core/src/compiler/scoring-policy/**`
+- `packages/classification-core/src/compiler/classification/**`
+- `packages/classification-core/src/definitions/policies.ts`
+- `packages/classification-core/src/definitions/policies.test.ts`
+- `packages/classification-core/src/generated/classification-model.ts`
+- `packages/classification-core/src/classification-model.ts`
+- `packages/classification-core/src/scoring/**`
+- `tools/scoring/**`
+- `tools/parity/scoring/**`
+- `tools/parity/fixtures/scoring/**`
+- `packages/classification-core/src/compiler/compile.ts`
+- `packages/classification-core/src/compiler/compile.test.ts`
+- `packages/classification-core/src/compiler/source-schema.ts`
+- `packages/classification-core/src/compiler/parse.test.ts`
+- `packages/classification-core/src/compiler/index.ts`
+- `packages/classification-core/src/contracts/diagnostic-codes.ts`
+- `packages/classification-core/src/contracts/diagnostic.test.ts`
+- `packages/classification-core/src/contracts/model.ts`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/definitions/classification.ts`
+- `packages/classification-core/src/definitions/synthetic.ts`
+- `packages/classification-core/src/index.ts`
+- `packages/classification-core/src/index.test.ts`
+
+### Verification paths
+
+- `package.json`
+- `.github/workflows/ci.yml`
+- `tools/acceptance/**`
+- `tools/documentation/**`
+- `tools/migration/**`
+- `tools/validation/check-runtime-imports.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+- `tools/validation/validate-classification.ts`
+- `tools/validation/validate-classification.test.ts`
+
+### Acceptance metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
+
+### Verification
+
+- Pending.

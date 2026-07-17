@@ -24,8 +24,11 @@ export const documentationSourceFile =
 export const documentationDetectedConsumers = [
   'tools/parity/questions/observable-trace.ts',
   'tools/parity/questions/parity.ts',
+  'tools/parity/scoring/parity.ts',
+  'tools/parity/scoring/verify-fixtures.ts',
   'tools/parity/styles/parity.ts',
   'tools/questions/generate-question-model.ts',
+  'tools/scoring/generate-classification-model.ts',
   'tools/styles/generate-style-model.ts',
   'tools/validation/validate-classification.ts',
 ] as const
@@ -78,6 +81,34 @@ const styleEvidence = [
   'tools/parity/fixtures/styles/legacy-v1/manifest.json',
   'tools/parity/styles/verify-fixtures.ts',
   'tools/parity/styles/parity.ts',
+] as const
+
+const scoringValidators = [
+  'packages/classification-core/src/compiler/scoring-policy/source-schema.ts',
+  'packages/classification-core/src/compiler/scoring-policy/compile.ts',
+  'packages/classification-core/src/compiler/scoring-policy/proof.ts',
+] as const
+const scoringConsumers = [
+  'packages/classification-core/src/scoring/score.ts',
+  'packages/classification-core/src/classification-model.ts',
+  'packages/classification-core/src/index.ts',
+  'tools/validation/validate-classification.ts',
+] as const
+const scoringTests = [
+  'packages/classification-core/src/compiler/scoring-policy/source-schema.test.ts',
+  'packages/classification-core/src/compiler/scoring-policy/compile.test.ts',
+  'packages/classification-core/src/compiler/scoring-policy/proof.test.ts',
+  'packages/classification-core/src/scoring/score.test.ts',
+  'tools/scoring/generate-classification-model.test.ts',
+  'tools/parity/scoring/parity.test.ts',
+] as const
+const scoringGeneratedArtifacts = [
+  'packages/classification-core/src/generated/classification-model.ts',
+] as const
+const scoringEvidence = [
+  'tools/parity/fixtures/scoring/legacy-v1/manifest.json',
+  'tools/parity/scoring/verify-fixtures.ts',
+  'tools/parity/scoring/parity.ts',
 ] as const
 
 function uniqueSources(values: readonly { readonly sourceFile: string }[]) {
@@ -146,7 +177,18 @@ export function createDocumentationRelations(
               compiledStyleRelations.get(concept.key)?.messageSources ?? [],
             evidence: styleEvidence,
           }
-      : {
+      : concept.kind === 'policy'
+        ? {
+            conceptKey: concept.key,
+            canonicalSource: concept.sourceFile,
+            validators: scoringValidators,
+            consumers: scoringConsumers,
+            tests: scoringTests,
+            migrations: [],
+            generatedArtifacts: scoringGeneratedArtifacts,
+            evidence: scoringEvidence,
+          }
+        : {
           conceptKey: concept.key,
           canonicalSource: concept.sourceFile,
           validators: syntheticValidators,

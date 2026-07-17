@@ -208,14 +208,20 @@ function writeRegisteredConsumers(repoRoot: string) {
   for (const [file, importedPackage] of [
     ['tools/parity/questions/observable-trace.ts', '@ramen-style/classification-core/compiler'],
     ['tools/parity/questions/parity.ts', '@ramen-style/classification-core/compiler'],
+    ['tools/parity/scoring/parity.ts', '@ramen-style/classification-core'],
+    ['tools/parity/scoring/verify-fixtures.ts', '@ramen-style/classification-core'],
     ['tools/parity/styles/parity.ts', '@ramen-style/classification-core/compiler'],
     ['tools/questions/generate-question-model.ts', '@ramen-style/classification-core/compiler'],
+    ['tools/scoring/generate-classification-model.ts', '@ramen-style/classification-core/compiler'],
     ['tools/styles/generate-style-model.ts', '@ramen-style/classification-core/compiler'],
     ['tools/validation/validate-classification.ts', '@ramen-style/classification-core/compiler'],
   ] as const) {
     const target = join(repoRoot, file)
     mkdirSync(resolve(target, '..'), { recursive: true })
-    writeFileSync(target, `import '${importedPackage}'\n`)
+    if (!existsSync(target)
+      || !readFileSync(target, 'utf8').includes('@ramen-style/classification-core')) {
+      writeFileSync(target, `import '${importedPackage}'\n`)
+    }
   }
 }
 
@@ -251,6 +257,15 @@ function writeDocumentationFixture(repoRoot: string) {
     'tools/parity/fixtures/styles/legacy-v1/cases.json',
     'tools/parity/fixtures/styles/legacy-v1/manifest.json',
     'packages/classification-core/src/generated/style-model.ts',
+    'tools/parity/scoring/contracts.ts',
+    'tools/parity/scoring/verify-fixtures.ts',
+    'tools/parity/scoring/extractor.ts',
+    'tools/parity/scoring/extract.ts',
+    'tools/parity/scoring/legacy-instrumentation.patch',
+    'tools/parity/scoring/seeds.json',
+    'tools/parity/fixtures/scoring/legacy-v1/cases.json',
+    'tools/parity/fixtures/scoring/legacy-v1/manifest.json',
+    'packages/classification-core/src/generated/classification-model.ts',
   ]) {
     const target = join(repoRoot, file)
     mkdirSync(resolve(target, '..'), { recursive: true })
@@ -265,6 +280,7 @@ function writeDocumentationFixture(repoRoot: string) {
     'packages/classification-core/src/definitions/questions.ts',
     'packages/classification-core/src/definitions/questions.test.ts',
     'packages/classification-core/src/definitions/synthetic.ts',
+    'packages/classification-core/src/definitions/policies.ts',
     'packages/classification-core/src/definitions/styles/definitions.test.ts',
     'packages/classification-core/src/compiler/questions/source-schema.ts',
     'packages/classification-core/src/compiler/questions/compile.ts',
@@ -280,13 +296,24 @@ function writeDocumentationFixture(repoRoot: string) {
     'packages/classification-core/src/compiler/styles/compile.test.ts',
     'packages/classification-core/src/compiler/styles/proof.test.ts',
     'packages/classification-core/src/compiler/styles/serialize.test.ts',
+    'packages/classification-core/src/compiler/scoring-policy/source-schema.ts',
+    'packages/classification-core/src/compiler/scoring-policy/compile.ts',
+    'packages/classification-core/src/compiler/scoring-policy/proof.ts',
+    'packages/classification-core/src/compiler/scoring-policy/source-schema.test.ts',
+    'packages/classification-core/src/compiler/scoring-policy/compile.test.ts',
+    'packages/classification-core/src/compiler/scoring-policy/proof.test.ts',
     'packages/classification-core/src/flow/evaluate.ts',
+    'packages/classification-core/src/classification-model.ts',
+    'packages/classification-core/src/scoring/score.ts',
+    'packages/classification-core/src/scoring/score.test.ts',
     'packages/classification-core/src/style-model.ts',
     'packages/classification-core/src/index.ts',
     'packages/classification-core/src/definitions/styles/taxonomy.ts',
     'tools/parity/questions/parity.test.ts',
     'tools/parity/styles/parity.ts',
     'tools/parity/styles/parity.test.ts',
+    'tools/parity/scoring/parity.test.ts',
+    'tools/scoring/generate-classification-model.test.ts',
     'tools/styles/generate-style-model.test.ts',
     ...styleDefinitions.map((style) => style.sourceFile),
   ]) {
@@ -580,10 +607,12 @@ test('pre-wires style artifact and parity gates without removing existing verify
     'npm run classification:validate',
     'npm run questions:check',
     'npm run styles:check',
+    'npm run classification-model:check',
     'npm run runtime:imports:check',
     'npm run parity:questions',
     'npm run parity:persistence',
     'npm run parity:styles',
+    'npm run parity:scoring',
     'npm run classification:index:check',
     'npm run migration:ledger:check',
   ].join(' && '))

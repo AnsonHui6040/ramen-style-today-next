@@ -127,6 +127,142 @@ export const batch3AAcceptanceMetadataPaths = [
   'docs/migration/ledger.md',
 ] as const
 
+export const batch3BImplementationPaths = [
+  'docs/superpowers/specs/2026-07-17-batch-3b-scoring-trace-design.md',
+  'docs/superpowers/plans/2026-07-17-batch-3b-scoring-trace.md',
+  'packages/classification-core/src/contracts/scoring-policy.ts',
+  'packages/classification-core/src/contracts/scoring.ts',
+  'packages/classification-core/src/compiler/scoring-policy/**',
+  'packages/classification-core/src/compiler/classification/**',
+  'packages/classification-core/src/definitions/policies.ts',
+  'packages/classification-core/src/definitions/policies.test.ts',
+  'packages/classification-core/src/generated/classification-model.ts',
+  'packages/classification-core/src/classification-model.ts',
+  'packages/classification-core/src/scoring/**',
+  'tools/scoring/**',
+  'tools/parity/scoring/**',
+  'tools/parity/fixtures/scoring/**',
+  'packages/classification-core/src/compiler/compile.ts',
+  'packages/classification-core/src/compiler/compile.test.ts',
+  'packages/classification-core/src/compiler/source-schema.ts',
+  'packages/classification-core/src/compiler/parse.test.ts',
+  'packages/classification-core/src/compiler/index.ts',
+  'packages/classification-core/src/contracts/diagnostic-codes.ts',
+  'packages/classification-core/src/contracts/diagnostic.test.ts',
+  'packages/classification-core/src/contracts/model.ts',
+  'packages/classification-core/src/contracts/provenance.ts',
+  'packages/classification-core/src/definitions/classification.ts',
+  'packages/classification-core/src/definitions/synthetic.ts',
+  'packages/classification-core/src/index.ts',
+  'packages/classification-core/src/index.test.ts',
+] as const
+
+export const batch3BVerificationPaths = [
+  'package.json',
+  '.github/workflows/ci.yml',
+  'tools/acceptance/**',
+  'tools/documentation/**',
+  'tools/migration/**',
+  'tools/validation/check-runtime-imports.ts',
+  'tools/validation/check-runtime-imports.test.ts',
+  'tools/validation/validate-classification.ts',
+  'tools/validation/validate-classification.test.ts',
+] as const
+
+export const batch3BAcceptanceMetadataPaths = [
+  'docs/classification/index.md',
+  'docs/classification/manifest.json',
+  'docs/migration/ledger.json',
+  'docs/migration/ledger.md',
+] as const
+
+export const scoringFixtureManifestPath =
+  'tools/parity/fixtures/scoring/legacy-v1/manifest.json' as const
+export const acceptedScoringFixtureManifestHash =
+  '8379cbb14588d5ba586bda895e8791edf8cfd98dc3bdffcb4512e6e8fb71101f' as const
+
+export const batch3BNewOwners = [
+  'docs/superpowers/plans/2026-07-17-batch-3b-scoring-trace.md',
+  'docs/superpowers/specs/2026-07-17-batch-3b-scoring-trace-design.md',
+  'packages/classification-core/src/classification-model.ts',
+  'packages/classification-core/src/compiler/classification/serialize.test.ts',
+  'packages/classification-core/src/compiler/classification/serialize.ts',
+  'packages/classification-core/src/compiler/scoring-policy/compile.test.ts',
+  'packages/classification-core/src/compiler/scoring-policy/compile.ts',
+  'packages/classification-core/src/compiler/scoring-policy/proof.test.ts',
+  'packages/classification-core/src/compiler/scoring-policy/proof.ts',
+  'packages/classification-core/src/compiler/scoring-policy/source-schema.test.ts',
+  'packages/classification-core/src/compiler/scoring-policy/source-schema.ts',
+  'packages/classification-core/src/contracts/scoring-policy.ts',
+  'packages/classification-core/src/contracts/scoring.ts',
+  'packages/classification-core/src/definitions/policies.test.ts',
+  'packages/classification-core/src/definitions/policies.ts',
+  'packages/classification-core/src/generated/classification-model.ts',
+  'packages/classification-core/src/scoring/adjustments.test.ts',
+  'packages/classification-core/src/scoring/adjustments.ts',
+  'packages/classification-core/src/scoring/answers.test.ts',
+  'packages/classification-core/src/scoring/answers.ts',
+  'packages/classification-core/src/scoring/confidence.test.ts',
+  'packages/classification-core/src/scoring/confidence.ts',
+  'packages/classification-core/src/scoring/contracts.test.ts',
+  'packages/classification-core/src/scoring/core.test.ts',
+  'packages/classification-core/src/scoring/core.ts',
+  'packages/classification-core/src/scoring/index.ts',
+  'packages/classification-core/src/scoring/invariants.test.ts',
+  'packages/classification-core/src/scoring/ranking.test.ts',
+  'packages/classification-core/src/scoring/ranking.ts',
+  'packages/classification-core/src/scoring/rules.test.ts',
+  'packages/classification-core/src/scoring/rules.ts',
+  'packages/classification-core/src/scoring/score.test.ts',
+  'packages/classification-core/src/scoring/score.ts',
+  'packages/classification-core/src/scoring/selection.test.ts',
+  'packages/classification-core/src/scoring/selection.ts',
+  'packages/classification-core/src/scoring/subtype.test.ts',
+  'packages/classification-core/src/scoring/subtype.ts',
+  'packages/classification-core/src/scoring/test-fixtures.ts',
+  'packages/classification-core/src/scoring/trace.test.ts',
+  'packages/classification-core/src/scoring/trace.ts',
+  'tools/parity/fixtures/scoring/legacy-v1/cases.json',
+  'tools/parity/fixtures/scoring/legacy-v1/manifest.json',
+  'tools/parity/scoring/contracts.test.ts',
+  'tools/parity/scoring/contracts.ts',
+  'tools/parity/scoring/extract.test.ts',
+  'tools/parity/scoring/extract.ts',
+  'tools/parity/scoring/extractor.test.ts',
+  'tools/parity/scoring/extractor.ts',
+  'tools/parity/scoring/legacy-instrumentation.patch',
+  'tools/parity/scoring/parity.test.ts',
+  'tools/parity/scoring/parity.ts',
+  'tools/parity/scoring/seeds.json',
+  'tools/parity/scoring/verify-fixtures.test.ts',
+  'tools/parity/scoring/verify-fixtures.ts',
+  'tools/scoring/generate-classification-model.test.ts',
+  'tools/scoring/generate-classification-model.ts',
+  'tools/validation/validate-classification.test.ts',
+] as const
+
+export const batch3BRetiredOwners = [
+  'packages/classification-core/src/definitions/synthetic.ts',
+] as const
+
+export const acceptedBatch3AMetadataSha =
+  '93f10161f1b2a24bb90fbb233d0fee41705c9f3a' as const
+
+export const batch3BApprovedDependencyTestPaths = [
+  'packages/classification-core/src/persistence/contracts.test.ts',
+  'packages/classification-core/src/compiler/styles/serialize.test.ts',
+] as const
+
+export const batch3AProtectedStylePaths = [
+  'packages/classification-core/src/compiler/styles/**',
+  'packages/classification-core/src/definitions/styles/**',
+  'packages/classification-core/src/generated/style-model.ts',
+  'packages/classification-core/src/style-model.ts',
+  'tools/parity/styles/**',
+  'tools/parity/fixtures/styles/**',
+  'tools/styles/**',
+] as const
+
 export const batch3APlanningOwners = [
   'docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md',
   'docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md',
@@ -420,10 +556,14 @@ const completionGatePolicies = new Map<string, ReadonlySet<string>>([
     'batch3a-local-verify',
     'batch3a-remote-ci',
   ])],
+  ['3B', new Set([
+    'batch3b-local-verify',
+    'batch3b-remote-ci',
+  ])],
 ])
 
 const entrySchema = z.strictObject({
-  batch: z.enum(['0', '1', '2A', '2B', '3A']),
+  batch: z.enum(['0', '1', '2A', '2B', '3A', '3B']),
   status: z.enum(['in-review', 'in-progress', 'complete']),
   foundationCommit: fullShaSchema.optional(),
   implementationSha: fullShaSchema.optional(),
@@ -437,9 +577,11 @@ const entrySchema = z.strictObject({
   boundaryMaintenance: batch2BBoundaryMaintenanceSchema.optional(),
   persistenceIdentityMaintenance: persistenceIdentityMaintenanceSchema.optional(),
   fixtureManifestHash: sha256Schema.optional(),
+  scoringFixtureManifestHash: sha256Schema.optional(),
   legacySources: z.array(z.string().min(1)),
   ownedScopes: z.array(repoPathSchema).default([]),
   newOwners: z.array(repoPathSchema).min(1),
+  retiredOwners: z.array(repoPathSchema).optional(),
   transformation: z.string().min(1),
   behavior: z.string().min(1),
   verification: z.array(verificationSchema),
@@ -531,6 +673,7 @@ const entrySchema = z.strictObject({
   } else {
     if (entry.batch !== '2B'
       && entry.batch !== '3A'
+      && entry.batch !== '3B'
       && entry.implementationSha !== undefined) context.addIssue({
       code: 'custom',
       path: ['implementationSha'],
@@ -696,17 +839,90 @@ const entrySchema = z.strictObject({
         })
       }
     }
+  } else if (entry.batch === '3B') {
+    const exactPathGroups = [
+      ['implementationPaths', entry.implementationPaths, batch3BImplementationPaths],
+      ['verificationPaths', entry.verificationPaths, batch3BVerificationPaths],
+      [
+        'acceptanceMetadataPaths',
+        entry.acceptanceMetadataPaths,
+        batch3BAcceptanceMetadataPaths,
+      ],
+    ] as const
+    for (const [field, actual, expected] of exactPathGroups) {
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) context.addIssue({
+        code: 'custom',
+        path: [field],
+        message: `Batch 3B requires exact ${field}: ${expected.join(', ')}`,
+      })
+    }
+    if (entry.scoringFixtureManifestHash !== acceptedScoringFixtureManifestHash) {
+      context.addIssue({
+        code: 'custom',
+        path: ['scoringFixtureManifestHash'],
+        message: `Batch 3B requires scoring fixture manifest hash ${acceptedScoringFixtureManifestHash}`,
+      })
+    }
+    if (JSON.stringify(entry.newOwners) !== JSON.stringify(batch3BNewOwners)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['newOwners'],
+        message: 'Batch 3B requires the exact closed new-owner inventory',
+      })
+    }
+    if (JSON.stringify(entry.retiredOwners) !== JSON.stringify(batch3BRetiredOwners)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['retiredOwners'],
+        message: 'Batch 3B requires the exact closed retired-owner inventory',
+      })
+    }
+    if (entry.status === 'in-review') context.addIssue({
+      code: 'custom',
+      path: ['status'],
+      message: 'Checkpoint D requires Batch 3B to be in-progress or complete',
+    })
+    if (entry.status === 'in-progress') {
+      if (entry.implementationSha !== undefined) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: 'in-progress Batch 3B must not record implementationSha',
+      })
+      if (entry.verification.length !== 0) context.addIssue({
+        code: 'custom',
+        path: ['verification'],
+        message: 'in-progress Batch 3B must not record acceptance evidence',
+      })
+    }
+    if (entry.status === 'complete') {
+      if (!entry.implementationSha) context.addIssue({
+        code: 'custom',
+        path: ['implementationSha'],
+        message: 'complete Batch 3B requires implementationSha',
+      })
+      const remoteGate = entry.verification.find(
+        ({ gate }) => gate === 'batch3b-remote-ci',
+      )
+      if (entry.implementationSha && remoteGate?.commitSha !== entry.implementationSha) {
+        context.addIssue({
+          code: 'custom',
+          path: ['verification'],
+          message: 'complete Batch 3B remote CI commit must match implementationSha',
+        })
+      }
+    }
   } else {
     for (const field of [
       'implementationPaths',
       'verificationPaths',
       'acceptanceMetadataPaths',
       'fixtureManifestHash',
+      'scoringFixtureManifestHash',
     ] as const) {
       if (entry[field] !== undefined) context.addIssue({
         code: 'custom',
         path: [field],
-        message: `${field} is reserved for Batch 2B or Batch 3A`,
+        message: `${field} is reserved for Batch 2B, Batch 3A, or Batch 3B`,
       })
     }
   }
@@ -723,6 +939,18 @@ const entrySchema = z.strictObject({
       })
     }
   }
+  if (entry.batch !== '3B' && entry.scoringFixtureManifestHash !== undefined) {
+    context.addIssue({
+      code: 'custom',
+      path: ['scoringFixtureManifestHash'],
+      message: 'scoringFixtureManifestHash is reserved for Batch 3B',
+    })
+  }
+  if (entry.batch !== '3B' && entry.retiredOwners !== undefined) context.addIssue({
+    code: 'custom',
+    path: ['retiredOwners'],
+    message: 'retiredOwners is reserved for Batch 3B',
+  })
   if (entry.status === 'complete') {
     const requiredGates = completionGatePolicies.get(entry.batch)
     if (!requiredGates) {

@@ -7,11 +7,13 @@ import {
   type ClassificationModel,
 } from '@ramen-style/classification-core/compiler'
 import { verifyCommittedStyleFixtures } from '../parity/styles/verify-fixtures.js'
+import { verifyCommittedScoringFixtures } from '../parity/scoring/verify-fixtures.js'
 
 const sourceFile = 'packages/classification-core/src/definitions/classification.ts'
 
 export function validateClassificationModel(model: ClassificationModel) {
   const fixture = verifyCommittedStyleFixtures()
+  const scoringFixture = verifyCommittedScoringFixtures()
   const cores = model.styleModel.styles.flatMap(({ cores: values }) => values)
   const subtypes = cores.flatMap(({ subtypes: values }) => values)
   const rules = cores.flatMap(({ rules: values }) => values)
@@ -84,6 +86,19 @@ export function validateClassificationModel(model: ClassificationModel) {
     || fixture.coverage.conflictCopies !== 21
     || fixture.coverage.exclusionTags !== 6
     || fixture.coverage.copyRoles !== 8
+    || scoringFixture.casesHash
+      !== '7f79b5d9833d354671043f093d2d694614231195ad2fe167dbe348c50718d291'
+    || scoringFixture.fixtureContentHash
+      !== '01e59203b0d0519245dc5438c627ff8de62400ca64f9aafa68498f3dcd98fe83'
+    || scoringFixture.manifestHash
+      !== '8379cbb14588d5ba586bda895e8791edf8cfd98dc3bdffcb4512e6e8fb71101f'
+    || scoringFixture.coverage.styles !== 18
+    || scoringFixture.coverage.cores !== 54
+    || scoringFixture.coverage.rules !== 378
+    || scoringFixture.coverage.bonuses !== 18
+    || scoringFixture.coverage.conflicts !== 7
+    || scoringFixture.coverage.cases !== 26
+    || scoringFixture.coverage.observedRuleTiers !== 1155
   ) throw new Error('classification composition validation failed')
 
   return {
@@ -104,6 +119,12 @@ export function validateClassificationModel(model: ClassificationModel) {
       fixtureContentHash: fixture.fixtureContentHash,
       manifestHash: fixture.manifestHash,
       coverage: fixture.coverage,
+    },
+    scoringFixture: {
+      casesHash: scoringFixture.casesHash,
+      fixtureContentHash: scoringFixture.fixtureContentHash,
+      manifestHash: scoringFixture.manifestHash,
+      coverage: scoringFixture.coverage,
     },
   }
 }

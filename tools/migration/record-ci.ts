@@ -186,6 +186,35 @@ export function recordSuccessfulCi(
       }),
     })
   }
+  if (batch === '3B') {
+    const target = ledger.entries.find((entry) => entry.batch === '3B')
+    if (!target) throw new Error('Unknown ledger batch 3B')
+    if (target.status !== 'in-progress') throw new Error('Batch 3B is not in progress')
+    return migrationLedgerSchema.parse({
+      ...ledger,
+      entries: ledger.entries.map((entry) => entry.batch === '3B' ? {
+        ...entry,
+        status: 'complete',
+        implementationSha: verifiedRun.sha,
+        verification: [
+          {
+            gate: 'batch3b-local-verify',
+            command: 'npm run verify',
+            outcome: 'passed',
+            evidence: 'all Batch 3B local candidate gates passed',
+          },
+          {
+            gate: 'batch3b-remote-ci',
+            command: 'GitHub Actions CI / verify',
+            outcome: 'passed',
+            evidence: 'the exact Batch 3B candidate passed canonical CI',
+            commitSha: verifiedRun.sha,
+            runUrl: verifiedRun.runUrl,
+          },
+        ],
+      } : entry),
+    })
+  }
   const target = ledger.entries.find((entry) => entry.batch === batch)
   if (!target) throw new Error(`Unknown ledger batch ${batch}`)
   if (target.status !== 'in-review') throw new Error(`Batch ${batch} is not in review`)

@@ -30,8 +30,15 @@ import {
   verifyStyleFixtureSet,
 } from '../parity/styles/verify-fixtures.js'
 import {
+  scoringExtractorAuthoringSourcePaths,
+} from '../parity/scoring/extractor.js'
+import {
+  verifyScoringFixtureSet,
+} from '../parity/scoring/verify-fixtures.js'
+import {
   buildDocumentation,
   type PersistenceDocumentationEvidence,
+  type ScoringDocumentationEvidence,
 } from './build-index.js'
 import {
   createDocumentationRelations,
@@ -201,6 +208,20 @@ const styleInstrumentationPath =
 const styleSeedsPath = 'tools/parity/styles/seeds.json' as const
 const styleArtifactPath =
   'packages/classification-core/src/generated/style-model.ts' as const
+const scoringFixtureManifestPath =
+  'tools/parity/fixtures/scoring/legacy-v1/manifest.json' as const
+const scoringFixtureCasesPath =
+  'tools/parity/fixtures/scoring/legacy-v1/cases.json' as const
+const scoringInstrumentationPath =
+  'tools/parity/scoring/legacy-instrumentation.patch' as const
+const scoringSeedsPath = 'tools/parity/scoring/seeds.json' as const
+const scoringArtifactPath =
+  'packages/classification-core/src/generated/classification-model.ts' as const
+const expectedScoringManifestHash =
+  '8379cbb14588d5ba586bda895e8791edf8cfd98dc3bdffcb4512e6e8fb71101f'
+const expectedScoringArtifactHash =
+  '74d211d18d4d005ad2cc95443527e7a2046a5a9a72e624b0dda1c62fe47ae4b4'
+const scoringParitySuiteVersion = '1' as const
 const expectedStyleManifestHash =
   'fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b'
 const expectedStyleArtifactHash =
@@ -242,6 +263,19 @@ const acceptanceStyleEntryProjectionSchema = z.object({
   status: z.literal('complete'),
   implementationSha: sha40Schema,
   fixtureManifestHash: sha256Schema,
+  verification: z.array(z.object({
+    gate: z.string(),
+    command: z.string(),
+    outcome: z.string(),
+    commitSha: sha40Schema.optional(),
+    runUrl: z.string().url().optional(),
+  }).passthrough()),
+}).passthrough()
+const acceptanceScoringEntryProjectionSchema = z.object({
+  batch: z.literal('3B'),
+  status: z.literal('complete'),
+  implementationSha: sha40Schema,
+  scoringFixtureManifestHash: sha256Schema,
   verification: z.array(z.object({
     gate: z.string(),
     command: z.string(),
@@ -370,6 +404,61 @@ export function projectStyleParityVerification(
     fixtureManifestHash,
     verifiedSemanticHash: identity.semanticHash,
     verifiedDataVersion: identity.dataVersion,
+    implementationSha,
+  }
+}
+
+export function projectScoringParityVerification(
+  validatedLedger: unknown,
+  identity: {
+    fixtureManifestHash: string
+    fixtureContentHash: string
+    semanticHash: string
+    dataVersion: string
+    classificationDataVersion: string
+  },
+) {
+  const ledger = acceptanceLedgerProjectionSchema.safeParse(validatedLedger)
+  if (!ledger.success) return undefined
+  const candidates = ledger.data.entries.filter((entry) => (
+    typeof entry === 'object'
+    && entry !== null
+    && 'batch' in entry
+    && entry.batch === '3B'
+  ))
+  if (candidates.length !== 1) return undefined
+  const projected = acceptanceScoringEntryProjectionSchema.safeParse(candidates[0])
+  if (!projected.success) return undefined
+  const {
+    scoringFixtureManifestHash,
+    implementationSha,
+    verification,
+  } = projected.data
+  if (
+    scoringFixtureManifestHash !== identity.fixtureManifestHash
+    || verification.length !== 2
+  ) return undefined
+  const localGates = verification.filter(({ gate }) => gate === 'batch3b-local-verify')
+  const remoteGates = verification.filter(({ gate }) => gate === 'batch3b-remote-ci')
+  if (
+    localGates.length !== 1
+    || remoteGates.length !== 1
+    || localGates[0]!.command !== 'npm run verify'
+    || localGates[0]!.outcome !== 'passed'
+    || remoteGates[0]!.command !== 'GitHub Actions CI / verify'
+    || remoteGates[0]!.outcome !== 'passed'
+    || remoteGates[0]!.commitSha !== implementationSha
+    || !remoteGates[0]!.runUrl
+  ) return undefined
+  return {
+    assurance: 'parity-verified' as const,
+    parityScope: 'legacy-scoring-result-projection' as const,
+    paritySuiteVersion: scoringParitySuiteVersion,
+    fixtureManifestHash: scoringFixtureManifestHash,
+    fixtureContentHash: identity.fixtureContentHash,
+    verifiedSemanticHash: identity.semanticHash,
+    verifiedDataVersion: identity.dataVersion,
+    verifiedClassificationDataVersion: identity.classificationDataVersion,
     implementationSha,
   }
 }
@@ -527,6 +616,71 @@ export function loadStyleEvidence(
   }
 }
 
+export function loadScoringEvidence(
+  repoRoot: string,
+  policyMetadata: {
+    modelVersion: string
+    questionModelVersion: string
+    questionSemanticHash: string
+    styleModelVersion: string
+    styleSemanticHash: string
+    sourceHash: string
+    semanticHash: string
+    dataVersion: string
+  },
+  classificationDataVersion: string,
+  validatedLedger: unknown,
+): ScoringDocumentationEvidence {
+  const manifestBytes = readRequiredBytes(repoRoot, scoringFixtureManifestPath)
+  const verified = verifyScoringFixtureSet({
+    casesBytes: readRequiredBytes(repoRoot, scoringFixtureCasesPath),
+    manifestBytes,
+    instrumentationBytes: readRequiredBytes(repoRoot, scoringInstrumentationPath),
+    seedBytes: readRequiredBytes(repoRoot, scoringSeedsPath),
+    authoringSources: scoringExtractorAuthoringSourcePaths.map((path) => ({
+      path,
+      bytes: readRequiredBytes(repoRoot, path),
+    })),
+  })
+  const artifactHash = createHash('sha256')
+    .update(readRequiredBytes(repoRoot, scoringArtifactPath))
+    .digest('hex')
+  if (
+    verified.verification.manifestHash !== expectedScoringManifestHash
+    || artifactHash !== expectedScoringArtifactHash
+  ) throw new Error('DOC_INDEX_DRIFT scoring fixture or artifact identity mismatch')
+  const { manifest, verification: result } = verified
+  const verification = projectScoringParityVerification(validatedLedger, {
+    fixtureManifestHash: result.manifestHash,
+    fixtureContentHash: result.fixtureContentHash,
+    semanticHash: policyMetadata.semanticHash,
+    dataVersion: policyMetadata.dataVersion,
+    classificationDataVersion,
+  })
+  return {
+    sourceRepository: manifest.source.repository,
+    sourceCommit: manifest.source.commit,
+    sourceTreeHash: manifest.source.treeHash,
+    fixtureManifestPath: scoringFixtureManifestPath,
+    fixtureManifestHash: result.manifestHash,
+    fixtureSchemaVersion: String(manifest.fixtureSchemaVersion),
+    fixtureCasesHash: result.casesHash,
+    fixtureContentHash: result.fixtureContentHash,
+    extractorVersion: String(manifest.extractor.version),
+    extractorHash: result.authoringHash,
+    instrumentationVersion: String(manifest.instrumentation.version),
+    instrumentationHash: manifest.instrumentation.hash,
+    seedsHash: manifest.seeds.hash,
+    artifactPath: scoringArtifactPath,
+    artifactHash,
+    ...policyMetadata,
+    classificationDataVersion,
+    paritySuiteVersion: scoringParitySuiteVersion,
+    coverage: result.coverage,
+    ...(verification ? { verification } : {}),
+  }
+}
+
 async function run() {
   const repoRoot = resolve(import.meta.dirname, '../..')
   const mode = process.argv[2]
@@ -588,6 +742,12 @@ async function run() {
       styleEvidence: loadStyleEvidence(
         repoRoot,
         compiled.model.styleModel.metadata,
+        validatedLedger,
+      ),
+      scoringEvidence: loadScoringEvidence(
+        repoRoot,
+        compiled.model.policy.metadata,
+        compiled.model.dataVersion,
         validatedLedger,
       ),
       ...(hasBatch2BEntry

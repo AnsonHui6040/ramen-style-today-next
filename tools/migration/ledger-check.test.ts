@@ -19,6 +19,7 @@ import {
   checkLedger,
   checkLedgerOffline,
   collectGitChangedPaths,
+  verifyExactMetadataBoundary,
   verifySemanticAncestry,
 } from './ledger-check.js'
 import { verifySuccessfulCiProof as verifySuccessfulCiProofOnline } from '../acceptance/verify-acceptance.js'
@@ -30,6 +31,12 @@ import {
   batch2BAcceptanceMetadataPaths,
   batch2BImplementationPaths,
   batch2BVerificationPaths,
+  acceptedScoringFixtureManifestHash,
+  batch3BAcceptanceMetadataPaths,
+  batch3BImplementationPaths,
+  batch3BNewOwners,
+  batch3BRetiredOwners,
+  batch3BVerificationPaths,
   migrationLedgerSchema,
   protectedQuestionBaseline,
 } from './ledger-schema.js'
@@ -40,7 +47,10 @@ const ledger = migrationLedgerSchema.parse(JSON.parse(readFileSync(
   new URL('../../docs/migration/ledger.json', import.meta.url),
   'utf8',
 )) as unknown)
-const declaredFiles = new Set(ledger.entries.flatMap((entry) => entry.newOwners))
+const retiredFiles = new Set(ledger.entries.flatMap((entry) => entry.retiredOwners ?? []))
+const declaredFiles = new Set(ledger.entries.flatMap((entry) => (
+  entry.newOwners.filter((owner) => !retiredFiles.has(owner))
+)))
 
 function parentDirectories(files: ReadonlySet<string>) {
   const directories = new Set<string>()
@@ -261,6 +271,40 @@ function batch3ALedger(options: {
         ...options.batch2BOverrides,
       }),
       styleEntry,
+    ],
+  }
+}
+
+function batch3BEntry(overrides: Record<string, unknown> = {}) {
+  return {
+    batch: '3B',
+    status: 'in-progress',
+    implementationPaths: [...batch3BImplementationPaths],
+    verificationPaths: [...batch3BVerificationPaths],
+    acceptanceMetadataPaths: [...batch3BAcceptanceMetadataPaths],
+    scoringFixtureManifestHash: acceptedScoringFixtureManifestHash,
+    legacySources: [
+      'src/data/questions.json',
+      'src/data/styles.json',
+      'src/lib/scoring/scorer.ts',
+      'src/lib/scoring/explainer.ts',
+    ],
+    ownedScopes: [],
+    newOwners: [...batch3BNewOwners],
+    retiredOwners: [...batch3BRetiredOwners],
+    transformation: 'Legacy scoring policy compiled into deterministic scoring and trace.',
+    behavior: 'no-production-runtime-change',
+    verification: [],
+    ...overrides,
+  }
+}
+
+function batch3BLedger(entry: Record<string, unknown> = batch3BEntry()) {
+  return {
+    ...batch3ALedger({ batch3A: completeBatch3A() }),
+    entries: [
+      ...batch3ALedger({ batch3A: completeBatch3A() }).entries,
+      entry,
     ],
   }
 }
@@ -939,6 +983,30 @@ describe('migration ledger repository checks', () => {
     })
   })
 
+  test('promotes Batch 3B atomically with exact candidate-bound gates', async () => {
+    const verified = await verifySuccessfulCiProof(
+      successfulCiProof(),
+      candidateSha,
+      githubFetch(),
+    )
+    const updated = recordSuccessfulCi(ledger, '3B', verified)
+    const entry = updated.entries.find(({ batch }) => batch === '3B')
+
+    expect(entry).toMatchObject({
+      status: 'complete',
+      implementationSha: candidateSha,
+      verification: [
+        { gate: 'batch3b-local-verify', command: 'npm run verify' },
+        {
+          gate: 'batch3b-remote-ci',
+          command: 'GitHub Actions CI / verify',
+          commitSha: candidateSha,
+          runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+        },
+      ],
+    })
+  })
+
   test.each([
     [
       'Task 7 branch',
@@ -1103,7 +1171,7 @@ describe('Batch 3A ownership, completion, and persistence identity closure', () 
         commit: 'b'.repeat(40),
       },
       entries: [{
-        batch: '3B',
+        batch: '3C',
         status: 'in-progress',
         legacySources: [],
         ownedScopes: [],
@@ -1450,6 +1518,74 @@ describe('Batch 3A ownership, completion, and persistence identity closure', () 
         `Batch 3A candidate completion changed a frozen path: ${path}`,
       )
     }
+  })
+})
+
+describe('Batch 3B scoring ownership and transaction boundary', () => {
+  test('requires the metadata commit to have the candidate as its direct parent', async () => {
+    await expect(verifyExactMetadataBoundary({
+      implementationSha: candidateSha,
+      metadataSha: 'b'.repeat(40),
+      expectedPaths: batch3BAcceptanceMetadataPaths,
+      directParentsOf: async () => ['c'.repeat(40)],
+      changedPathsBetween: async () => [...batch3BAcceptanceMetadataPaths],
+      label: 'Batch 3B completion',
+    })).rejects.toThrow('must have exactly one parent')
+  })
+
+  test('accepts only the exact in-progress closed ownership shape', () => {
+    expect(migrationLedgerSchema.safeParse(batch3BLedger()).success).toBe(true)
+    for (const overrides of [
+      { implementationPaths: batch3BImplementationPaths.slice(1) },
+      { verificationPaths: batch3BVerificationPaths.slice(1) },
+      { acceptanceMetadataPaths: batch3BAcceptanceMetadataPaths.slice(1) },
+      { scoringFixtureManifestHash: '0'.repeat(64) },
+      { newOwners: batch3BNewOwners.slice(1) },
+      { retiredOwners: [] },
+      { implementationSha: candidateSha },
+      {
+        verification: [{
+          gate: 'batch3b-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'premature evidence',
+        }],
+      },
+    ]) expect(migrationLedgerSchema.safeParse(
+      batch3BLedger(batch3BEntry(overrides)),
+    ).success).toBe(false)
+  })
+
+  test('requires exact candidate-bound completion evidence', () => {
+    const complete = batch3BEntry({
+      status: 'complete',
+      implementationSha: candidateSha,
+      verification: [
+        {
+          gate: 'batch3b-local-verify',
+          command: 'npm run verify',
+          outcome: 'passed',
+          evidence: 'all Batch 3B local candidate gates passed',
+        },
+        {
+          gate: 'batch3b-remote-ci',
+          command: 'GitHub Actions CI / verify',
+          outcome: 'passed',
+          evidence: 'the exact Batch 3B candidate passed canonical CI',
+          commitSha: candidateSha,
+          runUrl: 'https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/123',
+        },
+      ],
+    })
+    expect(migrationLedgerSchema.safeParse(batch3BLedger(complete)).success).toBe(true)
+    expect(migrationLedgerSchema.safeParse(batch3BLedger({
+      ...complete,
+      verification: (complete.verification as Array<Record<string, unknown>>).map(
+        (item) => item.gate === 'batch3b-remote-ci'
+          ? { ...item, commitSha: 'f'.repeat(40) }
+          : item,
+      ),
+    })).success).toBe(false)
   })
 })
 

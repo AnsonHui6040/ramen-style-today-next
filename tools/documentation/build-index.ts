@@ -127,10 +127,65 @@ export interface StyleDocumentationEvidence {
   verification?: StyleParityVerification
 }
 
+export interface ScoringParityVerification {
+  assurance: 'parity-verified'
+  parityScope: 'legacy-scoring-result-projection'
+  paritySuiteVersion: string
+  fixtureManifestHash: string
+  fixtureContentHash: string
+  verifiedSemanticHash: string
+  verifiedDataVersion: string
+  verifiedClassificationDataVersion: string
+  implementationSha: string
+}
+
+export interface ScoringDocumentationEvidence {
+  sourceRepository: {
+    host: string
+    owner: string
+    repository: string
+  }
+  sourceCommit: string
+  sourceTreeHash: string
+  fixtureManifestPath: string
+  fixtureManifestHash: string
+  fixtureSchemaVersion: string
+  fixtureCasesHash: string
+  fixtureContentHash: string
+  extractorVersion: string
+  extractorHash: string
+  instrumentationVersion: string
+  instrumentationHash: string
+  seedsHash: string
+  artifactPath: string
+  artifactHash: string
+  sourceHash: string
+  semanticHash: string
+  dataVersion: string
+  classificationDataVersion: string
+  paritySuiteVersion: string
+  modelVersion: string
+  questionModelVersion: string
+  questionSemanticHash: string
+  styleModelVersion: string
+  styleSemanticHash: string
+  coverage: {
+    styles: number
+    cores: number
+    rules: number
+    bonuses: number
+    conflicts: number
+    cases: number
+    observedRuleTiers: number
+  }
+  verification?: ScoringParityVerification
+}
+
 export interface DocumentationBuildOptions {
   questionEvidence?: QuestionDocumentationEvidence
   persistenceEvidence?: PersistenceDocumentationEvidence
   styleEvidence?: StyleDocumentationEvidence
+  scoringEvidence?: ScoringDocumentationEvidence
   detectedConsumerRegistry?: readonly string[]
 }
 
@@ -461,6 +516,38 @@ export function buildDocumentation(
       message: 'Style documentation evidence does not match the compiled model',
     })
   }
+  const scoringEvidence = options.scoringEvidence
+  if (scoringEvidence) {
+    const metadata = model.policy.metadata
+    const expectedCoverage = {
+      styles: model.styleModel.styles.length,
+      cores: model.styleModel.styles.flatMap(({ cores }) => cores).length,
+      rules: model.styleModel.styles.flatMap(({ cores }) => cores)
+        .flatMap(({ rules }) => rules).length,
+      bonuses: model.styleModel.styles.flatMap(({ adjustments }) => adjustments)
+        .filter(({ kind }) => kind === 'bonus').length,
+      conflicts: model.styleModel.styles.flatMap(({ adjustments }) => adjustments)
+        .filter(({ kind }) => kind === 'conflict').length,
+      cases: 26,
+      observedRuleTiers: 1155,
+    }
+    if (
+      scoringEvidence.sourceHash !== metadata.sourceHash
+      || scoringEvidence.semanticHash !== metadata.semanticHash
+      || scoringEvidence.dataVersion !== metadata.dataVersion
+      || scoringEvidence.modelVersion !== metadata.modelVersion
+      || scoringEvidence.questionModelVersion !== metadata.questionModelVersion
+      || scoringEvidence.questionSemanticHash !== metadata.questionSemanticHash
+      || scoringEvidence.styleModelVersion !== metadata.styleModelVersion
+      || scoringEvidence.styleSemanticHash !== metadata.styleSemanticHash
+      || stableJson(scoringEvidence.coverage) !== stableJson(expectedCoverage)
+    ) collector.error({
+      code: 'DOC_RELATION_INVALID',
+      sourceFile: 'tools/documentation/build-index.ts',
+      path: '/scoringEvidence',
+      message: 'Scoring documentation evidence does not match the compiled model',
+    })
+  }
   const provenance = {
     questions: questionProvenance,
     styles: (() => {
@@ -503,22 +590,73 @@ export function buildDocumentation(
           : {}),
       }
     })(),
-    scoringPolicy: {
-      origin: model.provenance.scoringPolicy.origin,
-      assurance: 'structurally-validated',
-    },
+    scoringPolicy: (() => {
+      const matchingVerification = scoringEvidence?.verification
+        && scoringEvidence.verification.fixtureManifestHash
+          === scoringEvidence.fixtureManifestHash
+        && scoringEvidence.verification.verifiedSemanticHash
+          === scoringEvidence.semanticHash
+        && scoringEvidence.verification.verifiedDataVersion
+          === scoringEvidence.dataVersion
+        && scoringEvidence.verification.fixtureContentHash
+          === scoringEvidence.fixtureContentHash
+        && scoringEvidence.verification.paritySuiteVersion
+          === scoringEvidence.paritySuiteVersion
+        && scoringEvidence.verification.verifiedClassificationDataVersion
+          === scoringEvidence.classificationDataVersion
+        ? scoringEvidence.verification
+        : undefined
+      return {
+        origin: model.provenance.scoringPolicy.origin,
+        assurance: matchingVerification ? 'parity-verified' : 'compiler-validated',
+        parityScope: 'legacy-scoring-result-projection',
+        ...(scoringEvidence
+          ? {
+              sourceRepository: scoringEvidence.sourceRepository,
+              sourceCommit: scoringEvidence.sourceCommit,
+              sourceTreeHash: scoringEvidence.sourceTreeHash,
+              fixtureManifestPath: scoringEvidence.fixtureManifestPath,
+              fixtureManifestHash: scoringEvidence.fixtureManifestHash,
+              fixtureSchemaVersion: scoringEvidence.fixtureSchemaVersion,
+              fixtureCasesHash: scoringEvidence.fixtureCasesHash,
+              fixtureContentHash: scoringEvidence.fixtureContentHash,
+              extractorVersion: scoringEvidence.extractorVersion,
+              extractorHash: scoringEvidence.extractorHash,
+              instrumentationVersion: scoringEvidence.instrumentationVersion,
+              instrumentationHash: scoringEvidence.instrumentationHash,
+              seedsHash: scoringEvidence.seedsHash,
+              artifactPath: scoringEvidence.artifactPath,
+              artifactHash: scoringEvidence.artifactHash,
+              sourceHash: scoringEvidence.sourceHash,
+              semanticHash: scoringEvidence.semanticHash,
+              dataVersion: scoringEvidence.dataVersion,
+              classificationDataVersion: scoringEvidence.classificationDataVersion,
+              paritySuiteVersion: scoringEvidence.paritySuiteVersion,
+              modelVersion: scoringEvidence.modelVersion,
+              questionModelVersion: scoringEvidence.questionModelVersion,
+              questionSemanticHash: scoringEvidence.questionSemanticHash,
+              styleModelVersion: scoringEvidence.styleModelVersion,
+              styleSemanticHash: scoringEvidence.styleSemanticHash,
+              coverage: scoringEvidence.coverage,
+              ...(matchingVerification ? { verification: matchingVerification } : {}),
+            }
+          : {}),
+      }
+    })(),
   }
   const persistence = options.persistenceEvidence
   const readinessBlockers = persistence
     ? persistenceReadinessBlockers.filter((blocker) => (
-        blocker !== 'styles-not-production-verified'
-        || provenance.styles.assurance !== 'parity-verified'
+        (blocker !== 'styles-not-production-verified'
+          || provenance.styles.assurance !== 'parity-verified')
+        && (blocker !== 'scoring-not-production-verified'
+          || provenance.scoringPolicy.assurance !== 'parity-verified')
       ))
     : [
         ...(shouldReportStylesNotMigrated(model.provenance.styles.origin)
           ? ['styles-not-migrated']
           : []),
-        ...(model.provenance.scoringPolicy.origin === 'synthetic'
+        ...(!scoringEvidence
           ? ['scoring-not-migrated']
           : []),
         'persistence-not-migrated',
@@ -569,7 +707,7 @@ export function buildDocumentation(
     '# Classification Index',
     '',
     model.provenance.questions.origin === 'legacy-production'
-      ? '> Production question ownership and compiled style ownership; scoring remains synthetic.'
+      ? '> Production question ownership, compiled style ownership, and compiled scoring ownership.'
       : '> Synthetic inventory — not production classification data.',
     '',
     `Model version: \`${model.modelVersion}\`<br>`,
