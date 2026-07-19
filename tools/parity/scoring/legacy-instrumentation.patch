@@ -1,0 +1,610 @@
+diff --git a/src/lib/scoring/scorer.ts b/src/lib/scoring/scorer.ts
+index 2af1a0653cb6d77ca7343ce465a8d2c0c6b7290f..205037c5d50726ceeaf0d03ccd045b7c5cf35c2a 100644
+--- a/src/lib/scoring/scorer.ts
++++ b/src/lib/scoring/scorer.ts
+@@ -15,6 +15,18 @@ import {
+   type StyleDefinition,
+ } from '../../domain/types'
+
++type ScoringParityObserver = (event: Record<string, unknown>) => void
++
++function observeScoring(event: Record<string, unknown>) {
++  const observer = (globalThis as typeof globalThis & {
++    __RAMEN_SCORING_PARITY_OBSERVER__?: ScoringParityObserver
++  }).__RAMEN_SCORING_PARITY_OBSERVER__
++
++  if (observer) {
++    observer(event)
++  }
++}
++
+ const weightByQuestion = new Map(
+   questionBank.map((question) => [question.id, question.weight]),
+ )
+@@ -79,23 +91,67 @@ function computeBonuses(style: StyleDefinition, answers: CompletedAnswers) {
+   let points = 0
+
+   for (const rule of baseRules) {
+-    const matched = rule.conditions.filter((condition) =>
++    const conditionMatches = rule.conditions.map((condition) =>
+       matchesCondition(answers, condition),
+-    ).length
++    )
++    const matchedConditionPriorities = conditionMatches.flatMap((matched, priority) => (
++      matched ? [priority] : []
++    ))
++    const matched = matchedConditionPriorities.length
++    const ratio = matched / rule.conditions.length
+
+     if (matched < rule.minMatches) {
++      observeScoring({
++        type: 'bonus',
++        styleId: style.id,
++        coreId: style.coreTypes[0]?.id,
++        id: rule.id,
++        status: 'inactive',
++        matchedConditionPriorities,
++        matchedCount: matched,
++        requiredMatchCount: rule.minMatches,
++        matchRatio: ratio,
++        requestedPoints: 0,
++        appliedPoints: 0,
++      })
+       continue
+     }
+
+-    const ratio = matched / rule.conditions.length
+-    const awarded = capRulePoints(roundScore(rule.points * ratio), points, 5)
++    const requestedPoints = roundScore(rule.points * ratio)
++    const awarded = capRulePoints(requestedPoints, points, 5)
+
+     if (awarded === 0) {
++      observeScoring({
++        type: 'bonus',
++        styleId: style.id,
++        coreId: style.coreTypes[0]?.id,
++        id: rule.id,
++        status: 'capped',
++        matchedConditionPriorities,
++        matchedCount: matched,
++        requiredMatchCount: rule.minMatches,
++        matchRatio: ratio,
++        requestedPoints,
++        appliedPoints: 0,
++      })
+       continue
+     }
+
+     points += awarded
+     reasons.push(`${rule.label} +${awarded}`)
++    observeScoring({
++      type: 'bonus',
++      styleId: style.id,
++      coreId: style.coreTypes[0]?.id,
++      id: rule.id,
++      status: awarded < requestedPoints ? 'capped' : 'applied',
++      matchedConditionPriorities,
++      matchedCount: matched,
++      requiredMatchCount: rule.minMatches,
++      matchRatio: ratio,
++      requestedPoints,
++      appliedPoints: awarded,
++    })
+   }
+
+   return {
+@@ -110,22 +166,66 @@ function computePenalties(coreType: CoreTypeDefinition, answers: CompletedAnswer
+   let points = 0
+
+   for (const rule of rules) {
+-    const active = rule.whenAll.every((condition) =>
++    const conditionMatches = rule.whenAll.map((condition) =>
+       matchesCondition(answers, condition),
+     )
++    const matchedConditionPriorities = conditionMatches.flatMap((matched, priority) => (
++      matched ? [priority] : []
++    ))
++    const active = matchedConditionPriorities.length === rule.whenAll.length
++    const matchRatio = matchedConditionPriorities.length / rule.whenAll.length
+
+     if (!active) {
++      observeScoring({
++        type: 'conflict',
++        styleId: coreType.id.split(':')[0],
++        coreId: coreType.id,
++        id: rule.id,
++        status: 'inactive',
++        matchedConditionPriorities,
++        matchedCount: matchedConditionPriorities.length,
++        requiredMatchCount: rule.whenAll.length,
++        matchRatio,
++        requestedPoints: 0,
++        appliedPoints: 0,
++      })
+       continue
+     }
+
+     const penalty = capRulePoints(rule.penalty, points, 15)
+
+     if (penalty === 0) {
++      observeScoring({
++        type: 'conflict',
++        styleId: coreType.id.split(':')[0],
++        coreId: coreType.id,
++        id: rule.id,
++        status: 'capped',
++        matchedConditionPriorities,
++        matchedCount: matchedConditionPriorities.length,
++        requiredMatchCount: rule.whenAll.length,
++        matchRatio,
++        requestedPoints: rule.penalty,
++        appliedPoints: 0,
++      })
+       continue
+     }
+
+     points += penalty
+     reasons.push(`${rule.label} -${penalty}`)
++    observeScoring({
++      type: 'conflict',
++      styleId: coreType.id.split(':')[0],
++      coreId: coreType.id,
++      id: rule.id,
++      status: penalty < rule.penalty ? 'capped' : 'applied',
++      matchedConditionPriorities,
++      matchedCount: matchedConditionPriorities.length,
++      requiredMatchCount: rule.whenAll.length,
++      matchRatio,
++      requestedPoints: rule.penalty,
++      appliedPoints: penalty,
++    })
+   }
+
+   return {
+@@ -176,7 +276,21 @@ function computeConfidence(
+     uncertaintyPenalty += Math.min(8, result.penaltyReasons.length * 4)
+   }
+
+-  return Math.max(24, Math.min(99, Math.round(base + gapBoost - uncertaintyPenalty)))
++  const rawConfidence = base + gapBoost - uncertaintyPenalty
++  const confidence = Math.max(24, Math.min(99, Math.round(rawConfidence)))
++  observeScoring({
++    type: 'confidence',
++    styleId: result.style.id,
++    score: result.score,
++    nextScore,
++    base,
++    gapBoostBeforeCap: Math.max(0, result.score - nextScore) * 1.4,
++    gapBoost,
++    uncertaintyPenalty,
++    rawConfidence,
++    confidence,
++  })
++  return confidence
+ }
+
+ function scoreCoreType(
+@@ -186,18 +300,29 @@ function scoreCoreType(
+ ): RankedStyle {
+   const tiers = {} as Record<ScoredQuestionId, MatchTier>
+   const questionPoints = {} as Record<ScoredQuestionId, number>
++  const questionLines: Record<string, unknown>[] = []
+   let score = 0
+
+   for (const questionId of scoredQuestionIds) {
+     const weight = weightByQuestion.get(questionId) ?? 0
++    const answerOptionIds = getAnswerValues(answers, questionId)
+     const { ratio, tier } = evaluateRule(
+       coreType.rules[questionId],
+-      getAnswerValues(answers, questionId),
++      answerOptionIds,
+     )
+
+     tiers[questionId] = tier
+     questionPoints[questionId] = roundScore(weight * ratio)
+     score += questionPoints[questionId]
++    questionLines.push({
++      questionId,
++      answerOptionIds,
++      tier,
++      ratio,
++      weight,
++      rawPoints: weight * ratio,
++      points: questionPoints[questionId],
++    })
+   }
+
+   const bonus = computeBonuses({ ...style, coreTypes: [coreType] }, answers)
+@@ -207,6 +332,21 @@ function scoreCoreType(
+
+   score = roundScore(Math.max(0, score + bonus.points - penalty.points))
+
++  observeScoring({
++    type: 'core',
++    styleId: style.id,
++    coreId: coreType.id,
++    corePriority: style.coreTypes.indexOf(coreType),
++    subtypeId: subtype.id,
++    score,
++    rankingKeys: {
++      score,
++      corePriority: style.coreTypes.indexOf(coreType),
++      coreId: coreType.id,
++    },
++    questionLines,
++  })
++
+   return {
+     style,
+     coreType,
+@@ -228,8 +368,19 @@ function collapseByDisplayStyle(results: RankedStyle[]) {
+
+   for (const result of results) {
+     const previous = bestResults.get(result.style.id)
+-
+-    if (!previous || result.score > previous.score) {
++    const selected = !previous || result.score > previous.score
++
++    observeScoring({
++      type: 'collapse',
++      styleId: result.style.id,
++      coreId: result.coreType.id,
++      corePriority: result.style.coreTypes.indexOf(result.coreType),
++      score: result.score,
++      previousCoreId: previous?.coreType.id ?? null,
++      selected,
++    })
++
++    if (selected) {
+       bestResults.set(result.style.id, result)
+     }
+   }
+@@ -287,6 +438,57 @@ export function scoreQuestionnaire(
+       ? blockedPrimary[0]
+       : null
+
++  observeScoring({
++    type: 'ranking',
++    styleCandidates: visible.map((result) => ({
++      styleId: result.style.id,
++      family: result.style.family,
++      displayPriority: styleCatalog.indexOf(result.style),
++      coreId: result.coreType.id,
++      subtypeId: result.subtype.id,
++      score: result.score,
++      coreRankingKeys: {
++        score: result.score,
++        corePriority: result.style.coreTypes.indexOf(result.coreType),
++        coreId: result.coreType.id,
++      },
++      styleRankingKeys: {
++        score: result.score,
++        displayPriority: styleCatalog.indexOf(result.style),
++        styleId: result.style.id,
++      },
++    })),
++    primaryStyleIds: visiblePrimary.map(({ style }) => style.id),
++    alternativeStyleIds: visibleAlternatives.map(({ style }) => style.id),
++    displayedPrimary: topResults.map((result) => ({
++      styleId: result.style.id,
++      score: result.score,
++      confidence: result.confidence,
++    })),
++    displayedAlternative: alternativeResults.map((result) => ({
++      styleId: result.style.id,
++      score: result.score,
++      confidence: result.confidence,
++    })),
++    lowConfidenceInputs: {
++      hasPrimaryResult: topResults.length > 0,
++      topConfidence: topResults[0]?.confidence ?? null,
++      confidenceThreshold: 72,
++      confidenceBelowThreshold: Boolean(topResults[0] && topResults[0].confidence < 72),
++      topScore: topResults[0]?.score ?? null,
++      secondScore: topResults[1]?.score ?? null,
++      scoreGap: topResults[0]
++        ? topResults[0].score - (topResults[1]?.score ?? 0)
++        : null,
++      scoreGapThreshold: 5,
++      scoreGapBelowThreshold: Boolean(
++        topResults[0]
++          && topResults[0].score - (topResults[1]?.score ?? 0) < 5
++      ),
++    },
++    lowConfidence,
++  })
++
+   return {
+     results: topResults,
+     alternativeResults,
+diff --git a/src/parity-scoring-observer.test.ts b/src/parity-scoring-observer.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..50aec467340fa890d7fff6a8f10eba4ed59b0989
+--- /dev/null
++++ b/src/parity-scoring-observer.test.ts
+@@ -0,0 +1,285 @@
++import { lstatSync, readFileSync, writeFileSync } from 'node:fs'
++import { basename, dirname, isAbsolute } from 'node:path'
++
++import { expect, test } from 'vitest'
++
++import type { CompletedAnswers } from './domain/types'
++import { scoreQuestionnaire } from './lib/scoring/scorer'
++
++interface Capability {
++  readonly schemaVersion: 1
++  readonly seedPath: string
++  readonly rawOutputPath: string
++  readonly token: string
++}
++
++interface SeedCase {
++  readonly id: string
++  readonly answers: Record<string, readonly string[]>
++}
++
++const answerKeys = [
++  'archetype',
++  'body',
++  'exclusions',
++  'form',
++  'noodle',
++  'signature',
++  'source',
++  'tare',
++] as const
++const optionValues = {
++  form: ['soup', 'tsukemen', 'dry'],
++  archetype: ['chintan', 'paitan', 'konbusui-light', 'gyokai-rich', 'miso-rich', 'tsukemen-other', 'aburasoba', 'taiwan-mazesoba', 'soupless-tantan', 'dry-other'],
++  tare: ['shoyu', 'shio', 'miso', 'spicy-sesame', 'none'],
++  source: ['pork', 'chicken', 'duck', 'beef', 'fish-seafood', 'shellfish', 'shrimp-crab', 'vegetable', 'mixed', 'unsure'],
++  body: ['light', 'balanced', 'rich', 'backfat-heavy', 'ultra-heavy'],
++  noodle: ['thin-straight', 'medium-thin-straight', 'medium-thick-straight', 'medium-thick-wavy', 'extra-thick'],
++  signature: ['nori-spinach', 'corn-butter', 'bean-sprout-garlic-backfat', 'fish-kombu', 'yuzu-citrus', 'no-preference'],
++  exclusions: ['none'],
++} as const
++
++function assertRecord(value: unknown, label: string): asserts value is Record<string, unknown> {
++  if (!value || typeof value !== 'object' || Array.isArray(value)) {
++    throw new Error(`invalid ${label}`)
++  }
++}
++
++function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]) {
++  return Object.keys(value).sort().join('\0') === [...keys].sort().join('\0')
++}
++
++function codePointLengthAtMost(value: string, maximum: number) {
++  let count = 0
++  for (const _character of value) {
++    count += 1
++    if (count > maximum) return false
++  }
++  return true
++}
++
++function readCapability(path: string): Capability {
++  if (!isAbsolute(path) || lstatSync(path).isSymbolicLink()) {
++    throw new Error('invalid scoring capability path')
++  }
++  const bytes = readFileSync(path)
++  if (bytes.byteLength > 8 * 1024) throw new Error('invalid scoring capability')
++  const value: unknown = JSON.parse(bytes.toString('utf8'))
++  assertRecord(value, 'scoring capability')
++  if (
++    Object.keys(value).sort().join('\0') !== 'rawOutputPath\0schemaVersion\0seedPath\0token'
++    || value.schemaVersion !== 1
++    || typeof value.seedPath !== 'string'
++    || typeof value.rawOutputPath !== 'string'
++    || typeof value.token !== 'string'
++    || !/^[a-f0-9]{32,128}$/.test(value.token)
++    || !isAbsolute(value.seedPath)
++    || !isAbsolute(value.rawOutputPath)
++    || dirname(path) !== dirname(value.seedPath)
++    || dirname(path) !== dirname(value.rawOutputPath)
++    || basename(path) !== `capability-${value.token}.json`
++    || basename(value.seedPath) !== 'seed-copy.json'
++    || basename(value.rawOutputPath) !== 'raw-output.json'
++    || lstatSync(value.seedPath).isSymbolicLink()
++    || lstatSync(value.rawOutputPath, { throwIfNoEntry: false })
++  ) throw new Error('invalid scoring capability')
++  return value as unknown as Capability
++}
++
++function readSeeds(path: string): readonly SeedCase[] {
++  const bytes = readFileSync(path)
++  if (bytes.byteLength > 1024 * 1024) throw new Error('invalid scoring seeds')
++  const value: unknown = JSON.parse(bytes.toString('utf8'))
++  assertRecord(value, 'scoring seed envelope')
++  if (
++    !hasExactKeys(value, ['cases', 'projection', 'required', 'schemaVersion'])
++    || value.schemaVersion !== 1
++    || value.projection !== 'legacy-scoring-result-projection'
++    || !value.required
++    || !Array.isArray(value.cases)
++    || value.cases.length < 19
++    || value.cases.length > 256
++  ) throw new Error('invalid scoring seeds')
++  const ids = new Set<string>()
++  return value.cases.map((entry) => {
++    assertRecord(entry, 'scoring seed')
++    assertRecord(entry.answers, 'scoring answers')
++    if (
++      !hasExactKeys(entry, ['answers', 'id'])
++      || !hasExactKeys(entry.answers, answerKeys)
++      || typeof entry.id !== 'string'
++      || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.id)
++      || !codePointLengthAtMost(entry.id, 120)
++      || ids.has(entry.id)
++    ) throw new Error('invalid scoring seed')
++    ids.add(entry.id)
++    for (const key of answerKeys) {
++      const received = entry.answers[key]
++      const maximum = key === 'source' ? 3 : key === 'signature' ? 2 : 1
++      if (
++        !Array.isArray(received)
++        || received.length < 1
++        || received.length > maximum
++        || new Set(received).size !== received.length
++        || received.some((option) => (
++          typeof option !== 'string'
++            || !(optionValues[key] as readonly string[]).includes(option)
++        ))
++      ) throw new Error('invalid scoring seed answers')
++    }
++    return entry as unknown as SeedCase
++  })
++}
++
++function toLegacyAnswers(answers: SeedCase['answers']): CompletedAnswers {
++  const one = (id: string) => {
++    const values = answers[id]
++    if (!values || values.length !== 1) throw new Error('invalid single answer')
++    return values[0]
++  }
++  const many = (id: string) => {
++    const values = answers[id]
++    if (!values || values.length < 1 || values.length > 3) {
++      throw new Error('invalid multiple answer')
++    }
++    return [...values]
++  }
++  return {
++    form: one('form'),
++    archetype: one('archetype'),
++    tare: one('tare'),
++    source: many('source'),
++    body: one('body'),
++    noodle: one('noodle'),
++    signature: many('signature'),
++    exclusions: ['none'],
++  } as CompletedAnswers
++}
++
++function observeCase(seed: SeedCase) {
++  const adjustments = new Map<string, {
++    bonusLines: Record<string, unknown>[]
++    conflictLines: Record<string, unknown>[]
++  }>()
++  const cores: Record<string, unknown>[] = []
++  const collapseDecisions: Record<string, unknown>[] = []
++  const confidenceObservations: Record<string, unknown>[] = []
++  let ranking: Record<string, unknown> | undefined
++  let displayedResultCount = 0
++  const global = globalThis as typeof globalThis & {
++    __RAMEN_SCORING_PARITY_OBSERVER__?: (event: Record<string, unknown>) => void
++  }
++  const observer = (event: Record<string, unknown>) => {
++    if (event.type === 'bonus' || event.type === 'conflict') {
++      const coreId = String(event.coreId)
++      const lines = adjustments.get(coreId) ?? { bonusLines: [], conflictLines: [] }
++      const line = {
++        id: event.id,
++        status: event.status,
++        matchedConditionPriorities: event.matchedConditionPriorities,
++        matchedCount: event.matchedCount,
++        requiredMatchCount: event.requiredMatchCount,
++        matchRatio: event.matchRatio,
++        requestedPoints: event.requestedPoints,
++        appliedPoints: event.appliedPoints,
++      }
++      if (event.type === 'bonus') lines.bonusLines.push(line)
++      else lines.conflictLines.push(line)
++      adjustments.set(coreId, lines)
++      return
++    }
++    if (event.type === 'core') {
++      const lines = adjustments.get(String(event.coreId)) ?? {
++        bonusLines: [],
++        conflictLines: [],
++      }
++      cores.push({
++        styleId: event.styleId,
++        coreId: event.coreId,
++        corePriority: event.corePriority,
++        subtypeId: event.subtypeId,
++        score: event.score,
++        rankingKeys: event.rankingKeys,
++        questionLines: event.questionLines,
++        ...lines,
++      })
++      return
++    }
++    if (event.type === 'collapse') {
++      collapseDecisions.push({
++        styleId: event.styleId,
++        coreId: event.coreId,
++        corePriority: event.corePriority,
++        score: event.score,
++        previousCoreId: event.previousCoreId,
++        selected: event.selected,
++      })
++      return
++    }
++    if (event.type === 'confidence') {
++      confidenceObservations.push({
++        styleId: event.styleId,
++        score: event.score,
++        nextScore: event.nextScore,
++        base: event.base,
++        gapBoostBeforeCap: event.gapBoostBeforeCap,
++        gapBoost: event.gapBoost,
++        uncertaintyPenalty: event.uncertaintyPenalty,
++        rawConfidence: event.rawConfidence,
++        confidence: event.confidence,
++      })
++      return
++    }
++    if (event.type === 'ranking') {
++      if (!Array.isArray(event.displayedPrimary) || !Array.isArray(event.displayedAlternative)) {
++        throw new Error('invalid displayed scoring observation')
++      }
++      displayedResultCount = event.displayedPrimary.length + event.displayedAlternative.length
++      ranking = {
++        styleCandidates: event.styleCandidates,
++        primaryStyleIds: event.primaryStyleIds,
++        alternativeStyleIds: event.alternativeStyleIds,
++        displayedPrimary: event.displayedPrimary,
++        displayedAlternative: event.displayedAlternative,
++        collapseDecisions,
++        confidenceObservations,
++        lowConfidenceInputs: event.lowConfidenceInputs,
++        lowConfidence: event.lowConfidence,
++      }
++    }
++  }
++  const answers = toLegacyAnswers(seed.answers)
++  const expectedOutcome = scoreQuestionnaire(answers)
++  global.__RAMEN_SCORING_PARITY_OBSERVER__ = observer
++  let observedOutcome
++  try {
++    observedOutcome = scoreQuestionnaire(answers)
++  } finally {
++    delete global.__RAMEN_SCORING_PARITY_OBSERVER__
++  }
++  expect(observedOutcome).toEqual(expectedOutcome)
++  if (
++    cores.length !== 54
++    || collapseDecisions.length !== 54
++    || displayedResultCount < 5
++    || displayedResultCount > 6
++    || confidenceObservations.length !== displayedResultCount
++    || !ranking
++  ) throw new Error('incomplete scoring observation')
++  return { id: seed.id, answers: seed.answers, coreCandidates: cores, ranking }
++}
++
++const capabilityPath = process.env.RAMEN_PARITY_SEED
++const extractionTest = capabilityPath ? test : test.skip
++
++extractionTest('observes frozen legacy scoring without changing its result', () => {
++  const capability = readCapability(capabilityPath!)
++  const cases = readSeeds(capability.seedPath).map(observeCase)
++  const output = `${JSON.stringify({ schemaVersion: 1, cases }, null, 2)}\n`
++  if (Buffer.byteLength(output) > 64 * 1024 * 1024) {
++    throw new Error('scoring observation exceeds byte limit')
++  }
++  writeFileSync(capability.rawOutputPath, output, { flag: 'wx', mode: 0o600 })
++  expect(cases.length).toBeGreaterThanOrEqual(19)
++  expect(cases.length).toBeLessThanOrEqual(256)
++})

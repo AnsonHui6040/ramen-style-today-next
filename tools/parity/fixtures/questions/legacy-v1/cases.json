@@ -1,0 +1,7501 @@
+{
+  "cases": [
+    {
+      "actions": [
+        {
+          "optionId": "soup",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "previous"
+        },
+        {
+          "optionId": "dry",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:previous",
+        "action:select",
+        "behavior:branch-answer-change",
+        "behavior:exclusive-replacement",
+        "navigation-target:archetype",
+        "navigation-target:form",
+        "option:archetype:aburasoba",
+        "option:archetype:chintan",
+        "option:archetype:dry-other",
+        "option:archetype:paitan",
+        "option:archetype:soupless-tantan",
+        "option:archetype:taiwan-mazesoba",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "question:archetype",
+        "question:form",
+        "transition:initial",
+        "transition:next",
+        "transition:previous",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "soup",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "soup"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "chintan",
+            "paitan"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "previous",
+            "reachedQuestionId": "form"
+          },
+          "pendingOptionIds": [
+            "soup"
+          ],
+          "sequence": 4,
+          "transition": "previous",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "dry",
+                "before": "soup",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "dry"
+          ],
+          "sequence": 5,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 6,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 7,
+          "transition": "next",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        }
+      ],
+      "id": "branch-switch-back"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "tsukemen",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "optionId": "dry",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "optionId": "soup",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "chintan",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "optionId": "paitan",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "miso",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "optionId": "shoyu",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "tare",
+          "type": "continue"
+        },
+        {
+          "optionId": "unsure",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "optionId": "pork",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "optionId": "chicken",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "optionId": "chicken",
+          "questionId": "source",
+          "type": "deselect"
+        },
+        {
+          "optionId": "fish-seafood",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "rich",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "medium-thick-straight",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "no-preference",
+          "questionId": "signature",
+          "type": "select"
+        },
+        {
+          "optionId": "nori-spinach",
+          "questionId": "signature",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "signature",
+          "type": "continue"
+        },
+        {
+          "optionId": "pork",
+          "questionId": "exclusions",
+          "type": "select"
+        },
+        {
+          "optionId": "pork",
+          "questionId": "exclusions",
+          "type": "deselect"
+        },
+        {
+          "fromQuestionId": "exclusions",
+          "type": "continue"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:deselect",
+        "action:select",
+        "behavior:branch-answer-change",
+        "behavior:completion",
+        "behavior:empty-restoration",
+        "behavior:exclusive-replacement",
+        "behavior:max-selection-blocked",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:exclusions",
+        "navigation-target:noodle",
+        "navigation-target:results",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "navigation-target:tare",
+        "option:archetype:chintan",
+        "option:archetype:paitan",
+        "option:body:backfat-heavy",
+        "option:body:balanced",
+        "option:body:light",
+        "option:body:rich",
+        "option:body:ultra-heavy",
+        "option:exclusions:beef",
+        "option:exclusions:chicken",
+        "option:exclusions:dairy",
+        "option:exclusions:duck",
+        "option:exclusions:fish-seafood",
+        "option:exclusions:none",
+        "option:exclusions:pork",
+        "option:exclusions:shellfish",
+        "option:exclusions:shrimp-crab",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:noodle:medium-thick-wavy",
+        "option:noodle:medium-thin-straight",
+        "option:noodle:thin-straight",
+        "option:signature:bean-sprout-garlic-backfat",
+        "option:signature:corn-butter",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:signature:nori-spinach",
+        "option:signature:yuzu-citrus",
+        "option:source:beef",
+        "option:source:chicken",
+        "option:source:duck",
+        "option:source:fish-seafood",
+        "option:source:mixed",
+        "option:source:pork",
+        "option:source:shellfish",
+        "option:source:shrimp-crab",
+        "option:source:unsure",
+        "option:source:vegetable",
+        "option:tare:miso",
+        "option:tare:none",
+        "option:tare:shio",
+        "option:tare:shoyu",
+        "option:tare:spicy-sesame",
+        "question:archetype",
+        "question:body",
+        "question:exclusions",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "question:tare",
+        "transition:complete",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "tsukemen",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "tsukemen"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "dry",
+                "before": "tsukemen",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "dry"
+          ],
+          "sequence": 2,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "soup",
+                "before": "dry",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "soup"
+          ],
+          "sequence": 3,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 4,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 5,
+          "transition": "next",
+          "visibleOptionIds": [
+            "chintan",
+            "paitan"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "chintan",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "chintan"
+          ],
+          "sequence": 6,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "chintan",
+            "paitan"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "paitan",
+                "before": "chintan",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "paitan"
+          ],
+          "sequence": 7,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "chintan",
+            "paitan"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 8,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "tare"
+          },
+          "pendingOptionIds": [],
+          "sequence": 9,
+          "transition": "next",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "miso",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "miso"
+          ],
+          "sequence": 10,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "shoyu",
+                "before": "miso",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "shoyu"
+          ],
+          "sequence": 11,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [],
+            "tare": "shoyu"
+          },
+          "sequence": 12,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [],
+            "tare": "shoyu"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 13,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "unsure"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "unsure"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "unsure"
+          ],
+          "sequence": 14,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 11,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "pork"
+                ],
+                "before": [
+                  "unsure"
+                ],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "pork"
+          ],
+          "sequence": 15,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 12,
+          "disabledOptionIds": [
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed"
+          ],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork",
+              "chicken"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "pork",
+                  "chicken"
+                ],
+                "before": [
+                  "pork"
+                ],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "pork",
+            "chicken"
+          ],
+          "sequence": 16,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 13,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "pork"
+                ],
+                "before": [
+                  "pork",
+                  "chicken"
+                ],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "pork"
+          ],
+          "sequence": 17,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 14,
+          "disabledOptionIds": [
+            "chicken",
+            "duck",
+            "beef",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed"
+          ],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "pork",
+                  "fish-seafood"
+                ],
+                "before": [
+                  "pork"
+                ],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "pork",
+            "fish-seafood"
+          ],
+          "sequence": 18,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 15,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "sequence": 19,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 15,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 20,
+          "transition": "next",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich",
+            "backfat-heavy",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 16,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "rich",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "rich"
+          ],
+          "sequence": 21,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich",
+            "backfat-heavy",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 17,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "sequence": 22,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 17,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 23,
+          "transition": "next",
+          "visibleOptionIds": [
+            "thin-straight",
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 18,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "medium-thick-straight",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "medium-thick-straight"
+          ],
+          "sequence": 24,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "thin-straight",
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 19,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "sequence": 25,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 19,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 26,
+          "transition": "next",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 20,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "no-preference"
+            ],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "no-preference"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "no-preference"
+          ],
+          "sequence": 27,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 21,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "nori-spinach"
+            ],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "nori-spinach"
+                ],
+                "before": [
+                  "no-preference"
+                ],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "nori-spinach"
+          ],
+          "sequence": 28,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 22,
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "nori-spinach"
+            ],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "sequence": 29,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 22,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "exclusions",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "nori-spinach"
+            ],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "exclusions"
+          },
+          "pendingOptionIds": [
+            "none"
+          ],
+          "sequence": 30,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "dairy",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 23,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "exclusions",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "pork"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "nori-spinach"
+            ],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "pork"
+                ],
+                "before": [
+                  "none"
+                ],
+                "questionId": "exclusions"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "pork"
+          ],
+          "sequence": 31,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "dairy",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 24,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "exclusions",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "nori-spinach"
+            ],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "none"
+                ],
+                "before": [
+                  "pork"
+                ],
+                "questionId": "exclusions"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "none"
+          ],
+          "sequence": 32,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "dairy",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 25,
+          "displayedQuestionId": "exclusions",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "nori-spinach"
+            ],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "sequence": 33,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 25,
+          "completionMarker": "results",
+          "legacyAnswers": {
+            "archetype": "paitan",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "nori-spinach"
+            ],
+            "source": [
+              "pork",
+              "fish-seafood"
+            ],
+            "tare": "shoyu"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedScreen": "results"
+          },
+          "sequence": 34,
+          "transition": "complete"
+        }
+      ],
+      "id": "soup-paitan-complete"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "soup",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "chintan",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "shio",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "tare",
+          "type": "continue"
+        },
+        {
+          "optionId": "duck",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "light",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "thin-straight",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "yuzu-citrus",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "navigation-target:tare",
+        "option:archetype:chintan",
+        "option:archetype:paitan",
+        "option:body:backfat-heavy",
+        "option:body:balanced",
+        "option:body:light",
+        "option:body:rich",
+        "option:body:ultra-heavy",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:noodle:medium-thick-wavy",
+        "option:noodle:medium-thin-straight",
+        "option:noodle:thin-straight",
+        "option:signature:bean-sprout-garlic-backfat",
+        "option:signature:corn-butter",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:signature:nori-spinach",
+        "option:signature:yuzu-citrus",
+        "option:source:beef",
+        "option:source:chicken",
+        "option:source:duck",
+        "option:source:fish-seafood",
+        "option:source:mixed",
+        "option:source:pork",
+        "option:source:shellfish",
+        "option:source:shrimp-crab",
+        "option:source:unsure",
+        "option:source:vegetable",
+        "option:tare:miso",
+        "option:tare:none",
+        "option:tare:shio",
+        "option:tare:shoyu",
+        "option:tare:spicy-sesame",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "question:tare",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "soup",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "soup"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "chintan",
+            "paitan"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "chintan",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "chintan"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "chintan",
+            "paitan"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "tare"
+          },
+          "pendingOptionIds": [],
+          "sequence": 6,
+          "transition": "next",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "shio",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "shio"
+          ],
+          "sequence": 7,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "sequence": 8,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 9,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "duck"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "duck"
+          ],
+          "sequence": 10,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 11,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 12,
+          "transition": "next",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich",
+            "backfat-heavy",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "light",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "light"
+          ],
+          "sequence": 13,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich",
+            "backfat-heavy",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 14,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 15,
+          "transition": "next",
+          "visibleOptionIds": [
+            "thin-straight",
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "thin-straight",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "thin-straight"
+          ],
+          "sequence": 16,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "thin-straight",
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 11,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 17,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 11,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 18,
+          "transition": "next",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 12,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "chintan",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "soup",
+            "noodle": "thin-straight",
+            "signature": [
+              "yuzu-citrus"
+            ],
+            "source": [
+              "duck"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "yuzu-citrus"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "yuzu-citrus"
+          ],
+          "sequence": 19,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "soup-chintan-options"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "tsukemen",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "konbusui-light",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "shio",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "tare",
+          "type": "continue"
+        },
+        {
+          "optionId": "vegetable",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "light",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "medium-thin-straight",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "yuzu-citrus",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "navigation-target:tare",
+        "option:archetype:gyokai-rich",
+        "option:archetype:konbusui-light",
+        "option:archetype:miso-rich",
+        "option:archetype:tsukemen-other",
+        "option:body:balanced",
+        "option:body:light",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:medium-thick-straight",
+        "option:noodle:medium-thin-straight",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:signature:yuzu-citrus",
+        "option:source:fish-seafood",
+        "option:source:mixed",
+        "option:source:shellfish",
+        "option:source:unsure",
+        "option:source:vegetable",
+        "option:tare:shio",
+        "option:tare:shoyu",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "question:tare",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "tsukemen",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "tsukemen"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "konbusui-light",
+            "gyokai-rich",
+            "miso-rich",
+            "tsukemen-other"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "konbusui-light",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "konbusui-light"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "konbusui-light",
+            "gyokai-rich",
+            "miso-rich",
+            "tsukemen-other"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "tare"
+          },
+          "pendingOptionIds": [],
+          "sequence": 6,
+          "transition": "next",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "shio",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "shio"
+          ],
+          "sequence": 7,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "sequence": 8,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 9,
+          "transition": "next",
+          "visibleOptionIds": [
+            "fish-seafood",
+            "shellfish",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "vegetable"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "vegetable"
+          ],
+          "sequence": 10,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "fish-seafood",
+            "shellfish",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 11,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 12,
+          "transition": "next",
+          "visibleOptionIds": [
+            "light",
+            "balanced"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "light",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "light"
+          ],
+          "sequence": 13,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "light",
+            "balanced"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 14,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 15,
+          "transition": "next",
+          "visibleOptionIds": [
+            "medium-thin-straight",
+            "medium-thick-straight"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "medium-thin-straight",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "medium-thin-straight",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "medium-thin-straight"
+          ],
+          "sequence": 16,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "medium-thin-straight",
+            "medium-thick-straight"
+          ]
+        },
+        {
+          "actionIndex": 11,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "medium-thin-straight",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 17,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 11,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "medium-thin-straight",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 18,
+          "transition": "next",
+          "visibleOptionIds": [
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 12,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "konbusui-light",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "medium-thin-straight",
+            "signature": [
+              "yuzu-citrus"
+            ],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "yuzu-citrus"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "yuzu-citrus"
+          ],
+          "sequence": 19,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "tsukemen-konbusui-options"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "tsukemen",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "gyokai-rich",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "miso",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "tare",
+          "type": "continue"
+        },
+        {
+          "optionId": "shellfish",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "ultra-heavy",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "medium-thick-wavy",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "fish-kombu",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "navigation-target:tare",
+        "option:archetype:gyokai-rich",
+        "option:archetype:konbusui-light",
+        "option:archetype:miso-rich",
+        "option:archetype:tsukemen-other",
+        "option:body:balanced",
+        "option:body:rich",
+        "option:body:ultra-heavy",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:noodle:medium-thick-wavy",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:source:fish-seafood",
+        "option:source:mixed",
+        "option:source:shellfish",
+        "option:source:unsure",
+        "option:tare:miso",
+        "option:tare:shio",
+        "option:tare:shoyu",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "question:tare",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "tsukemen",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "tsukemen"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "konbusui-light",
+            "gyokai-rich",
+            "miso-rich",
+            "tsukemen-other"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "gyokai-rich",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "gyokai-rich"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "konbusui-light",
+            "gyokai-rich",
+            "miso-rich",
+            "tsukemen-other"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "tare"
+          },
+          "pendingOptionIds": [],
+          "sequence": 6,
+          "transition": "next",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "miso",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "miso"
+          ],
+          "sequence": 7,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "miso"
+          },
+          "sequence": 8,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "miso"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 9,
+          "transition": "next",
+          "visibleOptionIds": [
+            "fish-seafood",
+            "shellfish",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "shellfish"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "shellfish"
+          ],
+          "sequence": 10,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "fish-seafood",
+            "shellfish",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "sequence": 11,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 12,
+          "transition": "next",
+          "visibleOptionIds": [
+            "balanced",
+            "rich",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "body": "ultra-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "ultra-heavy",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "ultra-heavy"
+          ],
+          "sequence": 13,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "balanced",
+            "rich",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "body": "ultra-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "sequence": 14,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "body": "ultra-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 15,
+          "transition": "next",
+          "visibleOptionIds": [
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "body": "ultra-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "medium-thick-wavy",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "medium-thick-wavy",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "medium-thick-wavy"
+          ],
+          "sequence": 16,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 11,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "body": "ultra-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "medium-thick-wavy",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "sequence": 17,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 11,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "body": "ultra-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "medium-thick-wavy",
+            "signature": [],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 18,
+          "transition": "next",
+          "visibleOptionIds": [
+            "fish-kombu",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 12,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "gyokai-rich",
+            "body": "ultra-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "medium-thick-wavy",
+            "signature": [
+              "fish-kombu"
+            ],
+            "source": [
+              "shellfish"
+            ],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "fish-kombu"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "fish-kombu"
+          ],
+          "sequence": 19,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "fish-kombu",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "tsukemen-gyokai-options"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "tsukemen",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "miso-rich",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "chicken",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "balanced",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "extra-thick",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "corn-butter",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "behavior:forced-skip",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "option:archetype:gyokai-rich",
+        "option:archetype:konbusui-light",
+        "option:archetype:miso-rich",
+        "option:archetype:tsukemen-other",
+        "option:body:balanced",
+        "option:body:rich",
+        "option:body:ultra-heavy",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:noodle:medium-thick-wavy",
+        "option:signature:corn-butter",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:source:chicken",
+        "option:source:fish-seafood",
+        "option:source:mixed",
+        "option:source:pork",
+        "option:source:unsure",
+        "option:source:vegetable",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "transition:forced-skip",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "tsukemen",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "tsukemen"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "konbusui-light",
+            "gyokai-rich",
+            "miso-rich",
+            "tsukemen-other"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "miso-rich",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "miso-rich"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "konbusui-light",
+            "gyokai-rich",
+            "miso-rich",
+            "tsukemen-other"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "forcedAutoAnswer": {
+            "questionId": "tare",
+            "value": "miso"
+          },
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "miso",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "sequence": 6,
+          "transition": "forced-skip"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "miso"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 7,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "fish-seafood",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "chicken"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "chicken"
+          ],
+          "sequence": 8,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "fish-seafood",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "sequence": 9,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 10,
+          "transition": "next",
+          "visibleOptionIds": [
+            "balanced",
+            "rich",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "balanced",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "balanced"
+          ],
+          "sequence": 11,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "balanced",
+            "rich",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "sequence": 12,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 13,
+          "transition": "next",
+          "visibleOptionIds": [
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "extra-thick",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "extra-thick",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "extra-thick"
+          ],
+          "sequence": 14,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "extra-thick",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "sequence": 15,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "extra-thick",
+            "signature": [],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 16,
+          "transition": "next",
+          "visibleOptionIds": [
+            "corn-butter",
+            "fish-kombu",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "miso-rich",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "extra-thick",
+            "signature": [
+              "corn-butter"
+            ],
+            "source": [
+              "chicken"
+            ],
+            "tare": "miso"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "corn-butter"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "corn-butter"
+          ],
+          "sequence": 17,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "corn-butter",
+            "fish-kombu",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "tsukemen-miso-forced"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "tsukemen",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "tsukemen-other",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "none",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "tare",
+          "type": "continue"
+        },
+        {
+          "optionId": "beef",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "backfat-heavy",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "thin-straight",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "bean-sprout-garlic-backfat",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "navigation-target:tare",
+        "option:archetype:gyokai-rich",
+        "option:archetype:konbusui-light",
+        "option:archetype:miso-rich",
+        "option:archetype:tsukemen-other",
+        "option:body:backfat-heavy",
+        "option:body:balanced",
+        "option:body:light",
+        "option:body:rich",
+        "option:body:ultra-heavy",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:noodle:medium-thick-wavy",
+        "option:noodle:medium-thin-straight",
+        "option:noodle:thin-straight",
+        "option:signature:bean-sprout-garlic-backfat",
+        "option:signature:corn-butter",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:signature:nori-spinach",
+        "option:signature:yuzu-citrus",
+        "option:source:beef",
+        "option:source:chicken",
+        "option:source:duck",
+        "option:source:fish-seafood",
+        "option:source:mixed",
+        "option:source:pork",
+        "option:source:shellfish",
+        "option:source:shrimp-crab",
+        "option:source:unsure",
+        "option:source:vegetable",
+        "option:tare:miso",
+        "option:tare:none",
+        "option:tare:shio",
+        "option:tare:shoyu",
+        "option:tare:spicy-sesame",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "question:tare",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "tsukemen",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "tsukemen"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "konbusui-light",
+            "gyokai-rich",
+            "miso-rich",
+            "tsukemen-other"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "tsukemen-other",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "tsukemen-other"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "konbusui-light",
+            "gyokai-rich",
+            "miso-rich",
+            "tsukemen-other"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "tare"
+          },
+          "pendingOptionIds": [],
+          "sequence": 6,
+          "transition": "next",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "none",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "none"
+          ],
+          "sequence": 7,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "none"
+          },
+          "sequence": 8,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [],
+            "tare": "none"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 9,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "beef"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "beef"
+          ],
+          "sequence": 10,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "sequence": 11,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 12,
+          "transition": "next",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich",
+            "backfat-heavy",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "backfat-heavy",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "backfat-heavy"
+          ],
+          "sequence": 13,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich",
+            "backfat-heavy",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "sequence": 14,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 15,
+          "transition": "next",
+          "visibleOptionIds": [
+            "thin-straight",
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "thin-straight",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "thin-straight"
+          ],
+          "sequence": 16,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "thin-straight",
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 11,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "sequence": 17,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 11,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 18,
+          "transition": "next",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 12,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "tsukemen-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "tsukemen",
+            "noodle": "thin-straight",
+            "signature": [
+              "bean-sprout-garlic-backfat"
+            ],
+            "source": [
+              "beef"
+            ],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "bean-sprout-garlic-backfat"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "bean-sprout-garlic-backfat"
+          ],
+          "sequence": 19,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "tsukemen-other-options"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "dry",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "aburasoba",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "none",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "tare",
+          "type": "continue"
+        },
+        {
+          "optionId": "mixed",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "light",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "medium-thin-straight",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "bean-sprout-garlic-backfat",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "navigation-target:tare",
+        "option:archetype:aburasoba",
+        "option:archetype:dry-other",
+        "option:archetype:soupless-tantan",
+        "option:archetype:taiwan-mazesoba",
+        "option:body:balanced",
+        "option:body:light",
+        "option:body:rich",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:noodle:medium-thin-straight",
+        "option:signature:bean-sprout-garlic-backfat",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:source:mixed",
+        "option:source:pork",
+        "option:source:unsure",
+        "option:tare:none",
+        "option:tare:shoyu",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "question:tare",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "dry",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "dry"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "aburasoba",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "aburasoba"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "tare"
+          },
+          "pendingOptionIds": [],
+          "sequence": 6,
+          "transition": "next",
+          "visibleOptionIds": [
+            "shoyu",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "none",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "none"
+          ],
+          "sequence": 7,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "none"
+          },
+          "sequence": 8,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "none"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 9,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "mixed"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "mixed"
+          ],
+          "sequence": 10,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "sequence": 11,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 12,
+          "transition": "next",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "light",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "light"
+          ],
+          "sequence": 13,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "sequence": 14,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 15,
+          "transition": "next",
+          "visibleOptionIds": [
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "medium-thin-straight",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "medium-thin-straight",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "medium-thin-straight"
+          ],
+          "sequence": 16,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 11,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "medium-thin-straight",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "sequence": 17,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 11,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "medium-thin-straight",
+            "signature": [],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 18,
+          "transition": "next",
+          "visibleOptionIds": [
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 12,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "aburasoba",
+            "body": "light",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "medium-thin-straight",
+            "signature": [
+              "bean-sprout-garlic-backfat"
+            ],
+            "source": [
+              "mixed"
+            ],
+            "tare": "none"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "bean-sprout-garlic-backfat"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "bean-sprout-garlic-backfat"
+          ],
+          "sequence": 19,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "dry-aburasoba-options"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "dry",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "taiwan-mazesoba",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "spicy-sesame",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "tare",
+          "type": "continue"
+        },
+        {
+          "optionId": "pork",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "rich",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "extra-thick",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "fish-kombu",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "navigation-target:tare",
+        "option:archetype:aburasoba",
+        "option:archetype:dry-other",
+        "option:archetype:soupless-tantan",
+        "option:archetype:taiwan-mazesoba",
+        "option:body:balanced",
+        "option:body:rich",
+        "option:body:ultra-heavy",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:signature:bean-sprout-garlic-backfat",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:source:mixed",
+        "option:source:pork",
+        "option:source:unsure",
+        "option:tare:none",
+        "option:tare:shoyu",
+        "option:tare:spicy-sesame",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "question:tare",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "dry",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "dry"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "taiwan-mazesoba",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "taiwan-mazesoba"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "tare"
+          },
+          "pendingOptionIds": [],
+          "sequence": 6,
+          "transition": "next",
+          "visibleOptionIds": [
+            "shoyu",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "spicy-sesame",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "spicy-sesame"
+          ],
+          "sequence": 7,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "spicy-sesame"
+          },
+          "sequence": 8,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "spicy-sesame"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 9,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "pork"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "pork"
+          ],
+          "sequence": 10,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "sequence": 11,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 12,
+          "transition": "next",
+          "visibleOptionIds": [
+            "balanced",
+            "rich",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "rich",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "rich"
+          ],
+          "sequence": 13,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "balanced",
+            "rich",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "sequence": 14,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 15,
+          "transition": "next",
+          "visibleOptionIds": [
+            "medium-thick-straight",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "extra-thick",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "extra-thick",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "extra-thick"
+          ],
+          "sequence": 16,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "medium-thick-straight",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 11,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "extra-thick",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "sequence": 17,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 11,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "extra-thick",
+            "signature": [],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 18,
+          "transition": "next",
+          "visibleOptionIds": [
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 12,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "taiwan-mazesoba",
+            "body": "rich",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "extra-thick",
+            "signature": [
+              "fish-kombu"
+            ],
+            "source": [
+              "pork"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "fish-kombu"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "fish-kombu"
+          ],
+          "sequence": 19,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "dry-taiwan-options"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "dry",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "soupless-tantan",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "vegetable",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "balanced",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "medium-thick-straight",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "no-preference",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "behavior:forced-skip",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "option:archetype:aburasoba",
+        "option:archetype:dry-other",
+        "option:archetype:soupless-tantan",
+        "option:archetype:taiwan-mazesoba",
+        "option:body:balanced",
+        "option:body:rich",
+        "option:body:ultra-heavy",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:signature:bean-sprout-garlic-backfat",
+        "option:signature:no-preference",
+        "option:source:mixed",
+        "option:source:pork",
+        "option:source:unsure",
+        "option:source:vegetable",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "transition:forced-skip",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "dry",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "dry"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "soupless-tantan",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "soupless-tantan"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "forcedAutoAnswer": {
+            "questionId": "tare",
+            "value": "spicy-sesame"
+          },
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "spicy-sesame",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "sequence": 6,
+          "transition": "forced-skip"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "spicy-sesame"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 7,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "vegetable"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "vegetable"
+          ],
+          "sequence": 8,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "sequence": 9,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 10,
+          "transition": "next",
+          "visibleOptionIds": [
+            "balanced",
+            "rich",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "balanced",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "balanced"
+          ],
+          "sequence": 11,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "balanced",
+            "rich",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "sequence": 12,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 13,
+          "transition": "next",
+          "visibleOptionIds": [
+            "medium-thick-straight",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "medium-thick-straight",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "medium-thick-straight",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "medium-thick-straight"
+          ],
+          "sequence": 14,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "medium-thick-straight",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "medium-thick-straight",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "sequence": 15,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "medium-thick-straight",
+            "signature": [],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 16,
+          "transition": "next",
+          "visibleOptionIds": [
+            "bean-sprout-garlic-backfat",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "soupless-tantan",
+            "body": "balanced",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "medium-thick-straight",
+            "signature": [
+              "no-preference"
+            ],
+            "source": [
+              "vegetable"
+            ],
+            "tare": "spicy-sesame"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "no-preference"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "no-preference"
+          ],
+          "sequence": 17,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "bean-sprout-garlic-backfat",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "dry-soupless-forced"
+    },
+    {
+      "actions": [
+        {
+          "optionId": "dry",
+          "questionId": "form",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "form",
+          "type": "continue"
+        },
+        {
+          "optionId": "dry-other",
+          "questionId": "archetype",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "archetype",
+          "type": "continue"
+        },
+        {
+          "optionId": "shio",
+          "questionId": "tare",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "tare",
+          "type": "continue"
+        },
+        {
+          "optionId": "shrimp-crab",
+          "questionId": "source",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "source",
+          "type": "continue"
+        },
+        {
+          "optionId": "backfat-heavy",
+          "questionId": "body",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "body",
+          "type": "continue"
+        },
+        {
+          "optionId": "thin-straight",
+          "questionId": "noodle",
+          "type": "select"
+        },
+        {
+          "fromQuestionId": "noodle",
+          "type": "continue"
+        },
+        {
+          "optionId": "nori-spinach",
+          "questionId": "signature",
+          "type": "select"
+        }
+      ],
+      "coverageTags": [
+        "action:continue",
+        "action:select",
+        "behavior:branch-answer-change",
+        "navigation-target:archetype",
+        "navigation-target:body",
+        "navigation-target:noodle",
+        "navigation-target:signature",
+        "navigation-target:source",
+        "navigation-target:tare",
+        "option:archetype:aburasoba",
+        "option:archetype:dry-other",
+        "option:archetype:soupless-tantan",
+        "option:archetype:taiwan-mazesoba",
+        "option:body:backfat-heavy",
+        "option:body:balanced",
+        "option:body:light",
+        "option:body:rich",
+        "option:body:ultra-heavy",
+        "option:form:dry",
+        "option:form:soup",
+        "option:form:tsukemen",
+        "option:noodle:extra-thick",
+        "option:noodle:medium-thick-straight",
+        "option:noodle:medium-thick-wavy",
+        "option:noodle:medium-thin-straight",
+        "option:noodle:thin-straight",
+        "option:signature:bean-sprout-garlic-backfat",
+        "option:signature:corn-butter",
+        "option:signature:fish-kombu",
+        "option:signature:no-preference",
+        "option:signature:nori-spinach",
+        "option:signature:yuzu-citrus",
+        "option:source:beef",
+        "option:source:chicken",
+        "option:source:duck",
+        "option:source:fish-seafood",
+        "option:source:mixed",
+        "option:source:pork",
+        "option:source:shellfish",
+        "option:source:shrimp-crab",
+        "option:source:unsure",
+        "option:source:vegetable",
+        "option:tare:miso",
+        "option:tare:none",
+        "option:tare:shio",
+        "option:tare:shoyu",
+        "option:tare:spicy-sesame",
+        "question:archetype",
+        "question:body",
+        "question:form",
+        "question:noodle",
+        "question:signature",
+        "question:source",
+        "question:tare",
+        "transition:initial",
+        "transition:next",
+        "transition:submit",
+        "transition:toggle"
+      ],
+      "frames": [
+        {
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "signature": [],
+            "source": []
+          },
+          "pendingOptionIds": [],
+          "sequence": 0,
+          "transition": "initial",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 0,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "dry",
+                "questionId": "form"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "dry"
+          ],
+          "sequence": 1,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "soup",
+            "tsukemen",
+            "dry"
+          ]
+        },
+        {
+          "actionIndex": 1,
+          "displayedQuestionId": "form",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 2,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 1,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "archetype"
+          },
+          "pendingOptionIds": [],
+          "sequence": 3,
+          "transition": "next",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        },
+        {
+          "actionIndex": 2,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "dry-other",
+                "questionId": "archetype"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "dry-other"
+          ],
+          "sequence": 4,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "aburasoba",
+            "taiwan-mazesoba",
+            "soupless-tantan",
+            "dry-other"
+          ]
+        },
+        {
+          "actionIndex": 3,
+          "displayedQuestionId": "archetype",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "sequence": 5,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 3,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": []
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "tare"
+          },
+          "pendingOptionIds": [],
+          "sequence": 6,
+          "transition": "next",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 4,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "shio",
+                "questionId": "tare"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "shio"
+          ],
+          "sequence": 7,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "shoyu",
+            "shio",
+            "miso",
+            "spicy-sesame",
+            "none"
+          ]
+        },
+        {
+          "actionIndex": 5,
+          "displayedQuestionId": "tare",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "sequence": 8,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 5,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "source"
+          },
+          "pendingOptionIds": [],
+          "sequence": 9,
+          "transition": "next",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 6,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "shrimp-crab"
+                ],
+                "before": [],
+                "questionId": "source"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "shrimp-crab"
+          ],
+          "sequence": 10,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "pork",
+            "chicken",
+            "duck",
+            "beef",
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "vegetable",
+            "mixed",
+            "unsure"
+          ]
+        },
+        {
+          "actionIndex": 7,
+          "displayedQuestionId": "source",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 11,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 7,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "body"
+          },
+          "pendingOptionIds": [],
+          "sequence": 12,
+          "transition": "next",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich",
+            "backfat-heavy",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 8,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "backfat-heavy",
+                "questionId": "body"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "backfat-heavy"
+          ],
+          "sequence": 13,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "light",
+            "balanced",
+            "rich",
+            "backfat-heavy",
+            "ultra-heavy"
+          ]
+        },
+        {
+          "actionIndex": 9,
+          "displayedQuestionId": "body",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 14,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 9,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "noodle"
+          },
+          "pendingOptionIds": [],
+          "sequence": 15,
+          "transition": "next",
+          "visibleOptionIds": [
+            "thin-straight",
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 10,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": "thin-straight",
+                "questionId": "noodle"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "thin-straight"
+          ],
+          "sequence": 16,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "thin-straight",
+            "medium-thin-straight",
+            "medium-thick-straight",
+            "medium-thick-wavy",
+            "extra-thick"
+          ]
+        },
+        {
+          "actionIndex": 11,
+          "displayedQuestionId": "noodle",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "sequence": 17,
+          "transition": "submit"
+        },
+        {
+          "actionIndex": 11,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "thin-straight",
+            "signature": [],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "navigation": {
+            "direction": "next",
+            "reachedQuestionId": "signature"
+          },
+          "pendingOptionIds": [],
+          "sequence": 18,
+          "transition": "next",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        },
+        {
+          "actionIndex": 12,
+          "disabledOptionIds": [],
+          "displayedQuestionId": "signature",
+          "legacyAnswers": {
+            "archetype": "dry-other",
+            "body": "backfat-heavy",
+            "exclusions": [
+              "none"
+            ],
+            "form": "dry",
+            "noodle": "thin-straight",
+            "signature": [
+              "nori-spinach"
+            ],
+            "source": [
+              "shrimp-crab"
+            ],
+            "tare": "shio"
+          },
+          "observedChanges": {
+            "answers": [
+              {
+                "after": [
+                  "nori-spinach"
+                ],
+                "before": [],
+                "questionId": "signature"
+              }
+            ]
+          },
+          "pendingOptionIds": [
+            "nori-spinach"
+          ],
+          "sequence": 19,
+          "transition": "toggle",
+          "visibleOptionIds": [
+            "nori-spinach",
+            "corn-butter",
+            "bean-sprout-garlic-backfat",
+            "fish-kombu",
+            "yuzu-citrus",
+            "no-preference"
+          ]
+        }
+      ],
+      "id": "dry-other-options"
+    }
+  ],
+  "schemaVersion": 1
+}

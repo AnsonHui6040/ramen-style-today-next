@@ -1,0 +1,424 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index e01c13ce039f79696a64cd8eb79da6ad19cecdbb..a7f87257146f1c1c2d7bba732a5a7b944dba8025 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -30,0 +31,53 @@ interface StoredState {
++type LegacyQuestionTransition =
++  | 'initial'
++  | 'toggle'
++  | 'submit'
++  | 'forced-skip'
++  | 'next'
++  | 'previous'
++  | 'complete'
++
++export interface LegacyQuestionObservation {
++  readonly transition: LegacyQuestionTransition
++  readonly displayedQuestionId?: string
++  readonly visibleOptionIds?: readonly string[]
++  readonly pendingOptionIds?: readonly string[]
++  readonly legacyAnswers?: Readonly<Record<string, string | readonly string[]>>
++  readonly forcedAutoAnswer?: {
++    readonly questionId: string
++    readonly value: string | readonly string[]
++  }
++  readonly navigation?: {
++    readonly direction: 'next' | 'previous'
++    readonly reachedQuestionId?: string
++    readonly reachedScreen?: 'results'
++  }
++  readonly completionMarker?: 'results'
++}
++
++type LegacyQuestionObserver = (observation: LegacyQuestionObservation) => void
++
++let legacyQuestionObserver: LegacyQuestionObserver | null = null
++
++function deepFreezeObservation<T>(value: T): T {
++  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
++    Object.values(value).forEach(deepFreezeObservation)
++    Object.freeze(value)
++  }
++  return value
++}
++
++export function registerLegacyQuestionObserver(observer: LegacyQuestionObserver) {
++  if (import.meta.env.MODE !== 'test' || legacyQuestionObserver) {
++    throw new Error('Legacy question observer is extraction-test-only')
++  }
++  legacyQuestionObserver = observer
++  return () => {
++    if (legacyQuestionObserver === observer) legacyQuestionObserver = null
++  }
++}
++
++function emitLegacyQuestionObservation(observation: LegacyQuestionObservation) {
++  legacyQuestionObserver?.(deepFreezeObservation(structuredClone(observation)))
++}
++
+@@ -285,0 +339,5 @@ function applyForcedAnswersFromStep(
++  observe?: (
++    questionId: QuestionId,
++    value: string,
++    nextAnswers: UserAnswers,
++  ) => void,
+@@ -302,0 +361 @@ function applyForcedAnswersFromStep(
++    observe?.(question.id, forcedValue, nextAnswers)
+@@ -344,0 +404,4 @@ function App() {
++  const legacyInitialObserved = useRef(false)
++  const legacyPendingTransition = useRef<
++    'toggle' | 'next' | 'previous' | 'complete' | null
++  >(null)
+@@ -400,0 +464,43 @@ function App() {
++  useEffect(() => {
++    if (phase === 'questions' && currentQuestion) {
++      const transition = legacyInitialObserved.current
++        ? legacyPendingTransition.current
++        : 'initial'
++      if (!transition) return
++      emitLegacyQuestionObservation({
++        transition,
++        displayedQuestionId: currentQuestion.id,
++        visibleOptionIds: currentOptions.map((option) => option.value),
++        pendingOptionIds: selectedValues,
++        legacyAnswers: answers,
++        ...(transition === 'next'
++          ? {
++              navigation: {
++                direction: 'next' as const,
++                reachedQuestionId: currentQuestion.id,
++              },
++            }
++          : transition === 'previous'
++            ? {
++                navigation: {
++                  direction: 'previous' as const,
++                  reachedQuestionId: currentQuestion.id,
++                },
++              }
++            : {}),
++      })
++      legacyInitialObserved.current = true
++      legacyPendingTransition.current = null
++      return
++    }
++    if (phase === 'results' && legacyPendingTransition.current === 'complete') {
++      emitLegacyQuestionObservation({
++        transition: 'complete',
++        legacyAnswers: answers,
++        navigation: { direction: 'next', reachedScreen: 'results' },
++        completionMarker: 'results',
++      })
++      legacyPendingTransition.current = null
++    }
++  }, [answers, currentOptions, currentQuestion, phase, selectedValues])
++
+@@ -509,0 +616,2 @@ function App() {
++    legacyPendingTransition.current = 'toggle'
++
+@@ -522,0 +631,6 @@ function App() {
++    emitLegacyQuestionObservation({
++      transition: 'submit',
++      displayedQuestionId: currentQuestion.id,
++      legacyAnswers: answers,
++    })
++
+@@ -528,0 +643 @@ function App() {
++      legacyPendingTransition.current = 'complete'
+@@ -537 +652,11 @@ function App() {
+-    const nextState = applyForcedAnswersFromStep(answers, stepIndex + 1)
++    const nextState = applyForcedAnswersFromStep(
++      answers,
++      stepIndex + 1,
++      (questionId, value, nextAnswers) => {
++        emitLegacyQuestionObservation({
++          transition: 'forced-skip',
++          legacyAnswers: nextAnswers,
++          forcedAutoAnswer: { questionId, value },
++        })
++      },
++    )
+@@ -538,0 +664 @@ function App() {
++    legacyPendingTransition.current = 'next'
+@@ -548,0 +675 @@ function App() {
++    legacyPendingTransition.current = 'previous'
+@@ -559,0 +687,2 @@ function App() {
++    legacyInitialObserved.current = false
++    legacyPendingTransition.current = null
+diff --git a/src/parity-question-extractor.test.tsx b/src/parity-question-extractor.test.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..4b5dac29df4f05fd2d68cfe088e53a6a42b1af6a
+--- /dev/null
++++ b/src/parity-question-extractor.test.tsx
+@@ -0,0 +1,271 @@
++import { lstatSync, readFileSync, writeFileSync } from 'node:fs'
++import { dirname, isAbsolute } from 'node:path'
++
++import { act, render, waitFor } from '@testing-library/react'
++import userEvent from '@testing-library/user-event'
++import { expect, test } from 'vitest'
++
++import App, {
++  registerLegacyQuestionObserver,
++  type LegacyQuestionObservation,
++} from './App'
++
++type SeedAction =
++  | { readonly type: 'select'; readonly questionId: string; readonly optionId: string }
++  | { readonly type: 'deselect'; readonly questionId: string; readonly optionId: string }
++  | { readonly type: 'continue'; readonly fromQuestionId: string }
++  | { readonly type: 'previous'; readonly fromQuestionId: string }
++
++interface SeedCase {
++  readonly id: string
++  readonly actions: readonly SeedAction[]
++}
++
++interface ObservationFrame extends LegacyQuestionObservation {
++  readonly sequence: number
++  readonly actionIndex?: number
++  readonly disabledOptionIds?: readonly string[]
++  readonly observedChanges?: {
++    readonly visibleOptionIds?: {
++      readonly questionId: string
++      readonly before: readonly string[]
++      readonly after: readonly string[]
++    }
++    readonly answers?: readonly {
++      readonly questionId: string
++      readonly before?: string | readonly string[]
++      readonly after?: string | readonly string[]
++    }[]
++  }
++}
++
++interface ExtractionCapability {
++  readonly schemaVersion: 1
++  readonly seedPath: string
++  readonly rawOutputPath: string
++  readonly token: string
++}
++
++function readStrictObject(path: string, expectedKeys: readonly string[]) {
++  const stats = lstatSync(path)
++  if (stats.isSymbolicLink() || !stats.isFile()) throw new Error('capability path must be a regular file')
++  const value = JSON.parse(readFileSync(path, 'utf8')) as unknown
++  if (!value || typeof value !== 'object' || Array.isArray(value)) {
++    throw new Error('expected a JSON object')
++  }
++  const object = value as Record<string, unknown>
++  expect(Object.keys(object).sort()).toEqual([...expectedKeys].sort())
++  return object
++}
++
++function readCapability(path: string): ExtractionCapability {
++  if (!isAbsolute(path)) throw new Error('capability path must be absolute')
++  const object = readStrictObject(path, [
++    'rawOutputPath',
++    'schemaVersion',
++    'seedPath',
++    'token',
++  ])
++  if (
++    object.schemaVersion !== 1
++    || typeof object.seedPath !== 'string'
++    || typeof object.rawOutputPath !== 'string'
++    || typeof object.token !== 'string'
++    || !isAbsolute(object.seedPath)
++    || !isAbsolute(object.rawOutputPath)
++    || !/^[a-f0-9]{32,128}$/.test(object.token)
++    || dirname(object.seedPath) !== dirname(path)
++    || dirname(object.rawOutputPath) !== dirname(path)
++  ) throw new Error('invalid extraction capability')
++  if (lstatSync(object.rawOutputPath, { throwIfNoEntry: false })) {
++    throw new Error('raw output must not already exist')
++  }
++  return object as unknown as ExtractionCapability
++}
++
++function readSeeds(path: string) {
++  const object = readStrictObject(path, ['cases', 'schemaVersion'])
++  if (object.schemaVersion !== 1 || !Array.isArray(object.cases)) {
++    throw new Error('invalid seed envelope')
++  }
++  return object.cases.map((value, index) => {
++    if (!value || typeof value !== 'object' || Array.isArray(value)) {
++      throw new Error(`seed case ${index} must be an object`)
++    }
++    const seedCase = value as Record<string, unknown>
++    expect(Object.keys(seedCase).sort()).toEqual(['actions', 'id'])
++    if (typeof seedCase.id !== 'string' || !Array.isArray(seedCase.actions)) {
++      throw new Error(`seed case ${index} is invalid`)
++    }
++    return seedCase as unknown as SeedCase
++  })
++}
++
++function answerChanges(
++  before: LegacyQuestionObservation['legacyAnswers'],
++  after: LegacyQuestionObservation['legacyAnswers'],
++) {
++  const changes: Array<{
++    questionId: string
++    before?: string | readonly string[]
++    after?: string | readonly string[]
++  }> = []
++  for (const questionId of new Set([
++    ...Object.keys(before ?? {}),
++    ...Object.keys(after ?? {}),
++  ])) {
++    const previous = before?.[questionId]
++    const next = after?.[questionId]
++    if (JSON.stringify(previous) === JSON.stringify(next)) continue
++    changes.push({
++      questionId,
++      ...(previous === undefined ? {} : { before: previous }),
++      ...(next === undefined ? {} : { after: next }),
++    })
++  }
++  return changes
++}
++
++async function extractCase(seedCase: SeedCase, seedIndex: number) {
++  const observations: ObservationFrame[] = []
++  let activeActionIndex: number | undefined
++  const unregister = registerLegacyQuestionObserver((observation) => {
++    const previous = observations.at(-1)
++    const optionControls = [
++      ...document.querySelectorAll<HTMLButtonElement>('.choice-card'),
++    ]
++    if (
++      observation.visibleOptionIds !== undefined
++      && optionControls.length !== observation.visibleOptionIds.length
++    ) {
++      throw new Error('rendered options must match the observed visible option order')
++    }
++    const disabledOptionIds = observation.visibleOptionIds?.filter(
++      (_optionId, index) => optionControls[index]?.disabled,
++    )
++    const changes = (
++      previous?.legacyAnswers !== undefined
++      && observation.legacyAnswers !== undefined
++    )
++      ? answerChanges(previous.legacyAnswers, observation.legacyAnswers)
++      : []
++    let visibleOptionIds: {
++      questionId: string
++      before: readonly string[]
++      after: readonly string[]
++    } | undefined
++    if (
++      observation.displayedQuestionId !== undefined
++      && previous?.displayedQuestionId === observation.displayedQuestionId
++      && previous.visibleOptionIds !== undefined
++      && observation.visibleOptionIds !== undefined
++      && JSON.stringify(previous.visibleOptionIds) !== JSON.stringify(observation.visibleOptionIds)
++    ) {
++      visibleOptionIds = {
++        questionId: observation.displayedQuestionId,
++        before: previous.visibleOptionIds,
++        after: observation.visibleOptionIds,
++      }
++    }
++    observations.push({
++      ...observation,
++      ...(disabledOptionIds === undefined ? {} : { disabledOptionIds }),
++      sequence: observations.length,
++      ...(observation.transition === 'initial'
++        ? {}
++        : { actionIndex: activeActionIndex }),
++      ...(visibleOptionIds || changes.length > 0
++        ? {
++            observedChanges: {
++              ...(visibleOptionIds ? { visibleOptionIds } : {}),
++              ...(changes.length > 0 ? { answers: changes } : {}),
++            },
++          }
++        : {}),
++    })
++  })
++  const user = userEvent.setup()
++  const rendered = render(<App />)
++  try {
++    const start = rendered.container.querySelector<HTMLButtonElement>(
++      '.intro-card .primary-button',
++    )
++    if (!start) throw new Error('missing public start control')
++    await act(async () => user.click(start))
++    await waitFor(() => expect(observations.at(-1)?.transition).toBe('initial'))
++
++    for (const [actionIndex, action] of seedCase.actions.entries()) {
++      activeActionIndex = actionIndex
++      const beforeCount = observations.length
++      const current = observations.at(-1)
++      if (action.type === 'select' || action.type === 'deselect') {
++        expect(current?.displayedQuestionId).toBe(action.questionId)
++        const optionIndex = current?.visibleOptionIds?.indexOf(action.optionId) ?? -1
++        if (optionIndex < 0) throw new Error(`missing public option ${action.questionId}:${action.optionId}`)
++        const option = rendered.container.querySelectorAll<HTMLButtonElement>('.choice-card')[optionIndex]
++        if (!option) throw new Error(`missing option control ${action.questionId}:${action.optionId}`)
++        if (option.disabled) throw new Error(`disabled option cannot be selected ${action.questionId}:${action.optionId}`)
++        expect(option.getAttribute('aria-pressed')).toBe(
++          action.type === 'select' ? 'false' : 'true',
++        )
++        await act(async () => user.click(option))
++        await waitFor(() => {
++          expect(observations.length).toBeGreaterThan(beforeCount)
++          expect(observations.at(-1)).toMatchObject({
++            transition: 'toggle',
++            actionIndex,
++          })
++        })
++      } else if (action.type === 'continue') {
++        expect(current?.displayedQuestionId).toBe(action.fromQuestionId)
++        const control = rendered.container.querySelector<HTMLButtonElement>(
++          '.question-actions .primary-button',
++        )
++        if (!control || control.disabled) throw new Error(`continue unavailable from ${action.fromQuestionId}`)
++        await act(async () => user.click(control))
++        await waitFor(() => {
++          const actionFrames = observations.filter((frame) => frame.actionIndex === actionIndex)
++          expect(actionFrames[0]?.transition).toBe('submit')
++          expect(['next', 'complete']).toContain(actionFrames.at(-1)?.transition)
++        })
++      } else {
++        expect(current?.displayedQuestionId).toBe(action.fromQuestionId)
++        const control = rendered.container.querySelector<HTMLButtonElement>(
++          '.question-actions .secondary-button',
++        )
++        if (!control) throw new Error(`previous unavailable from ${action.fromQuestionId}`)
++        await act(async () => user.click(control))
++        await waitFor(() => expect(observations.at(-1)).toMatchObject({
++          transition: 'previous',
++          actionIndex,
++        }))
++      }
++      activeActionIndex = undefined
++    }
++    return {
++      seedIndex,
++      id: seedCase.id,
++      actions: seedCase.actions,
++      frames: observations,
++    }
++  } finally {
++    rendered.unmount()
++    unregister()
++    window.localStorage.clear()
++  }
++}
++
++const extractionTest = process.env.RAMEN_PARITY_SEED ? test : test.skip
++
++extractionTest('writes raw observable traces from public legacy actions', async () => {
++  const capability = readCapability(process.env.RAMEN_PARITY_SEED!)
++  const seeds = readSeeds(capability.seedPath)
++  const cases = []
++  for (const [seedIndex, seedCase] of seeds.entries()) {
++    cases.push(await extractCase(seedCase, seedIndex))
++  }
++  writeFileSync(capability.rawOutputPath, `${JSON.stringify({
++    schemaVersion: 1,
++    cases,
++  })}\n`, { encoding: 'utf8', flag: 'wx', mode: 0o600 })
++})

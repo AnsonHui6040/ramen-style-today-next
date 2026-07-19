@@ -1,0 +1,47 @@
+{
+  "caseCount": 14,
+  "coverage": {
+    "activeBlockingTags": 6,
+    "allPrimaryBlockedCases": 3,
+    "alternativeBlockedCases": 7,
+    "exclusionOptions": 9,
+    "inactiveBlockingTags": 6,
+    "multiExclusionCases": 2,
+    "noOpOptionCases": 4,
+    "primaryBlockedCases": 11
+  },
+  "extractorHash": "8799d33611e7548ad791916f1241600eab087f7e8407688f6258a45b88decb18",
+  "fixtureContentHash": "b96d59285f6725dec5da2dda77776fbf877a5258b8ae5ee821fb5ca5618de1c9",
+  "legacy": {
+    "commit": "eebf00b7ddfbbe6f01ff598e57f1e17197068a37",
+    "host": "github.com",
+    "owner": "AnsonHui6040",
+    "repository": "ramen-style-today",
+    "treeHash": "3e527de876cfeccfd3154ddc492830d71c4cfd9a"
+  },
+  "orderedCaseIds": [
+    "none-noop",
+    "pork-primary-replacement",
+    "chicken-primary-replacement",
+    "duck-primary-replacement",
+    "beef-noop",
+    "fish-primary-replacement",
+    "fish-all-primary-blocked",
+    "shellfish-primary-replacement",
+    "shrimp-crab-noop",
+    "dairy-primary-replacement",
+    "pork-all-dry-primary-blocked",
+    "pork-alternative-filtering",
+    "fish-shellfish-multiple",
+    "all-restrictions-boundary"
+  ],
+  "projection": "legacy-eligibility-result-projection",
+  "schemaVersion": 1,
+  "scoringFixtureCasesHash": "7f79b5d9833d354671043f093d2d694614231195ad2fe167dbe348c50718d291",
+  "seedsHash": "7ba21d85d3bd4838a29351771301033a628bca6014aa580811a250ab9d0896f6",
+  "sourceHashes": {
+    "questions": "0136f6f71fdc0f09da8da045aa97303069631882ef2a240dd1a9fbc48a8992f2",
+    "scorer": "befc80c7d648712968a2fee74eab8825feb1d583f4e3bbd35478684c27846cfe",
+    "styles": "207293e50bae4c9459d5506b445f50a798a58439ba52c54e710b3d10ff7d09d3"
+  }
+}

@@ -4,7 +4,7 @@
 
 ## Current status
 
-Batch 1 已完成：repository 現在具備 strict TypeScript contracts、structured diagnostics、deterministic compiler shell、雙向檢查的分類索引、migration ledger validator 和 CI。所有分類內容仍是 synthetic proof inventory；正式 questions 與 flow 只會由 Batch 2A 開始遷移。
+Batch 1 已完成；Batch 2A 正在遷移正式 questions 與 pure flow runtime。八題正式定義、compiler proof、tracked artifact 與 frozen observable-transition parity corpus 已建立，但 styles、scoring、persistence 與 production runtime cutover 尚未遷移，因此目前只可作 migration 使用。
 
 舊版 production 與行為基準仍在 [`AnsonHui6040/ramen-style-today`](https://github.com/AnsonHui6040/ramen-style-today)，凍結比較基準為 commit `eebf00b`。
 
@@ -23,6 +23,8 @@ docs/                             架構、分類、決策與遷移文件
 
 - [Architecture design](docs/superpowers/specs/2026-07-11-classification-architecture-design.md)
 - [Batch 1 implementation plan](docs/superpowers/plans/2026-07-11-batch-1-compiler-foundation.md)
+- [Batch 2A question-flow specification](docs/superpowers/specs/2026-07-13-batch-2a-questions-flow-design.md)
+- [Canonical classification index](docs/classification/index.md) ([machine manifest](docs/classification/manifest.json), [change map](docs/classification/change-map.md))
 - [Legacy baseline](docs/migration/baseline.md)
 - [Migration ledger](docs/migration/ledger.md) ([machine source](docs/migration/ledger.json))
 - [Repository rules](AGENTS.md)

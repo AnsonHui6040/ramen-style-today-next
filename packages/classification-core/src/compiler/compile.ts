@@ -1,27 +1,29 @@
 import { createHash } from 'node:crypto'
 
-import type { Diagnostic } from '../contracts/diagnostic.js'
+import { deepFreeze } from '../contracts/deep-freeze.js'
+import { compareDiagnostics, type Diagnostic } from '../contracts/diagnostic.js'
 import type {
   ClassificationModel,
   ConceptKey,
   ConceptRecord,
 } from '../contracts/model.js'
+import type {
+  CompiledQuestion,
+  QuestionDefinitionSource,
+} from '../contracts/question-model.js'
 import { compareCodePoints } from '../contracts/source-path.js'
 import { DiagnosticCollector } from './collector.js'
+import { compileEligibilityPolicy } from './eligibility-policy/compile.js'
 import { parseDefinitionBundle } from './parse.js'
+import { compileQuestions } from './questions/compile.js'
+import { extractConditionReferences } from './questions/dependencies.js'
 import { stableJson } from './stable-json.js'
+import { compileScoringPolicy } from './scoring-policy/compile.js'
+import { compileStyles } from './styles/compile.js'
 
 export type CompileResult =
   | { ok: true; model: ClassificationModel; diagnostics: readonly Diagnostic[] }
   | { ok: false; diagnostics: readonly Diagnostic[] }
-
-function deepFreeze<T>(value: T): T {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value)
-    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child)
-  }
-  return value
-}
 
 function duplicateValues(values: readonly string[]) {
   const seen = new Set<string>()
@@ -33,71 +35,44 @@ function duplicateValues(values: readonly string[]) {
   return [...duplicates].sort(compareCodePoints)
 }
 
-function flowHasCycle(questions: readonly { id: string; dependsOn: readonly string[] }[]) {
-  const graph = new Map(questions.map((question) => [question.id, question.dependsOn]))
-  const visiting = new Set<string>()
-  const visited = new Set<string>()
-  const visit = (id: string): boolean => {
-    if (visiting.has(id)) return true
-    if (visited.has(id)) return false
-    visiting.add(id)
-    for (const dependency of graph.get(id) ?? []) {
-      if (graph.has(dependency) && visit(dependency)) return true
-    }
-    visiting.delete(id)
-    visited.add(id)
-    return false
-  }
-  return [...graph.keys()].some(visit)
-}
-
 function inventoryKey(kind: ConceptRecord['kind'], id: string): ConceptKey {
   return `${kind}/${id}`
 }
 
-function buildInventory(definition: NonNullable<ReturnType<typeof parseDefinitionBundle>['definition']>) {
+function optionIdentity(questionId: string, optionId: string) {
+  return `${questionId}:${optionId}`
+}
+
+type ParsedDefinition = NonNullable<ReturnType<typeof parseDefinitionBundle>['definition']>
+
+function buildInventory(
+  definition: ParsedDefinition,
+  questions: readonly CompiledQuestion[],
+  styleModel: ClassificationModel['styleModel'],
+  sourceFile: string,
+) {
   const records: ConceptRecord[] = []
-  for (const question of definition.questions) {
+  for (const question of questions) {
     records.push({
       key: inventoryKey('question', question.id),
       kind: 'question',
       id: question.id,
-      sourceFile: question.sourceFile,
-      messageIds: [question.messageId],
+      sourceFile,
+      messageIds: [question.messageIds.title, question.messageIds.description],
     })
     for (const option of question.options) {
       records.push({
-        key: inventoryKey('option', option.id),
+        key: inventoryKey('option', optionIdentity(question.id, option.id)),
         kind: 'option',
         id: option.id,
-        sourceFile: question.sourceFile,
-        messageIds: [option.messageId],
+        ownerQuestionId: question.id,
+        sourceFile,
+        messageIds: [option.messageIds.label, option.messageIds.description]
+          .filter((messageId): messageId is string => messageId !== undefined),
       })
     }
   }
-  for (const style of definition.styles) {
-    records.push({
-      key: inventoryKey('style', style.id),
-      kind: 'style',
-      id: style.id,
-      sourceFile: style.sourceFile,
-      messageIds: [style.messageId],
-    })
-    for (const intensity of style.intensities) records.push({
-      key: inventoryKey('intensity', `${style.id}:${intensity}`),
-      kind: 'intensity',
-      id: `${style.id}:${intensity}`,
-      sourceFile: style.sourceFile,
-      messageIds: [],
-    })
-    for (const noodle of style.noodles) records.push({
-      key: inventoryKey('noodle', `${style.id}:${noodle}`),
-      kind: 'noodle',
-      id: `${style.id}:${noodle}`,
-      sourceFile: style.sourceFile,
-      messageIds: [],
-    })
-  }
+  records.push(...styleModel.inventory)
   records.push({
     key: 'policy/default',
     kind: 'policy',
@@ -105,7 +80,44 @@ function buildInventory(definition: NonNullable<ReturnType<typeof parseDefinitio
     sourceFile: definition.policy.sourceFile,
     messageIds: [],
   })
+  records.push({
+    key: 'policy/eligibility',
+    kind: 'policy',
+    id: 'eligibility',
+    sourceFile: definition.eligibilityPolicy.sourceFile,
+    messageIds: [],
+  })
   return records.sort((left, right) => compareCodePoints(left.key, right.key))
+}
+
+function classificationDataProjection(
+  definition: ParsedDefinition,
+  questionModel: ReturnType<typeof compileQuestions> & { readonly ok: true },
+  styleModel: ReturnType<typeof compileStyles> & { readonly ok: true },
+  policy: ReturnType<typeof compileScoringPolicy> & { readonly ok: true },
+  eligibilityPolicy: ReturnType<typeof compileEligibilityPolicy> & { readonly ok: true },
+) {
+  return {
+    modelVersion: definition.modelVersion,
+    questionModel: {
+      modelVersion: questionModel.model.metadata.modelVersion,
+      sourceHash: questionModel.model.metadata.sourceHash,
+      semanticHash: questionModel.model.metadata.semanticHash,
+    },
+    styleModel: {
+      modelVersion: styleModel.model.metadata.modelVersion,
+      semanticHash: styleModel.model.metadata.semanticHash,
+      dataVersion: styleModel.model.metadata.dataVersion,
+    },
+    scoringPolicy: {
+      semanticHash: policy.model.metadata.semanticHash,
+      dataVersion: policy.model.metadata.dataVersion,
+    },
+    eligibilityPolicy: {
+      semanticHash: eligibilityPolicy.model.metadata.semanticHash,
+      dataVersion: eligibilityPolicy.model.metadata.dataVersion,
+    },
+  }
 }
 
 export function compileClassification(input: unknown, sourceFile: string): CompileResult {
@@ -113,57 +125,87 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
   if (!parsed.definition) return { ok: false, diagnostics: parsed.diagnostics }
 
   const definition = parsed.definition
+  const questionCompilation = compileQuestions(
+    definition.questions as readonly QuestionDefinitionSource[],
+  )
   const collector = new DiagnosticCollector()
   for (const id of duplicateValues(definition.questions.map((item) => item.id))) {
     collector.error({ code: 'QUESTION_DUPLICATE_ID', sourceFile, path: '/questions', entityId: id, message: `Duplicate question ${id}` })
   }
-  const optionIds = definition.questions.flatMap((question) => question.options.map((item) => item.id))
-  for (const id of duplicateValues(optionIds)) {
-    collector.error({ code: 'OPTION_DUPLICATE_ID', sourceFile, path: '/questions', entityId: id, message: `Duplicate option ${id}` })
-  }
-  for (const id of duplicateValues(definition.styles.map((item) => item.id))) {
-    collector.error({ code: 'STYLE_DUPLICATE_ID', sourceFile, path: '/styles', entityId: id, message: `Duplicate style ${id}` })
-  }
-
-  const questionIds = new Set(definition.questions.map((item) => item.id))
-  const optionIdSet = new Set(optionIds)
-  for (const [index, question] of definition.questions.entries()) {
-    for (const [dependencyIndex, dependency] of question.dependsOn.entries()) {
-      if (!questionIds.has(dependency)) collector.error({
-        code: 'REFERENCE_UNKNOWN',
-        sourceFile: question.sourceFile,
-        path: `/questions/${index}/dependsOn/${dependencyIndex}`,
-        entityId: question.id,
-        message: `Unknown question dependency ${dependency}`,
+  for (const [questionIndex, question] of definition.questions.entries()) {
+    for (const id of duplicateValues(question.options.map((item) => item.id))) {
+      const identity = optionIdentity(question.id, id)
+      collector.error({
+        code: 'OPTION_DUPLICATE_ID',
+        sourceFile,
+        path: `/questions/${questionIndex}/options`,
+        entityId: identity,
+        message: `Duplicate option ${identity}`,
       })
     }
   }
-  for (const [index, style] of definition.styles.entries()) {
-    if (!optionIdSet.has(style.familyOptionId)) collector.error({
+  const questionIds = new Set(definition.questions.map((item) => item.id))
+  for (const reference of extractConditionReferences(definition.questions)) {
+    if (!questionIds.has(reference.referencedQuestionId)) collector.error({
       code: 'REFERENCE_UNKNOWN',
-      sourceFile: style.sourceFile,
-      path: `/styles/${index}/familyOptionId`,
-      entityId: style.id,
-      message: `Unknown family option ${style.familyOptionId}`,
+      sourceFile,
+      path: reference.path,
+      entityId: reference.ownerQuestionId,
+      message: `Unknown question dependency ${reference.referencedQuestionId}`,
     })
   }
-  if (flowHasCycle(definition.questions)) collector.error({
-    code: 'FLOW_CYCLE',
-    sourceFile,
-    path: '/questions',
-    message: 'Question dependency graph contains a cycle',
-  })
-  const totalWeight = definition.questions.reduce((sum, question) => sum + question.weight, 0)
-  if (totalWeight !== 100) collector.error({
-    code: 'POLICY_WEIGHT_TOTAL',
-    sourceFile: definition.policy.sourceFile,
-    path: '/questions',
-    message: `Question weights total ${totalWeight}, expected 100`,
-    expected: 100,
-    received: totalWeight,
-  })
+  const questionDiagnostics = [
+    ...collector.toArray(),
+    ...questionCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (!questionCompilation.ok) {
+    return { ok: false, diagnostics: questionDiagnostics }
+  }
 
-  const inventory = buildInventory(definition)
+  const styleCompilation = compileStyles(
+    definition.styles,
+    questionCompilation.model,
+    definition.styles.sourceFile,
+  )
+  const styleDiagnostics = [
+    ...questionDiagnostics,
+    ...styleCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (!styleCompilation.ok) return { ok: false, diagnostics: styleDiagnostics }
+
+  const policyCompilation = compileScoringPolicy(
+    definition.policy,
+    questionCompilation.model,
+    styleCompilation.model,
+    definition.modelVersion,
+  )
+  const policyDiagnostics = [
+    ...styleDiagnostics,
+    ...policyCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (!policyCompilation.ok) return { ok: false, diagnostics: policyDiagnostics }
+
+  const eligibilityCompilation = compileEligibilityPolicy(
+    definition.eligibilityPolicy,
+    questionCompilation.model,
+    styleCompilation.model,
+    policyCompilation.model,
+    definition.modelVersion,
+  )
+  const eligibilityDiagnostics = [
+    ...policyDiagnostics,
+    ...eligibilityCompilation.diagnostics,
+  ].sort(compareDiagnostics)
+  if (!eligibilityCompilation.ok) {
+    return { ok: false, diagnostics: eligibilityDiagnostics }
+  }
+
+  const inventory = buildInventory(
+    definition,
+    questionCompilation.model.questions,
+    styleCompilation.model,
+    sourceFile,
+  )
   for (const key of duplicateValues(inventory.map((item) => item.key))) {
     collector.error({
       code: 'CONCEPT_DUPLICATE_KEY',
@@ -173,17 +215,45 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
       message: `Duplicate concept key ${key}`,
     })
   }
-
-  const diagnostics = collector.toArray()
+  const diagnostics = [
+    ...collector.toArray(),
+    ...questionCompilation.diagnostics,
+    ...styleCompilation.diagnostics,
+    ...policyCompilation.diagnostics,
+    ...eligibilityCompilation.diagnostics,
+  ].sort(compareDiagnostics)
   if (collector.hasErrors()) return { ok: false, diagnostics }
-  const dataVersion = createHash('sha256').update(stableJson(definition)).digest('hex')
+
+  const dataVersion = createHash('sha256').update(stableJson(
+    classificationDataProjection(
+      definition,
+      questionCompilation,
+      styleCompilation,
+      policyCompilation,
+      eligibilityCompilation,
+    ),
+  )).digest('hex')
+  const styleMetadata = styleCompilation.model.metadata
   const model = deepFreeze({
-    mode: definition.mode,
     modelVersion: definition.modelVersion,
     dataVersion,
-    questions: definition.questions,
-    styles: definition.styles,
-    policy: definition.policy,
+    provenance: {
+      questions: definition.provenance.questions,
+      styles: {
+        origin: definition.provenance.styles.origin,
+        modelVersion: styleMetadata.modelVersion,
+        sourceHash: styleMetadata.sourceHash,
+        semanticHash: styleMetadata.semanticHash,
+        dataVersion: styleMetadata.dataVersion,
+      },
+      scoringPolicy: definition.provenance.scoringPolicy,
+      eligibilityPolicy: definition.provenance.eligibilityPolicy,
+    },
+    questionModel: questionCompilation.model,
+    questions: questionCompilation.model.questions,
+    styleModel: styleCompilation.model,
+    policy: policyCompilation.model,
+    eligibilityPolicy: eligibilityCompilation.model,
     inventory,
   } satisfies ClassificationModel)
   return { ok: true, model, diagnostics }

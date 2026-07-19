@@ -22,6 +22,9 @@ export class DiagnosticCollector {
   }
 
   toArray(): readonly Diagnostic[] {
-    return Object.freeze([...this.#items].sort(compareDiagnostics))
+    const sorted = [...this.#items].sort(compareDiagnostics)
+    return Object.freeze(sorted.filter((item, index) => (
+      index === 0 || compareDiagnostics(sorted[index - 1]!, item) !== 0
+    )))
   }
 }

@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   lstatSync,
   mkdirSync,
@@ -11,9 +11,17 @@ import {
 import { basename, dirname, relative, resolve } from 'node:path'
 
 import {
-  authenticateLedgerRemoteCiEvidence,
   checkLedger,
+  checkLedgerOffline,
+  collectGitChangedPaths,
 } from './ledger-check.js'
+import {
+  migrationLedgerSchema,
+  eligibilityFixtureManifestPath,
+  persistenceFixtureManifestPath,
+  scoringFixtureManifestPath,
+  styleFixtureManifestPath,
+} from './ledger-schema.js'
 import { recordSuccessfulCiFile } from './record-ci.js'
 
 const repoRoot = resolve(import.meta.dirname, '../..')
@@ -42,6 +50,211 @@ function isCommitAncestor(evidenceSha: string, currentHeadSha: string) {
     { cwd: repoRoot, encoding: 'utf8' },
   )
   return ancestor.status === 0
+}
+
+function directParentsOf(commitSha: string) {
+  const exists = spawnSync(
+    'git',
+    ['cat-file', '-e', `${commitSha}^{commit}`],
+    { cwd: repoRoot, encoding: 'utf8' },
+  )
+  if (exists.status !== 0) return []
+  const output = execFileSync(
+    'git',
+    ['show', '--no-patch', '--format=%P', commitSha],
+    { cwd: repoRoot, encoding: 'utf8' },
+  ).trim()
+  return output ? output.split(' ') : []
+}
+
+function sha256File(file: string) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex')
+}
+
+function readGeneratedQuestionIdentity(
+  generatedQuestionModel: string,
+  key: 'modelVersion' | 'semanticHash',
+) {
+  const matches = [...generatedQuestionModel.matchAll(
+    new RegExp(`"${key}": "([^"]+)"`, 'g'),
+  )]
+  if (matches.length !== 1) {
+    throw new Error(`generated question model must contain exactly one ${key}`)
+  }
+  return matches[0]![1]!
+}
+
+function readBatch2AIdentities(includeProtectedBaseline: boolean) {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    provenance?: {
+      questions?: {
+        fixtureManifestHash?: unknown
+        semanticHash?: unknown
+      }
+    }
+  }
+  const questions = manifest.provenance?.questions
+  if (typeof questions?.semanticHash !== 'string'
+    || typeof questions.fixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing question identity hashes')
+  }
+  const fixtureManifestPath = resolve(
+    repoRoot,
+    'tools/parity/fixtures/questions/legacy-v1/manifest.json',
+  )
+  const generatedQuestionModelPath = resolve(
+    repoRoot,
+    'packages/classification-core/src/generated/question-model.ts',
+  )
+  const generatedQuestionModel = readFileSync(
+    generatedQuestionModelPath,
+    'utf8',
+  )
+  const semanticHash = readGeneratedQuestionIdentity(generatedQuestionModel, 'semanticHash')
+  const base = {
+    questionSemanticHash: semanticHash,
+    classificationSemanticHash: questions.semanticHash,
+    fixtureManifestHash: sha256File(fixtureManifestPath),
+    classificationFixtureManifestHash: questions.fixtureManifestHash,
+  }
+  if (!includeProtectedBaseline) return base
+
+  const fixtureManifest = JSON.parse(readFileSync(
+    fixtureManifestPath,
+    'utf8',
+  )) as {
+    fixtureContentHash?: unknown
+    instrumentation?: { hash?: unknown }
+    source?: { commit?: unknown; treeHash?: unknown }
+  }
+  if (typeof fixtureManifest.fixtureContentHash !== 'string'
+    || typeof fixtureManifest.instrumentation?.hash !== 'string'
+    || typeof fixtureManifest.source?.commit !== 'string'
+    || typeof fixtureManifest.source.treeHash !== 'string') {
+    throw new Error('question fixture manifest is missing protected identity fields')
+  }
+  const casesHash = sha256File(resolve(
+    repoRoot,
+    'tools/parity/fixtures/questions/legacy-v1/cases.json',
+  ))
+  const instrumentationHash = sha256File(resolve(
+    repoRoot,
+    'tools/parity/questions/legacy-instrumentation.patch',
+  ))
+  if (fixtureManifest.fixtureContentHash !== casesHash) {
+    throw new Error('question fixture content hash is inconsistent with cases bytes')
+  }
+  if (fixtureManifest.instrumentation.hash !== instrumentationHash) {
+    throw new Error('question fixture instrumentation hash is inconsistent')
+  }
+  return {
+    ...base,
+    questionBaseline: {
+      modelVersion: readGeneratedQuestionIdentity(generatedQuestionModel, 'modelVersion'),
+      semanticHash,
+      generatedArtifactHash: sha256File(generatedQuestionModelPath),
+      casesHash,
+      fixtureContentHash: fixtureManifest.fixtureContentHash,
+      seedsHash: sha256File(resolve(repoRoot, 'tools/parity/questions/seeds.json')),
+      instrumentationHash,
+      sourceCommit: fixtureManifest.source.commit,
+      sourceTreeHash: fixtureManifest.source.treeHash,
+    },
+  }
+}
+
+function readBatch2BIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    persistence?: { fixtureManifestHash?: unknown }
+  }
+  const classificationFixtureManifestHash = manifest.persistence?.fixtureManifestHash
+  if (typeof classificationFixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing persistence fixture identity')
+  }
+  const fixtureManifest = JSON.parse(readFileSync(
+    resolve(repoRoot, persistenceFixtureManifestPath),
+    'utf8',
+  )) as {
+    casesHash?: unknown
+    extractor?: { hash?: unknown }
+  }
+  if (typeof fixtureManifest.casesHash !== 'string'
+    || typeof fixtureManifest.extractor?.hash !== 'string') {
+    throw new Error('persistence fixture manifest is missing identity fields')
+  }
+
+  return {
+    persistenceFixtureManifestHash: sha256File(resolve(
+      repoRoot,
+      persistenceFixtureManifestPath,
+    )),
+    classificationPersistenceFixtureManifestHash: classificationFixtureManifestHash,
+    persistenceFixtureCasesHash: fixtureManifest.casesHash,
+    persistenceFixtureExtractorHash: fixtureManifest.extractor.hash,
+  }
+}
+
+function readBatch3AIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    provenance?: { styles?: { fixtureManifestHash?: unknown } }
+  }
+  const classificationStyleFixtureManifestHash =
+    manifest.provenance?.styles?.fixtureManifestHash
+  if (typeof classificationStyleFixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing style fixture identity')
+  }
+  return {
+    styleFixtureManifestHash: sha256File(resolve(repoRoot, styleFixtureManifestPath)),
+    classificationStyleFixtureManifestHash,
+  }
+}
+
+function readBatch3BIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    provenance?: { scoringPolicy?: { fixtureManifestHash?: unknown } }
+  }
+  const classificationScoringFixtureManifestHash =
+    manifest.provenance?.scoringPolicy?.fixtureManifestHash
+  if (typeof classificationScoringFixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing scoring fixture identity')
+  }
+  return {
+    scoringFixtureManifestHash: sha256File(resolve(repoRoot, scoringFixtureManifestPath)),
+    classificationScoringFixtureManifestHash,
+  }
+}
+
+function readBatch3CIdentities() {
+  const manifest = JSON.parse(readFileSync(
+    resolve(repoRoot, 'docs/classification/manifest.json'),
+    'utf8',
+  )) as {
+    provenance?: { eligibilityPolicy?: { fixtureManifestHash?: unknown } }
+  }
+  const classificationEligibilityFixtureManifestHash =
+    manifest.provenance?.eligibilityPolicy?.fixtureManifestHash
+  if (typeof classificationEligibilityFixtureManifestHash !== 'string') {
+    throw new Error('classification manifest is missing eligibility fixture identity')
+  }
+  return {
+    eligibilityFixtureManifestHash: sha256File(resolve(
+      repoRoot,
+      eligibilityFixtureManifestPath,
+    )),
+    classificationEligibilityFixtureManifestHash,
+  }
 }
 
 function pathExists(path: string) {
@@ -161,6 +374,7 @@ async function run() {
       batch,
       expectedCandidateSha,
       fetchImplementation: globalThis.fetch,
+      githubToken: process.env.GITHUB_TOKEN,
       proofInput: proof,
       repoRoot,
       sourceFile,
@@ -183,32 +397,64 @@ async function run() {
       ? (assertRegularFile(outputFile, 'ledger Markdown output'), readFileSync(outputFile, 'utf8'))
       : ''
     : undefined
-  const result = checkLedger({
+  const baseResult = checkLedger({
     input,
     repoFiles,
     existingFiles,
     repoDirectories,
     currentMarkdown,
   })
-  if (!result.ok || result.markdown === undefined) {
-    for (const error of result.errors) console.error(`LEDGER_INVALID ${error}`)
-    process.exitCode = 1
-    return
-  }
-
-  if (mode === '--check') {
+  let result = baseResult
+  if (mode === '--check' && baseResult.ok) {
+    const parsedLedger = migrationLedgerSchema.parse(input)
+    const batch2AEntry = parsedLedger.entries.find(({ batch }) => batch === '2A')
+    const batch2BEntry = parsedLedger.entries.find(({ batch }) => batch === '2B')
+    const batch3AEntry = parsedLedger.entries.find(({ batch }) => batch === '3A')
+    const batch3BEntry = parsedLedger.entries.find(({ batch }) => batch === '3B')
+    const batch3CEntry = parsedLedger.entries.find(({ batch }) => batch === '3C')
+    const batch2AIdentities = batch2AEntry
+      ? readBatch2AIdentities(batch2AEntry.maintenance !== undefined)
+      : {
+          questionSemanticHash: '',
+          classificationSemanticHash: '',
+          fixtureManifestHash: '',
+          classificationFixtureManifestHash: '',
+        }
     const currentHeadSha = execFileSync(
       'git',
       ['rev-parse', 'HEAD'],
       { cwd: repoRoot, encoding: 'utf8' },
     ).trim()
-    await authenticateLedgerRemoteCiEvidence(
-      input,
+    result = await checkLedgerOffline(input, {
+      repoFiles,
+      existingFiles,
+      repoDirectories,
+      currentMarkdown,
       currentHeadSha,
-      globalThis.fetch,
       isCommitAncestor,
-      process.env.GITHUB_TOKEN,
-    )
+      directParentsOf,
+      changedPathsBetween: (implementationSha, headSha) => collectGitChangedPaths(
+        repoRoot,
+        implementationSha,
+        headSha,
+      ),
+      committedChangedPathsBetween: (implementationSha, headSha) => collectGitChangedPaths(
+        repoRoot,
+        implementationSha,
+        headSha,
+        false,
+      ),
+      ...batch2AIdentities,
+      ...(batch2BEntry ? readBatch2BIdentities() : {}),
+      ...(batch3AEntry ? readBatch3AIdentities() : {}),
+      ...(batch3BEntry ? readBatch3BIdentities() : {}),
+      ...(batch3CEntry ? readBatch3CIdentities() : {}),
+    })
+  }
+  if (!result.ok || result.markdown === undefined) {
+    for (const error of result.errors) console.error(`LEDGER_INVALID ${error}`)
+    process.exitCode = 1
+    return
   }
 
   if (mode === '--write') {

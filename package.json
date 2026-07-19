@@ -7,20 +7,40 @@
     "node": ">=24"
   },
   "workspaces": [
+    "apps/*",
     "packages/*"
   ],
   "scripts": {
     "classification:index": "tsx tools/documentation/generate-classification-index.ts --write",
     "classification:index:check": "tsx tools/documentation/generate-classification-index.ts --check",
+    "classification-model:check": "tsx tools/scoring/generate-classification-model.ts --check",
+    "classification-model:generate": "tsx tools/scoring/generate-classification-model.ts --write",
     "classification:validate": "tsx tools/validation/validate-classification.ts",
+    "dev": "npm run dev --workspace @ramen-style/web",
     "lint": "eslint . --max-warnings=0",
     "migration:ledger": "tsx tools/migration/check-ledger.ts --write",
     "migration:ledger:check": "tsx tools/migration/check-ledger.ts --check",
     "migration:ledger:record-ci": "tsx tools/migration/check-ledger.ts --record-ci",
+    "parity:persistence": "tsx tools/parity/persistence/verify-fixtures.ts",
+    "parity:persistence:extract": "tsx tools/parity/persistence/extract.ts",
+    "parity:questions": "tsx tools/parity/questions/parity.ts",
+    "parity:scoring": "tsx tools/parity/scoring/parity.ts",
+    "parity:scoring:extract": "tsx tools/parity/scoring/extract.ts",
+    "parity:eligibility": "tsx tools/parity/eligibility/parity.ts",
+    "parity:eligibility:extract": "tsx tools/parity/eligibility/extract.ts",
+    "parity:styles": "tsx tools/parity/styles/parity.ts",
+    "questions:check": "tsx tools/questions/generate-question-model.ts --check",
+    "questions:generate": "tsx tools/questions/generate-question-model.ts --write",
+    "runtime:imports:check": "tsx tools/validation/check-runtime-imports.ts",
+    "styles:check": "tsx tools/styles/generate-style-model.ts --check",
+    "styles:generate": "tsx tools/styles/generate-style-model.ts --write",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
-    "build": "tsc -b packages/classification-core",
-    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run classification:index:check && npm run migration:ledger:check"
+    "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
+    "build": "tsc -b packages/classification-core && npm run build --workspace @ramen-style/web",
+    "test:web": "vitest run apps/web/src",
+    "test:browser": "playwright test --config apps/web/playwright.config.ts",
+    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run questions:check && npm run styles:check && npm run classification-model:check && npm run runtime:imports:check && npm run parity:questions && npm run parity:persistence && npm run parity:styles && npm run parity:scoring && npm run parity:eligibility && npm run classification:index:check && npm run migration:ledger:check",
+    "verify:acceptance": "npm run verify && tsx tools/acceptance/verify-acceptance.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

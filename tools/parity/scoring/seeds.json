@@ -1,0 +1,865 @@
+{
+  "cases": [
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-shoyu-chintan"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shio"
+        ]
+      },
+      "id": "style-top-shio-chintan"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "paitan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thick-wavy"
+        ],
+        "signature": [
+          "corn-butter"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "miso"
+        ]
+      },
+      "id": "style-top-miso"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "light"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "nori-spinach"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-tonkotsu"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-chicken-chintan"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "paitan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thin-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "chicken"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-chicken-paitan"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "duck"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-duck-chintan"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "paitan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "duck"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-duck-paitan"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thin-straight"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "fish-seafood"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-gyokai"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "shellfish"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-shellfish-dashi"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "paitan"
+        ],
+        "body": [
+          "backfat-heavy"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thick-straight"
+        ],
+        "signature": [
+          "nori-spinach"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-iekei"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "paitan"
+        ],
+        "body": [
+          "ultra-heavy"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "extra-thick"
+        ],
+        "signature": [
+          "bean-sprout-garlic-backfat"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-jiro"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "paitan"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "thin-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "none"
+        ]
+      },
+      "id": "style-top-hakata"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "rich"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thick-wavy"
+        ],
+        "signature": [
+          "corn-butter"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "miso"
+        ]
+      },
+      "id": "style-top-sapporo"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "konbusui-light"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "tsukemen"
+        ],
+        "noodle": [
+          "medium-thick-straight"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "fish-seafood"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-konbusui-tsukemen"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "gyokai-rich"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "tsukemen"
+        ],
+        "noodle": [
+          "medium-thick-straight"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "fish-seafood"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-gyokai-tsukemen"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "aburasoba"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "dry"
+        ],
+        "noodle": [
+          "medium-thick-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "style-top-aburasoba"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "taiwan-mazesoba"
+        ],
+        "body": [
+          "ultra-heavy"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "dry"
+        ],
+        "noodle": [
+          "extra-thick"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "spicy-sesame"
+        ]
+      },
+      "id": "style-top-taiwan-mazesoba"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "light"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thin-straight"
+        ],
+        "signature": [
+          "yuzu-citrus"
+        ],
+        "source": [
+          "duck",
+          "shellfish"
+        ],
+        "tare": [
+          "shio"
+        ]
+      },
+      "id": "legacy-native-duck-shellfish"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "konbusui-light"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "tsukemen"
+        ],
+        "noodle": [
+          "medium-thick-straight"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "fish-seafood",
+          "shellfish"
+        ],
+        "tare": [
+          "shio"
+        ]
+      },
+      "id": "legacy-native-konbusui"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "paitan"
+        ],
+        "body": [
+          "ultra-heavy"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "extra-thick"
+        ],
+        "signature": [
+          "bean-sprout-garlic-backfat",
+          "yuzu-citrus"
+        ],
+        "source": [
+          "duck",
+          "shellfish"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "boundary-conflict-cap"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "taiwan-mazesoba"
+        ],
+        "body": [
+          "ultra-heavy"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "dry"
+        ],
+        "noodle": [
+          "extra-thick"
+        ],
+        "signature": [
+          "fish-kombu"
+        ],
+        "source": [
+          "pork"
+        ],
+        "tare": [
+          "none"
+        ]
+      },
+      "id": "boundary-taiwan-plain-conflict"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "tsukemen-other"
+        ],
+        "body": [
+          "light"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "tsukemen"
+        ],
+        "noodle": [
+          "medium-thin-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "unsure"
+        ],
+        "tare": [
+          "none"
+        ]
+      },
+      "id": "boundary-low-confidence"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "dry-other"
+        ],
+        "body": [
+          "balanced"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "dry"
+        ],
+        "noodle": [
+          "medium-thick-straight"
+        ],
+        "signature": [
+          "no-preference"
+        ],
+        "source": [
+          "mixed"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "coverage-adjacent-mixed"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "chintan"
+        ],
+        "body": [
+          "rich"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "medium-thick-wavy"
+        ],
+        "signature": [
+          "corn-butter"
+        ],
+        "source": [
+          "vegetable"
+        ],
+        "tare": [
+          "miso"
+        ]
+      },
+      "id": "coverage-adjacent-vegetable"
+    },
+    {
+      "answers": {
+        "archetype": [
+          "paitan"
+        ],
+        "body": [
+          "light"
+        ],
+        "exclusions": [
+          "none"
+        ],
+        "form": [
+          "soup"
+        ],
+        "noodle": [
+          "extra-thick"
+        ],
+        "signature": [
+          "bean-sprout-garlic-backfat"
+        ],
+        "source": [
+          "duck",
+          "shellfish"
+        ],
+        "tare": [
+          "shoyu"
+        ]
+      },
+      "id": "coverage-jiro-duck-shellfish"
+    }
+  ],
+  "projection": "legacy-scoring-result-projection",
+  "required": {
+    "bonusIds": [
+      "classic-shoyu",
+      "classic-shio",
+      "miso-sapporo-lane",
+      "tonkotsu-core",
+      "chicken-clear",
+      "chicken-paitan-core",
+      "duck-clear",
+      "duck-paitan-core",
+      "gyokai-soup-core",
+      "shellfish-clear",
+      "iekei-canonical",
+      "jiro-canonical",
+      "hakata-canonical",
+      "sapporo-canonical",
+      "konbusui-canonical",
+      "gyokai-tsukemen-canonical",
+      "aburasoba-canonical",
+      "taiwan-mazesoba-canonical"
+    ],
+    "bonusStates": "active-and-inactive",
+    "boundaryIds": [
+      "arithmetic-reconstruction",
+      "bonus-cap-reached",
+      "bonus-cap-truncation",
+      "confidence-threshold",
+      "equal-core",
+      "equal-style",
+      "maximum-confidence",
+      "maximum-score",
+      "low-confidence-gap",
+      "penalty-cap-reached",
+      "penalty-cap-truncation",
+      "primary-limit",
+      "alternative-limit",
+      "score-floor-reached",
+      "score-floor-contract",
+      "subtype-all-noodles"
+    ],
+    "conflictIds": [
+      "shio-light-conflict",
+      "duck-clear-jiro",
+      "shellfish-jiro",
+      "iekei-hakata-thin",
+      "jiro-yuzu",
+      "jiro-duck-shellfish",
+      "taiwan-mazesoba-plain"
+    ],
+    "conflictStates": "active-and-inactive",
+    "ownership": {
+      "adjustments": "legacyObserved",
+      "compiledContractBoundaryIds": [
+        "bonus-cap-truncation",
+        "penalty-cap-truncation",
+        "score-floor-contract"
+      ],
+      "confidence": "legacyObserved",
+      "legacyObservedBoundaryIds": [
+        "arithmetic-reconstruction",
+        "bonus-cap-reached",
+        "confidence-threshold",
+        "equal-core",
+        "equal-style",
+        "maximum-confidence",
+        "maximum-score",
+        "low-confidence-gap",
+        "penalty-cap-reached",
+        "primary-limit",
+        "alternative-limit",
+        "score-floor-reached",
+        "subtype-all-noodles"
+      ],
+      "ranking": "legacyObserved",
+      "ruleTiers": "legacyObserved",
+      "styleTops": "legacyObserved",
+      "subtype": "legacyObserved"
+    },
+    "ruleTierCoverage": "all-declared-rules-and-tiers",
+    "styleTopIds": [
+      "shoyu-chintan",
+      "shio-chintan",
+      "miso",
+      "tonkotsu",
+      "chicken-chintan",
+      "chicken-paitan",
+      "duck-chintan",
+      "duck-paitan",
+      "gyokai",
+      "shellfish-dashi",
+      "iekei",
+      "jiro",
+      "hakata",
+      "sapporo",
+      "konbusui-tsukemen",
+      "gyokai-tsukemen",
+      "aburasoba",
+      "taiwan-mazesoba"
+    ]
+  },
+  "schemaVersion": 1
+}

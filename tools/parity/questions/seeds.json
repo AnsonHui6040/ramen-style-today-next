@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "branch-switch-back",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "soup" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "previous", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "form", "optionId": "dry" },
+        { "type": "continue", "fromQuestionId": "form" }
+      ]
+    },
+    {
+      "id": "soup-paitan-complete",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "tsukemen" },
+        { "type": "select", "questionId": "form", "optionId": "dry" },
+        { "type": "select", "questionId": "form", "optionId": "soup" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "chintan" },
+        { "type": "select", "questionId": "archetype", "optionId": "paitan" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "tare", "optionId": "miso" },
+        { "type": "select", "questionId": "tare", "optionId": "shoyu" },
+        { "type": "continue", "fromQuestionId": "tare" },
+        { "type": "select", "questionId": "source", "optionId": "unsure" },
+        { "type": "select", "questionId": "source", "optionId": "pork" },
+        { "type": "select", "questionId": "source", "optionId": "chicken" },
+        { "type": "deselect", "questionId": "source", "optionId": "chicken" },
+        { "type": "select", "questionId": "source", "optionId": "fish-seafood" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "rich" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "medium-thick-straight" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "no-preference" },
+        { "type": "select", "questionId": "signature", "optionId": "nori-spinach" },
+        { "type": "continue", "fromQuestionId": "signature" },
+        { "type": "select", "questionId": "exclusions", "optionId": "pork" },
+        { "type": "deselect", "questionId": "exclusions", "optionId": "pork" },
+        { "type": "continue", "fromQuestionId": "exclusions" }
+      ]
+    },
+    {
+      "id": "soup-chintan-options",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "soup" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "chintan" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "tare", "optionId": "shio" },
+        { "type": "continue", "fromQuestionId": "tare" },
+        { "type": "select", "questionId": "source", "optionId": "duck" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "light" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "thin-straight" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "yuzu-citrus" }
+      ]
+    },
+    {
+      "id": "tsukemen-konbusui-options",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "tsukemen" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "konbusui-light" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "tare", "optionId": "shio" },
+        { "type": "continue", "fromQuestionId": "tare" },
+        { "type": "select", "questionId": "source", "optionId": "vegetable" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "light" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "medium-thin-straight" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "yuzu-citrus" }
+      ]
+    },
+    {
+      "id": "tsukemen-gyokai-options",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "tsukemen" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "gyokai-rich" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "tare", "optionId": "miso" },
+        { "type": "continue", "fromQuestionId": "tare" },
+        { "type": "select", "questionId": "source", "optionId": "shellfish" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "ultra-heavy" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "medium-thick-wavy" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "fish-kombu" }
+      ]
+    },
+    {
+      "id": "tsukemen-miso-forced",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "tsukemen" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "miso-rich" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "source", "optionId": "chicken" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "balanced" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "extra-thick" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "corn-butter" }
+      ]
+    },
+    {
+      "id": "tsukemen-other-options",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "tsukemen" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "tsukemen-other" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "tare", "optionId": "none" },
+        { "type": "continue", "fromQuestionId": "tare" },
+        { "type": "select", "questionId": "source", "optionId": "beef" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "backfat-heavy" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "thin-straight" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "bean-sprout-garlic-backfat" }
+      ]
+    },
+    {
+      "id": "dry-aburasoba-options",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "dry" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "aburasoba" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "tare", "optionId": "none" },
+        { "type": "continue", "fromQuestionId": "tare" },
+        { "type": "select", "questionId": "source", "optionId": "mixed" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "light" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "medium-thin-straight" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "bean-sprout-garlic-backfat" }
+      ]
+    },
+    {
+      "id": "dry-taiwan-options",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "dry" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "taiwan-mazesoba" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "tare", "optionId": "spicy-sesame" },
+        { "type": "continue", "fromQuestionId": "tare" },
+        { "type": "select", "questionId": "source", "optionId": "pork" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "rich" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "extra-thick" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "fish-kombu" }
+      ]
+    },
+    {
+      "id": "dry-soupless-forced",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "dry" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "soupless-tantan" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "source", "optionId": "vegetable" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "balanced" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "medium-thick-straight" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "no-preference" }
+      ]
+    },
+    {
+      "id": "dry-other-options",
+      "actions": [
+        { "type": "select", "questionId": "form", "optionId": "dry" },
+        { "type": "continue", "fromQuestionId": "form" },
+        { "type": "select", "questionId": "archetype", "optionId": "dry-other" },
+        { "type": "continue", "fromQuestionId": "archetype" },
+        { "type": "select", "questionId": "tare", "optionId": "shio" },
+        { "type": "continue", "fromQuestionId": "tare" },
+        { "type": "select", "questionId": "source", "optionId": "shrimp-crab" },
+        { "type": "continue", "fromQuestionId": "source" },
+        { "type": "select", "questionId": "body", "optionId": "backfat-heavy" },
+        { "type": "continue", "fromQuestionId": "body" },
+        { "type": "select", "questionId": "noodle", "optionId": "thin-straight" },
+        { "type": "continue", "fromQuestionId": "noodle" },
+        { "type": "select", "questionId": "signature", "optionId": "nori-spinach" }
+      ]
+    }
+  ]
+}

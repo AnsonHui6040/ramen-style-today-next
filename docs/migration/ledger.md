@@ -116,3 +116,690 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `batch1-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed acceptance candidate completed the Node 24 verify job successfully
   - Commit: `3cd7ac638f650d783b33f27feb993fbadf35493f`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883
+
+## Batch 2A — complete
+
+- Behavior: `no-production-runtime-change`
+- Transformation: Added closed serializable question contracts, transcribed the frozen eight-question legacy inventory into declarative production definitions, derived deterministic canonical question and semantic dependency graph data, proved finite question-flow semantics, compiled the proof output into a deterministic tracked question artifact with distinct source and semantic hashes, and added browser-neutral draft decoding, canonical fixed-point flow evaluation, atomic submitted-answer transitions, generic pending-selection interactions, and stable-ID navigation; application runtime behavior remains unchanged.
+- Implementation SHA: `ecf9f5b4791862471d0898da7283ba4a40d3fbf9`
+
+### Legacy sources
+
+- `src/data/questions.json`
+- `src/domain/questionRules.ts`
+
+### New owners
+
+- `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`
+- `docs/superpowers/plans/2026-07-13-batch-2a-questions-flow.md`
+- `docs/superpowers/specs/2026-07-13-batch-2a-questions-flow-design.md`
+- `packages/classification-core/src/compiler/questions/canonicalize.test.ts`
+- `packages/classification-core/src/compiler/questions/canonicalize.ts`
+- `packages/classification-core/src/compiler/questions/compile.test.ts`
+- `packages/classification-core/src/compiler/questions/compile.ts`
+- `packages/classification-core/src/compiler/questions/dependencies.test.ts`
+- `packages/classification-core/src/compiler/questions/dependencies.ts`
+- `packages/classification-core/src/compiler/questions/explore.test.ts`
+- `packages/classification-core/src/compiler/questions/explore.ts`
+- `packages/classification-core/src/compiler/questions/proof.test.ts`
+- `packages/classification-core/src/compiler/questions/proof.ts`
+- `packages/classification-core/src/compiler/questions/serialize.test.ts`
+- `packages/classification-core/src/compiler/questions/serialize.ts`
+- `packages/classification-core/src/compiler/questions/source-schema.test.ts`
+- `packages/classification-core/src/compiler/questions/source-schema.ts`
+- `packages/classification-core/src/compiler/questions/test-fixtures.ts`
+- `packages/classification-core/src/contracts/deep-freeze.test.ts`
+- `packages/classification-core/src/contracts/deep-freeze.ts`
+- `packages/classification-core/src/contracts/question-model.ts`
+- `packages/classification-core/src/definitions/classification.ts`
+- `packages/classification-core/src/definitions/questions.test.ts`
+- `packages/classification-core/src/definitions/questions.ts`
+- `packages/classification-core/src/flow/apply-answer.test.ts`
+- `packages/classification-core/src/flow/apply-answer.ts`
+- `packages/classification-core/src/flow/decode.test.ts`
+- `packages/classification-core/src/flow/decode.ts`
+- `packages/classification-core/src/flow/evaluate.test.ts`
+- `packages/classification-core/src/flow/evaluate.ts`
+- `packages/classification-core/src/flow/index.ts`
+- `packages/classification-core/src/flow/navigation.test.ts`
+- `packages/classification-core/src/flow/navigation.ts`
+- `packages/classification-core/src/flow/pending-selection.test.ts`
+- `packages/classification-core/src/flow/pending-selection.ts`
+- `packages/classification-core/src/flow/test-fixtures.ts`
+- `packages/classification-core/src/flow/types.ts`
+- `packages/classification-core/src/generated/question-model.ts`
+- `tools/acceptance/verify-acceptance.test.ts`
+- `tools/acceptance/verify-acceptance.ts`
+- `tools/parity/fixtures/questions/expected-divergences.json`
+- `tools/parity/fixtures/questions/legacy-v1/cases.json`
+- `tools/parity/fixtures/questions/legacy-v1/manifest.json`
+- `tools/parity/questions/compare.test.ts`
+- `tools/parity/questions/compare.ts`
+- `tools/parity/questions/contracts.test.ts`
+- `tools/parity/questions/contracts.ts`
+- `tools/parity/questions/extract.ts`
+- `tools/parity/questions/extractor.test.ts`
+- `tools/parity/questions/extractor.ts`
+- `tools/parity/questions/legacy-instrumentation.patch`
+- `tools/parity/questions/observable-trace.test.ts`
+- `tools/parity/questions/observable-trace.ts`
+- `tools/parity/questions/parity.test.ts`
+- `tools/parity/questions/parity.ts`
+- `tools/parity/questions/seeds.json`
+- `tools/parity/questions/test-fixtures.ts`
+- `tools/questions/generate-question-model.test.ts`
+- `tools/questions/generate-question-model.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+- `tools/validation/check-runtime-imports.ts`
+
+### Semantic paths
+
+- `packages/classification-core/src/definitions/questions.ts`
+- `packages/classification-core/src/compiler/questions/**`
+- `packages/classification-core/src/generated/question-model.ts`
+- `packages/classification-core/src/flow/**`
+- `tools/parity/questions/**`
+- `tools/parity/fixtures/questions/**`
+
+### Incidents
+
+- `docs/migration/incidents/2026-07-13-legacy-cache-isolation.md`
+
+### Controlled maintenance
+
+- Status: `complete`
+- Historical Batch 2A semantic implementation remains unchanged.
+- Maintenance SHA: `b65012bddbb1f98681f907ba6d3dacb8fb1de430`
+
+#### Approved maintenance paths
+
+- `tools/parity/shared/**`
+- `tools/parity/questions/contracts.ts`
+- `tools/parity/questions/contracts.test.ts`
+- `tools/parity/questions/extractor.ts`
+- `tools/parity/questions/extractor.test.ts`
+- `tools/parity/fixtures/questions/legacy-v1/manifest.json`
+
+#### Protected question baseline
+
+- modelVersion: `batch2a.1.0`
+- semanticHash: `d1bd2fcecabcfde8a7512b530d9cbec7f2fc0bb1d62ad65cbece2799be753c0d`
+- generatedArtifactHash: `48386ff2d6b3e9de7944169a2c3edb9992187257dd8573a107e2b15f7d80bd43`
+- casesHash: `89d7f7588c27f6c243eb28bb606c711d881d1223c34c62216d1df39a098419f3`
+- fixtureContentHash: `89d7f7588c27f6c243eb28bb606c711d881d1223c34c62216d1df39a098419f3`
+- seedsHash: `f7a37a15c9b9fbdbd3b10311d3f11f1efdea548d6ba835605d1a987ca694173b`
+- instrumentationHash: `cbf5018a0d890fcb3d5915cd2c8e9abde3d93178ebcaa4082823d0f5a21809ba`
+- sourceCommit: `eebf00b7ddfbbe6f01ff598e57f1e17197068a37`
+- sourceTreeHash: `3e527de876cfeccfd3154ddc492830d71c4cfd9a`
+
+#### Maintenance verification
+
+- `batch2a-maintenance-local-verify`: `npm run verify` — passed; all approved Batch 2A maintenance invariant and verification gates passed
+- `batch2a-maintenance-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed maintenance candidate completed the Node 24 verify job successfully
+  - Commit: `b65012bddbb1f98681f907ba6d3dacb8fb1de430`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29351472034
+
+### Verification
+
+- `batch2a-local-verify`: `npm run verify` — passed; all Batch 2A offline compiler, artifact, runtime, observable trace projection parity, documentation, and ledger gates passed
+- `batch2a-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed acceptance candidate completed the Node 24 verify job successfully
+  - Commit: `ecf9f5b4791862471d0898da7283ba4a40d3fbf9`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29311063386
+
+## Batch 2B — complete
+
+- Behavior: `no-production-runtime-change`
+- Transformation: Implemented a pure bounded persistence core with explicit schema and question-model migration, deterministic submitted-state repair, stable resume resolution, frozen legacy observations, current contract verification, and pre-acceptance provenance and ownership wiring; storage integration and production cutover remain out of scope.
+- Implementation SHA: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`
+
+### Legacy sources
+
+- `src/App.tsx`
+- `src/domain/schema.ts`
+- `src/domain/types.ts`
+
+### New owners
+
+- `docs/superpowers/plans/2026-07-14-batch-2b-persistence-repair.md`
+- `docs/superpowers/specs/2026-07-14-batch-2b-persistence-repair-design.md`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/persistence/contract-matrix.test.ts`
+- `packages/classification-core/src/persistence/contracts.test.ts`
+- `packages/classification-core/src/persistence/contracts.ts`
+- `packages/classification-core/src/persistence/create-payload.test.ts`
+- `packages/classification-core/src/persistence/create-payload.ts`
+- `packages/classification-core/src/persistence/decode-answers.test.ts`
+- `packages/classification-core/src/persistence/decode-answers.ts`
+- `packages/classification-core/src/persistence/decode-envelope.test.ts`
+- `packages/classification-core/src/persistence/decode-envelope.ts`
+- `packages/classification-core/src/persistence/decode-v1.test.ts`
+- `packages/classification-core/src/persistence/decode-v1.ts`
+- `packages/classification-core/src/persistence/determinism.test.ts`
+- `packages/classification-core/src/persistence/diagnostics.ts`
+- `packages/classification-core/src/persistence/fixed-point.test.ts`
+- `packages/classification-core/src/persistence/index.ts`
+- `packages/classification-core/src/persistence/invariant-error.ts`
+- `packages/classification-core/src/persistence/legacy-lineage.test.ts`
+- `packages/classification-core/src/persistence/legacy-lineage.ts`
+- `packages/classification-core/src/persistence/limits.ts`
+- `packages/classification-core/src/persistence/model-migrations.test.ts`
+- `packages/classification-core/src/persistence/model-migrations.ts`
+- `packages/classification-core/src/persistence/plain-data.test.ts`
+- `packages/classification-core/src/persistence/plain-data.ts`
+- `packages/classification-core/src/persistence/repair.test.ts`
+- `packages/classification-core/src/persistence/repair.ts`
+- `packages/classification-core/src/persistence/restore.test.ts`
+- `packages/classification-core/src/persistence/restore.ts`
+- `packages/classification-core/src/persistence/resume.test.ts`
+- `packages/classification-core/src/persistence/resume.ts`
+- `packages/classification-core/src/persistence/schema-migrations.test.ts`
+- `packages/classification-core/src/persistence/schema-migrations.ts`
+- `packages/classification-core/src/persistence/test-fixtures.ts`
+- `tools/parity/fixtures/persistence/legacy-unversioned/cases.json`
+- `tools/parity/fixtures/persistence/legacy-unversioned/manifest.json`
+- `tools/parity/persistence/contracts.test.ts`
+- `tools/parity/persistence/contracts.ts`
+- `tools/parity/persistence/extract.ts`
+- `tools/parity/persistence/extractor.test.ts`
+- `tools/parity/persistence/extractor.ts`
+- `tools/parity/persistence/instrumentation.test.ts`
+- `tools/parity/persistence/legacy-instrumentation.patch`
+- `tools/parity/persistence/migration-contract.test.ts`
+- `tools/parity/persistence/seeds.json`
+- `tools/parity/persistence/verify-fixtures.test.ts`
+- `tools/parity/persistence/verify-fixtures.ts`
+
+- Persistence fixture manifest hash: `71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd`
+
+### Implementation paths
+
+- `packages/classification-core/src/persistence/**`
+- `packages/classification-core/src/contracts/diagnostic-codes.ts`
+- `packages/classification-core/src/contracts/model.ts`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/index.ts`
+- `packages/classification-core/src/index.test.ts`
+- `tools/parity/persistence/**`
+- `tools/parity/fixtures/persistence/**`
+
+### Verification paths
+
+- `.github/workflows/ci.yml`
+- `package.json`
+- `package-lock.json`
+- `tools/acceptance/**`
+- `tools/documentation/**`
+- `tools/migration/**`
+- `tools/validation/check-runtime-imports.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+
+### Acceptance metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
+
+### Accepted Batch 2B boundary
+
+- Accepted implementation SHA: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`
+- Accepted metadata SHA: `6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4`
+
+#### Accepted metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
+
+#### Accepted boundary verification
+
+- `batch2b-acceptance-boundary-remote-ci`: `GitHub Actions CI / verify` — passed; the exact accepted metadata commit passed Node 24 CI
+  - Commit: `6fba4c0dc384d3cfa27b627db6ae373f56c8b6d4`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411764507
+
+### Boundary maintenance
+
+- Status: `complete`
+- Boundary maintenance SHA: `28fb8179046d3165f633337b242c7f27df69b2d1`
+
+#### Boundary maintenance paths
+
+- `tools/migration/ledger-schema.ts`
+- `tools/migration/check-ledger.ts`
+- `tools/migration/ledger-check.ts`
+- `tools/migration/ledger-check.test.ts`
+- `tools/migration/render-ledger.ts`
+- `tools/migration/render-ledger.test.ts`
+- `tools/migration/record-ci.ts`
+- `tools/migration/record-ci.test.ts`
+- `tools/acceptance/verify-acceptance.ts`
+- `tools/acceptance/verify-acceptance.test.ts`
+
+#### Boundary maintenance verification
+
+- `batch2b-boundary-maintenance-local-verify`: `npm run verify` — passed; all approved Batch 2B boundary-maintenance gates passed
+- `batch2b-boundary-maintenance-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed boundary-maintenance candidate completed Node 24 CI
+  - Commit: `28fb8179046d3165f633337b242c7f27df69b2d1`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29432576692
+
+### Persistence identity maintenance
+
+- Status: `complete`
+- Change SHA: `2f445f99de924f5ba428967ff68869d4d46b593f`
+- Change parent SHA: `1adc6b54decc08e11bdc03f9665a8f82033fb126`
+- Accepted fixture manifest hash: `6c697167052690a8b01830fbceada056e1cbb39879fc879c34394e84e2237226`
+- Maintained fixture manifest hash: `71eac8596e3e79b04b26c8dde64e7c2a0df247383de851eb8ed33dd4928dd7fd`
+- Cases hash: `c97bb63d57773c3dec0db9eaa43b94fb4a08c40b4bfa17139746048e7370bf89`
+- Accepted extractor hash: `4efdee45410516ead5e39dcb3db6950453312221a89682e173772a36e05df12d`
+- Maintained extractor hash: `650552a696aa5f7a769fde01707427bf1d2f6ca1f10a1dcd4a919d1ad0799706`
+- Candidate SHA: `8378f8cf05a4756698f92f6fb2f49fb52782d712`
+- Remote evidence gate: `batch3a-remote-ci`
+
+#### Persistence identity maintenance paths
+
+- `tools/parity/fixtures/persistence/legacy-unversioned/manifest.json`
+
+#### Persistence identity maintenance verification
+
+- `batch2b-persistence-identity-maintenance-local-verify`: `npm run verify` — passed; the reviewed persistence identity payload passed the candidate gates
+
+### Verification
+
+- `batch2b-local-verify`: `npm run verify` — passed; all Batch 2B offline implementation and verification gates passed
+- `batch2b-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 2B implementation candidate passed Node 24 CI
+  - Commit: `30b71e3305b0e48a7c77e4869e2411c17941ebb8`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29411281929
+
+## Batch 3A — complete
+
+- Behavior: `no-production-runtime-change`
+- Transformation: Legacy production style inventory normalized into canonical typed definitions and deterministically compiled to an immutable inert style model with offline observed-parity evidence.
+- Implementation SHA: `8378f8cf05a4756698f92f6fb2f49fb52782d712`
+
+### Legacy sources
+
+- `src/config/styles.ts`
+- `src/data/questions.json`
+- `src/data/styles.json`
+- `src/domain/schema.ts`
+- `src/domain/types.ts`
+- `src/lib/scoring/explainer.ts`
+- `src/lib/scoring/scorer.ts`
+
+### New owners
+
+- `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+- `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- `packages/classification-core/src/compiler/styles/compile.test.ts`
+- `packages/classification-core/src/compiler/styles/compile.ts`
+- `packages/classification-core/src/compiler/styles/proof.test.ts`
+- `packages/classification-core/src/compiler/styles/proof.ts`
+- `packages/classification-core/src/compiler/styles/serialize.test.ts`
+- `packages/classification-core/src/compiler/styles/serialize.ts`
+- `packages/classification-core/src/compiler/styles/source-schema.test.ts`
+- `packages/classification-core/src/compiler/styles/source-schema.ts`
+- `packages/classification-core/src/compiler/styles/test-fixtures.ts`
+- `packages/classification-core/src/contracts/diagnostic.test.ts`
+- `packages/classification-core/src/contracts/style-model.ts`
+- `packages/classification-core/src/definitions/styles/aburasoba.ts`
+- `packages/classification-core/src/definitions/styles/chicken-chintan.ts`
+- `packages/classification-core/src/definitions/styles/chicken-paitan.ts`
+- `packages/classification-core/src/definitions/styles/definitions.test.ts`
+- `packages/classification-core/src/definitions/styles/duck-chintan.ts`
+- `packages/classification-core/src/definitions/styles/duck-paitan.ts`
+- `packages/classification-core/src/definitions/styles/gyokai-tsukemen.ts`
+- `packages/classification-core/src/definitions/styles/gyokai.ts`
+- `packages/classification-core/src/definitions/styles/hakata.ts`
+- `packages/classification-core/src/definitions/styles/iekei.ts`
+- `packages/classification-core/src/definitions/styles/index.ts`
+- `packages/classification-core/src/definitions/styles/jiro.ts`
+- `packages/classification-core/src/definitions/styles/konbusui-tsukemen.ts`
+- `packages/classification-core/src/definitions/styles/miso.ts`
+- `packages/classification-core/src/definitions/styles/sapporo.ts`
+- `packages/classification-core/src/definitions/styles/shellfish-dashi.ts`
+- `packages/classification-core/src/definitions/styles/shio-chintan.ts`
+- `packages/classification-core/src/definitions/styles/shoyu-chintan.ts`
+- `packages/classification-core/src/definitions/styles/taiwan-mazesoba.ts`
+- `packages/classification-core/src/definitions/styles/taxonomy.ts`
+- `packages/classification-core/src/definitions/styles/tonkotsu.ts`
+- `packages/classification-core/src/generated/style-model.ts`
+- `packages/classification-core/src/style-model.ts`
+- `tools/parity/fixtures/styles/legacy-v1/cases.json`
+- `tools/parity/fixtures/styles/legacy-v1/manifest.json`
+- `tools/parity/styles/contracts.test.ts`
+- `tools/parity/styles/contracts.ts`
+- `tools/parity/styles/extract.ts`
+- `tools/parity/styles/extractor.test.ts`
+- `tools/parity/styles/extractor.ts`
+- `tools/parity/styles/legacy-instrumentation.patch`
+- `tools/parity/styles/parity.test.ts`
+- `tools/parity/styles/parity.ts`
+- `tools/parity/styles/seeds.json`
+- `tools/parity/styles/verify-fixtures.test.ts`
+- `tools/parity/styles/verify-fixtures.ts`
+- `tools/styles/generate-style-model.test.ts`
+- `tools/styles/generate-style-model.ts`
+
+- Style fixture manifest hash: `fa1a4714a77ce70489b56c54b82a812b28cd18dbc31a668a62ae51cc12e9586b`
+
+### Implementation paths
+
+- `docs/superpowers/specs/2026-07-15-batch-3a-style-compilation-design.md`
+- `docs/superpowers/plans/2026-07-15-batch-3a-style-compilation.md`
+- `packages/classification-core/package.json`
+- `packages/classification-core/src/compiler/compile.ts`
+- `packages/classification-core/src/compiler/compile.test.ts`
+- `packages/classification-core/src/compiler/collector.ts`
+- `packages/classification-core/src/compiler/collector.test.ts`
+- `packages/classification-core/src/compiler/index.ts`
+- `packages/classification-core/src/compiler/parse.ts`
+- `packages/classification-core/src/compiler/parse.test.ts`
+- `packages/classification-core/src/compiler/source-schema.ts`
+- `packages/classification-core/src/compiler/styles/**`
+- `packages/classification-core/src/contracts/diagnostic-codes.ts`
+- `packages/classification-core/src/contracts/diagnostic.ts`
+- `packages/classification-core/src/contracts/diagnostic.test.ts`
+- `packages/classification-core/src/contracts/model.ts`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/contracts/style-model.ts`
+- `packages/classification-core/src/definitions/classification.ts`
+- `packages/classification-core/src/definitions/styles/**`
+- `packages/classification-core/src/definitions/synthetic.ts`
+- `packages/classification-core/src/generated/style-model.ts`
+- `packages/classification-core/src/index.ts`
+- `packages/classification-core/src/index.test.ts`
+- `packages/classification-core/src/style-model.ts`
+- `tools/parity/styles/**`
+- `tools/parity/fixtures/styles/**`
+- `tools/styles/**`
+
+### Verification paths
+
+- `package.json`
+- `tools/acceptance/**`
+- `tools/documentation/**`
+- `tools/migration/**`
+- `tools/validation/check-runtime-imports.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+- `tools/validation/validate-classification.ts`
+
+### Acceptance metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
+
+### Verification
+
+- `batch3a-local-verify`: `npm run verify` — passed; all Batch 3A local candidate gates passed
+- `batch3a-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 3A candidate passed canonical CI
+  - Commit: `8378f8cf05a4756698f92f6fb2f49fb52782d712`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29532093331
+
+## Batch 3B — complete
+
+- Behavior: `no-production-runtime-change`
+- Transformation: Legacy production scoring policy and result projection compiled into deterministic integer-unit scoring with inert structured traces and frozen offline parity evidence.
+- Implementation SHA: `8807a18003a84039c99ae4a77b6f16fffc9dfe41`
+
+### Legacy sources
+
+- `src/data/questions.json`
+- `src/data/styles.json`
+- `src/lib/scoring/explainer.ts`
+- `src/lib/scoring/scorer.ts`
+
+### New owners
+
+- `docs/superpowers/plans/2026-07-17-batch-3b-scoring-trace.md`
+- `docs/superpowers/specs/2026-07-17-batch-3b-scoring-trace-design.md`
+- `packages/classification-core/src/classification-model.ts`
+- `packages/classification-core/src/compiler/classification/serialize.test.ts`
+- `packages/classification-core/src/compiler/classification/serialize.ts`
+- `packages/classification-core/src/compiler/scoring-policy/compile.test.ts`
+- `packages/classification-core/src/compiler/scoring-policy/compile.ts`
+- `packages/classification-core/src/compiler/scoring-policy/proof.test.ts`
+- `packages/classification-core/src/compiler/scoring-policy/proof.ts`
+- `packages/classification-core/src/compiler/scoring-policy/source-schema.test.ts`
+- `packages/classification-core/src/compiler/scoring-policy/source-schema.ts`
+- `packages/classification-core/src/contracts/scoring-policy.ts`
+- `packages/classification-core/src/contracts/scoring.ts`
+- `packages/classification-core/src/definitions/policies.test.ts`
+- `packages/classification-core/src/definitions/policies.ts`
+- `packages/classification-core/src/generated/classification-model.ts`
+- `packages/classification-core/src/scoring/adjustments.test.ts`
+- `packages/classification-core/src/scoring/adjustments.ts`
+- `packages/classification-core/src/scoring/answers.test.ts`
+- `packages/classification-core/src/scoring/answers.ts`
+- `packages/classification-core/src/scoring/confidence.test.ts`
+- `packages/classification-core/src/scoring/confidence.ts`
+- `packages/classification-core/src/scoring/contracts.test.ts`
+- `packages/classification-core/src/scoring/core.test.ts`
+- `packages/classification-core/src/scoring/core.ts`
+- `packages/classification-core/src/scoring/index.ts`
+- `packages/classification-core/src/scoring/invariants.test.ts`
+- `packages/classification-core/src/scoring/ranking.test.ts`
+- `packages/classification-core/src/scoring/ranking.ts`
+- `packages/classification-core/src/scoring/rules.test.ts`
+- `packages/classification-core/src/scoring/rules.ts`
+- `packages/classification-core/src/scoring/score.test.ts`
+- `packages/classification-core/src/scoring/score.ts`
+- `packages/classification-core/src/scoring/selection.test.ts`
+- `packages/classification-core/src/scoring/selection.ts`
+- `packages/classification-core/src/scoring/subtype.test.ts`
+- `packages/classification-core/src/scoring/subtype.ts`
+- `packages/classification-core/src/scoring/test-fixtures.ts`
+- `packages/classification-core/src/scoring/trace.test.ts`
+- `packages/classification-core/src/scoring/trace.ts`
+- `tools/parity/fixtures/scoring/legacy-v1/cases.json`
+- `tools/parity/fixtures/scoring/legacy-v1/manifest.json`
+- `tools/parity/scoring/contracts.test.ts`
+- `tools/parity/scoring/contracts.ts`
+- `tools/parity/scoring/extract.test.ts`
+- `tools/parity/scoring/extract.ts`
+- `tools/parity/scoring/extractor.test.ts`
+- `tools/parity/scoring/extractor.ts`
+- `tools/parity/scoring/legacy-instrumentation.patch`
+- `tools/parity/scoring/parity.test.ts`
+- `tools/parity/scoring/parity.ts`
+- `tools/parity/scoring/seeds.json`
+- `tools/parity/scoring/verify-fixtures.test.ts`
+- `tools/parity/scoring/verify-fixtures.ts`
+- `tools/scoring/generate-classification-model.test.ts`
+- `tools/scoring/generate-classification-model.ts`
+- `tools/validation/validate-classification.test.ts`
+
+### Implementation paths
+
+- `docs/superpowers/specs/2026-07-17-batch-3b-scoring-trace-design.md`
+- `docs/superpowers/plans/2026-07-17-batch-3b-scoring-trace.md`
+- `packages/classification-core/src/contracts/scoring-policy.ts`
+- `packages/classification-core/src/contracts/scoring.ts`
+- `packages/classification-core/src/compiler/scoring-policy/**`
+- `packages/classification-core/src/compiler/classification/**`
+- `packages/classification-core/src/definitions/policies.ts`
+- `packages/classification-core/src/definitions/policies.test.ts`
+- `packages/classification-core/src/generated/classification-model.ts`
+- `packages/classification-core/src/classification-model.ts`
+- `packages/classification-core/src/scoring/**`
+- `tools/scoring/**`
+- `tools/parity/scoring/**`
+- `tools/parity/fixtures/scoring/**`
+- `packages/classification-core/src/compiler/compile.ts`
+- `packages/classification-core/src/compiler/compile.test.ts`
+- `packages/classification-core/src/compiler/source-schema.ts`
+- `packages/classification-core/src/compiler/parse.test.ts`
+- `packages/classification-core/src/compiler/index.ts`
+- `packages/classification-core/src/contracts/diagnostic-codes.ts`
+- `packages/classification-core/src/contracts/diagnostic.test.ts`
+- `packages/classification-core/src/contracts/model.ts`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/definitions/classification.ts`
+- `packages/classification-core/src/definitions/synthetic.ts`
+- `packages/classification-core/src/index.ts`
+- `packages/classification-core/src/index.test.ts`
+
+### Verification paths
+
+- `package.json`
+- `.github/workflows/ci.yml`
+- `tools/acceptance/**`
+- `tools/documentation/**`
+- `tools/migration/**`
+- `tools/validation/check-runtime-imports.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+- `tools/validation/validate-classification.ts`
+- `tools/validation/validate-classification.test.ts`
+
+### Acceptance metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
+
+### Verification
+
+- `batch3b-local-verify`: `npm run verify` — passed; all Batch 3B local candidate gates passed
+- `batch3b-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 3B candidate passed canonical CI
+  - Commit: `8807a18003a84039c99ae4a77b6f16fffc9dfe41`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29579704273
+
+## Batch 3C — complete
+
+- Behavior: `no-production-runtime-change`
+- Transformation: Legacy production exclusion blocking and result selection are compiled into a deterministic post-scoring eligibility policy with immutable structured decisions, warning facts, traces, and offline parity evidence.
+- Implementation SHA: `011df13ca4f87333db54d3386b26f5987ffa14b7`
+
+### Legacy sources
+
+- `src/App.tsx`
+- `src/config/styles.ts`
+- `src/data/questions.json`
+- `src/data/styles.json`
+- `src/domain/schema.ts`
+- `src/domain/types.ts`
+- `src/features/map/RamenFinderMap.tsx`
+- `src/features/results/ResultsPanel.tsx`
+- `src/lib/catalog/enricher.ts`
+- `src/lib/scoring/explainer.ts`
+- `src/lib/scoring/scorer.ts`
+
+### New owners
+
+- `docs/superpowers/specs/2026-07-17-batch-3c-eligibility-design.md`
+- `packages/classification-core/src/compiler/eligibility-policy/compile.test.ts`
+- `packages/classification-core/src/compiler/eligibility-policy/compile.ts`
+- `packages/classification-core/src/compiler/eligibility-policy/proof.ts`
+- `packages/classification-core/src/compiler/eligibility-policy/source-schema.ts`
+- `packages/classification-core/src/contracts/eligibility-policy.ts`
+- `packages/classification-core/src/contracts/eligibility.ts`
+- `packages/classification-core/src/definitions/eligibility-policy.ts`
+- `packages/classification-core/src/eligibility/evaluate.test.ts`
+- `packages/classification-core/src/eligibility/evaluate.ts`
+- `packages/classification-core/src/eligibility/index.ts`
+- `tools/parity/eligibility/contracts.ts`
+- `tools/parity/eligibility/extract.ts`
+- `tools/parity/eligibility/parity.test.ts`
+- `tools/parity/eligibility/parity.ts`
+- `tools/parity/eligibility/seeds.json`
+- `tools/parity/eligibility/verify-fixtures.ts`
+- `tools/parity/fixtures/eligibility/legacy-v1/cases.json`
+- `tools/parity/fixtures/eligibility/legacy-v1/manifest.json`
+
+- Eligibility fixture manifest hash: `fb189722968020fb0aa8eb91674a94f5ee0448d910a786cd9021cb216e06706d`
+
+### Implementation paths
+
+- `docs/superpowers/specs/2026-07-17-batch-3c-eligibility-design.md`
+- `packages/classification-core/src/compiler/eligibility-policy/**`
+- `packages/classification-core/src/contracts/eligibility-policy.ts`
+- `packages/classification-core/src/contracts/eligibility.ts`
+- `packages/classification-core/src/definitions/eligibility-policy.ts`
+- `packages/classification-core/src/eligibility/**`
+- `tools/parity/eligibility/**`
+- `tools/parity/fixtures/eligibility/**`
+- `packages/classification-core/src/compiler/classification/**`
+- `packages/classification-core/src/compiler/compile.ts`
+- `packages/classification-core/src/compiler/compile.test.ts`
+- `packages/classification-core/src/compiler/source-schema.ts`
+- `packages/classification-core/src/compiler/parse.test.ts`
+- `packages/classification-core/src/compiler/scoring-policy/compile.ts`
+- `packages/classification-core/src/compiler/scoring-policy/proof.ts`
+- `packages/classification-core/src/contracts/diagnostic-codes.ts`
+- `packages/classification-core/src/contracts/model.ts`
+- `packages/classification-core/src/contracts/provenance.ts`
+- `packages/classification-core/src/definitions/classification.ts`
+- `packages/classification-core/src/generated/classification-model.ts`
+- `packages/classification-core/src/scoring/score.ts`
+- `packages/classification-core/src/index.ts`
+- `packages/classification-core/src/index.test.ts`
+- `packages/classification-core/src/compiler/styles/serialize.test.ts`
+
+### Verification paths
+
+- `package.json`
+- `tools/acceptance/**`
+- `tools/documentation/**`
+- `tools/migration/**`
+- `tools/validation/check-runtime-imports.ts`
+- `tools/validation/check-runtime-imports.test.ts`
+- `tools/validation/validate-classification.ts`
+- `tools/validation/validate-classification.test.ts`
+
+### Acceptance metadata paths
+
+- `docs/classification/index.md`
+- `docs/classification/manifest.json`
+- `docs/migration/ledger.json`
+- `docs/migration/ledger.md`
+
+### Verification
+
+- `batch3c-local-verify`: `npm run verify` — passed; all Batch 3C local candidate gates passed
+- `batch3c-remote-ci`: `GitHub Actions CI / verify` — passed; the exact Batch 3C candidate passed canonical CI
+  - Commit: `011df13ca4f87333db54d3386b26f5987ffa14b7`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29598120984
+
+## Batch Web — in-progress
+
+- Behavior: `internal-runnable-product-no-acceptance-promotion`
+- Transformation: Introduces the first internal runnable Web product slice over accepted public classification runtime contracts.
+
+### Legacy sources
+
+- None; this batch introduces new infrastructure.
+
+### New owners
+
+- `.github/workflows/pages.yml`
+- `apps/web/.openai/hosting.json`
+- `apps/web/e2e/runnable-product.spec.ts`
+- `apps/web/index.html`
+- `apps/web/package.json`
+- `apps/web/playwright.config.ts`
+- `apps/web/public/favicon.svg`
+- `apps/web/sites-worker.js`
+- `apps/web/src/App.test.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/catalog-adapter.test.ts`
+- `apps/web/src/catalog-adapter.ts`
+- `apps/web/src/finder-adapter.test.ts`
+- `apps/web/src/finder-adapter.ts`
+- `apps/web/src/main.tsx`
+- `apps/web/src/presentation-copy.ts`
+- `apps/web/src/questionnaire.test.ts`
+- `apps/web/src/questionnaire.ts`
+- `apps/web/src/rl-theme.css`
+- `apps/web/src/runtime.ts`
+- `apps/web/src/styles.css`
+- `apps/web/src/web-persistence.test.ts`
+- `apps/web/src/web-persistence.ts`
+- `apps/web/tsconfig.json`
+- `apps/web/vite.config.ts`
+
+### Verification
+
+- Pending.

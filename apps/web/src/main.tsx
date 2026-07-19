@@ -1,0 +1,17 @@
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+
+import { App } from './App.js'
+import './styles.css'
+import './rl-theme.css'
+
+const root = document.getElementById('root')
+if (!root) throw new Error('Web root is missing')
+
+createRoot(root).render(
+  <StrictMode>
+    <div className="rl-app">
+      <App />
+    </div>
+  </StrictMode>,
+)

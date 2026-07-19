@@ -1,8 +1,25 @@
-import { z } from 'zod'
+import { execFileSync } from 'node:child_process'
+
 import { compareCodePoints } from '@ramen-style/classification-core/compiler'
 
 import type { MigrationLedger } from './ledger-schema.js'
-import { migrationLedgerSchema } from './ledger-schema.js'
+import {
+  acceptedBatch3AMetadataSha,
+  batch2BAcceptanceMetadataPaths,
+  batch2BProtectedPersistencePaths,
+  batch3AAcceptanceMetadataPaths,
+  batch3AProtectedStylePaths,
+  batch3BAcceptanceMetadataPaths,
+  acceptedBatch3BMetadataSha,
+  acceptedBatch3CMetadataSha,
+  batch3BApprovedDependencyTestPaths,
+  batch3CAcceptanceMetadataPaths,
+  batch3CImplementationPaths,
+  batch3CVerificationPaths,
+  migrationLedgerSchema,
+  protectedQuestionBaseline,
+  webProductProtectedMaintenancePaths,
+} from './ledger-schema.js'
 import { renderLedger } from './render-ledger.js'
 
 export interface LedgerCheckInput {
@@ -10,6 +27,7 @@ export interface LedgerCheckInput {
   repoFiles: ReadonlySet<string>
   existingFiles: ReadonlySet<string>
   repoDirectories: ReadonlySet<string>
+  repositoryFileHashes?: ReadonlyMap<string, string>
   currentMarkdown: string | undefined
 }
 
@@ -20,304 +38,658 @@ export interface LedgerCheckResult {
   markdown: string | undefined
 }
 
-const fullShaSchema = z.string().regex(/^[0-9a-f]{40}$/)
-const githubRepository = 'AnsonHui6040/ramen-style-today-next'
-const githubApiOrigin = 'https://api.github.com'
-const githubHtmlOrigin = 'https://github.com'
-const workflowPath = '.github/workflows/ci.yml'
-const authenticatedRun = Symbol('authenticated GitHub Actions run')
-
-const successfulCiProofSchema = z.strictObject({
-  schemaVersion: z.literal(1),
-  sha: fullShaSchema,
-  runId: z.number().int().positive(),
-  runUrl: z.string().url(),
-})
-
-export type SuccessfulCiProof = z.infer<typeof successfulCiProofSchema>
-
-const githubActionsRunSchema = z.object({
-  id: z.number().int().positive(),
-  workflow_id: z.number().int().positive(),
-  html_url: z.string().url(),
-  head_sha: fullShaSchema,
-  head_branch: z.string().nullable(),
-  event: z.string(),
-  status: z.string(),
-  conclusion: z.string().nullable(),
-  path: z.string(),
-  repository: z.object({
-    full_name: z.string(),
-  }),
-})
-
-const githubWorkflowSchema = z.object({
-  id: z.number().int().positive(),
-  path: z.string(),
-})
-
-function hasWorkflowPathAmbiguity(value: string) {
-  return value.includes('@') || Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0)!
-    return codePoint <= 31 || codePoint === 127
-  })
-}
-
-function canonicalWorkflowPathStatus(
-  run: z.infer<typeof githubActionsRunSchema>,
-): 'match' | 'ambiguous' | 'mismatch' {
-  if (run.head_branch && hasWorkflowPathAmbiguity(run.head_branch)) return 'ambiguous'
-  if (run.path.startsWith(`${workflowPath}@`)) {
-    const suffix = run.path.slice(workflowPath.length + 1)
-    if (suffix.length === 0 || hasWorkflowPathAmbiguity(suffix)) return 'ambiguous'
-  }
-  const expectedPaths = new Set([
-    workflowPath,
-    `${workflowPath}@${run.head_sha}`,
-  ])
-  if (run.head_branch) {
-    expectedPaths.add(`${workflowPath}@${run.head_branch}`)
-    expectedPaths.add(`${workflowPath}@refs/heads/${run.head_branch}`)
-    expectedPaths.add(`${workflowPath}@refs/tags/${run.head_branch}`)
-  }
-  return expectedPaths.has(run.path) ? 'match' : 'mismatch'
-}
-
-interface AuthenticatedSuccessfulCiRun {
-  readonly [authenticatedRun]: true
-  readonly sha: string
-  readonly runId: number
-  readonly runUrl: string
-}
-
-export async function verifySuccessfulCiProof(
-  proofInput: unknown,
-  expectedCandidateSha: string,
-  fetchImplementation: typeof fetch,
-  githubToken?: string,
-): Promise<AuthenticatedSuccessfulCiRun> {
-  const proofResult = successfulCiProofSchema.safeParse(proofInput)
-  if (!proofResult.success) {
-    throw new Error(`Invalid CI proof: ${proofResult.error.issues[0]?.message ?? 'unknown error'}`)
-  }
-  if (!fullShaSchema.safeParse(expectedCandidateSha).success) {
-    throw new Error('Current candidate SHA must be a full lowercase SHA')
-  }
-  const proof = proofResult.data
-  if (proof.sha !== expectedCandidateSha) {
-    throw new Error('CI proof SHA must match current candidate SHA')
-  }
-
-  const apiUrl = `${githubApiOrigin}/repos/${githubRepository}/actions/runs/${proof.runId}`
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github+json',
-    'User-Agent': 'ramen-style-today-next',
-  }
-  if (githubToken) headers.Authorization = `Bearer ${githubToken}`
-  let response: Response
-  try {
-    response = await fetchImplementation(apiUrl, {
-      headers,
-      redirect: 'error',
-    })
-  } catch (error) {
-    throw new Error('Unable to verify GitHub Actions run', { cause: error })
-  }
-  if (response.redirected) throw new Error('Rejected redirected GitHub API response')
-  if (response.url !== apiUrl) throw new Error('Rejected unexpected GitHub API response URL')
-  if (response.status === 404) {
-    throw new Error(`GitHub Actions run ${proof.runId} was not found`)
-  }
-  if (!response.ok) throw new Error(`GitHub API ${response.status}`)
-
-  let payload: unknown
-  try {
-    payload = await response.json()
-  } catch (error) {
-    throw new Error('Received malformed GitHub Actions run response', { cause: error })
-  }
-  const runResult = githubActionsRunSchema.safeParse(payload)
-  if (!runResult.success) throw new Error('Received malformed GitHub Actions run response')
-  const run = runResult.data
-
-  const workflowApiUrl = `${githubApiOrigin}/repos/${githubRepository}/actions/workflows/ci.yml`
-  let workflowResponse: Response
-  try {
-    workflowResponse = await fetchImplementation(workflowApiUrl, {
-      headers,
-      redirect: 'error',
-    })
-  } catch (error) {
-    throw new Error('Unable to verify canonical GitHub Actions workflow', { cause: error })
-  }
-  if (workflowResponse.redirected) {
-    throw new Error('Rejected redirected GitHub workflow API response')
-  }
-  if (workflowResponse.url !== workflowApiUrl) {
-    throw new Error('Rejected unexpected GitHub workflow API response URL')
-  }
-  if (!workflowResponse.ok) throw new Error(`GitHub workflow API ${workflowResponse.status}`)
-  let workflowPayload: unknown
-  try {
-    workflowPayload = await workflowResponse.json()
-  } catch (error) {
-    throw new Error('Received malformed GitHub workflow response', { cause: error })
-  }
-  const workflowResult = githubWorkflowSchema.safeParse(workflowPayload)
-  if (!workflowResult.success) throw new Error('Received malformed GitHub workflow response')
-  const workflow = workflowResult.data
-  if (workflow.path !== workflowPath) throw new Error('canonical workflow path mismatch')
-
-  if (run.repository.full_name !== githubRepository) {
-    throw new Error('GitHub Actions run repository mismatch')
-  }
-  if (run.workflow_id !== workflow.id) throw new Error('GitHub Actions run workflow ID mismatch')
-  if (run.id !== proof.runId) throw new Error('GitHub Actions run ID mismatch')
-  if (run.head_sha !== proof.sha) throw new Error('GitHub Actions run head SHA mismatch')
-  const expectedRunUrl = `${githubHtmlOrigin}/${githubRepository}/actions/runs/${proof.runId}`
-  if (proof.runUrl !== expectedRunUrl || run.html_url !== proof.runUrl) {
-    throw new Error('GitHub Actions run URL mismatch')
-  }
-  if (run.event !== 'push') throw new Error('GitHub Actions run event must be push')
-  if (run.status !== 'completed') throw new Error('GitHub Actions run status must be completed')
-  if (run.conclusion !== 'success') throw new Error('GitHub Actions run conclusion must be success')
-  const workflowPathStatus = canonicalWorkflowPathStatus(run)
-  if (workflowPathStatus === 'ambiguous') {
-    throw new Error('GitHub Actions run workflow path is ambiguous')
-  }
-  if (workflowPathStatus === 'mismatch') {
-    throw new Error('GitHub Actions run workflow must be ci.yml')
-  }
-
-  return Object.freeze({
-    [authenticatedRun]: true as const,
-    sha: proof.sha,
-    runId: proof.runId,
-    runUrl: proof.runUrl,
-  })
-}
+const fullShaPattern = /^[0-9a-f]{40}$/
 
 type CommitAncestryCheck = (
-  evidenceSha: string,
+  ancestorSha: string,
   currentHeadSha: string,
 ) => boolean | Promise<boolean>
 
-function proofFromRecordedEvidence(
-  evidence: { commitSha?: string | undefined; runUrl?: string | undefined },
-): SuccessfulCiProof {
-  if (!evidence.commitSha || !evidence.runUrl) {
-    throw new Error('Recorded remote CI evidence is missing commit SHA or run URL')
+export interface LedgerRepositoryState extends Omit<LedgerCheckInput, 'input'> {
+  currentHeadSha: string
+  isCommitAncestor: CommitAncestryCheck
+  directParentsOf: (
+    commitSha: string,
+  ) => readonly string[] | Promise<readonly string[]>
+  changedPathsBetween: (
+    ancestorSha: string,
+    currentHeadSha: string,
+  ) => readonly string[] | Promise<readonly string[]>
+  committedChangedPathsBetween?: (
+    ancestorSha: string,
+    currentHeadSha: string,
+  ) => readonly string[] | Promise<readonly string[]>
+  questionSemanticHash: string
+  classificationSemanticHash: string
+  fixtureManifestHash: string
+  classificationFixtureManifestHash: string
+  persistenceFixtureManifestHash?: string
+  classificationPersistenceFixtureManifestHash?: string
+  persistenceFixtureCasesHash?: string
+  persistenceFixtureExtractorHash?: string
+  styleFixtureManifestHash?: string
+  classificationStyleFixtureManifestHash?: string
+  scoringFixtureManifestHash?: string
+  classificationScoringFixtureManifestHash?: string
+  eligibilityFixtureManifestHash?: string
+  classificationEligibilityFixtureManifestHash?: string
+  questionBaseline?: {
+    readonly [Key in keyof typeof protectedQuestionBaseline]: string
   }
-  let runUrl: URL
-  try {
-    runUrl = new URL(evidence.runUrl)
-  } catch (error) {
-    throw new Error('Recorded remote CI run URL is malformed', { cause: error })
-  }
-  const match = /^\/AnsonHui6040\/ramen-style-today-next\/actions\/runs\/([1-9][0-9]*)$/.exec(
-    runUrl.pathname,
-  )
-  if (runUrl.origin !== githubHtmlOrigin
-    || runUrl.username
-    || runUrl.password
-    || runUrl.search
-    || runUrl.hash
-    || !match) {
-    throw new Error('Recorded remote CI run URL must be the canonical repository run URL')
-  }
-  const runId = Number(match[1])
-  if (!Number.isSafeInteger(runId)) {
-    throw new Error('Recorded remote CI run ID is not a safe positive integer')
-  }
-  return successfulCiProofSchema.parse({
-    schemaVersion: 1,
-    sha: evidence.commitSha,
-    runId,
-    runUrl: evidence.runUrl,
-  })
 }
 
-export async function authenticateLedgerRemoteCiEvidence(
-  input: unknown,
+export interface SemanticAncestryInput {
+  implementationSha: string
+  candidateSha: string
+  semanticPaths: readonly string[]
+  changedPaths: readonly string[]
+}
+
+function nulSeparatedGitPaths(repoRoot: string, args: readonly string[]) {
+  const output = execFileSync('git', args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  })
+  return output.split('\0').filter(Boolean)
+}
+
+export function collectGitChangedPaths(
+  repoRoot: string,
+  implementationSha: string,
   currentHeadSha: string,
-  fetchImplementation: typeof fetch,
-  isCommitAncestor: CommitAncestryCheck,
-  githubToken?: string,
-): Promise<void> {
-  if (!fullShaSchema.safeParse(currentHeadSha).success) {
-    throw new Error('Current repository HEAD must be a full lowercase SHA')
+  includeWorktree = true,
+) {
+  const changedPaths = new Set<string>()
+  const commands: Array<readonly string[]> = [
+    [
+      'log',
+      '--format=',
+      '--name-only',
+      '--no-renames',
+      '-z',
+      `${implementationSha}..${currentHeadSha}`,
+      '--',
+    ],
+  ]
+  const repositoryHead = execFileSync(
+    'git',
+    ['rev-parse', 'HEAD'],
+    { cwd: repoRoot, encoding: 'utf8' },
+  ).trim()
+  if (includeWorktree && repositoryHead === currentHeadSha) commands.push(
+    [
+      'diff',
+      '--cached',
+      '--name-only',
+      '--no-renames',
+      '-z',
+      currentHeadSha,
+      '--',
+    ],
+    [
+      'diff',
+      '--name-only',
+      '--no-renames',
+      '-z',
+      '--',
+    ],
+  )
+  for (const command of commands) {
+    for (const file of nulSeparatedGitPaths(repoRoot, command)) changedPaths.add(file)
   }
-  const ledger = migrationLedgerSchema.parse(input)
-  for (const entry of ledger.entries) {
-    for (const evidence of entry.verification) {
-      if (!evidence.gate.endsWith('-remote-ci')) continue
-      const proof = proofFromRecordedEvidence(evidence)
-      if (!await isCommitAncestor(proof.sha, currentHeadSha)) {
-        throw new Error(
-          `Recorded remote CI commit ${proof.sha} is not an ancestor of current HEAD ${currentHeadSha}`,
-        )
-      }
-      await verifySuccessfulCiProof(
-        proof,
-        proof.sha,
-        fetchImplementation,
-        githubToken,
-      )
+  return [...changedPaths].sort(compareCodePoints)
+}
+
+function matchesSemanticPath(file: string, semanticPath: string) {
+  if (semanticPath.endsWith('/**')) {
+    const directory = semanticPath.slice(0, -3)
+    return file.startsWith(`${directory}/`)
+  }
+  return file === semanticPath
+}
+
+function changedProtectedMaintenancePath(
+  changedPaths: readonly string[],
+  semanticPaths: readonly string[],
+  maintenancePaths: readonly string[],
+) {
+  return changedPaths.find((file) => (
+    semanticPaths.some((semanticPath) => matchesSemanticPath(file, semanticPath))
+    && !maintenancePaths.some((maintenancePath) => matchesSemanticPath(file, maintenancePath))
+  ))
+}
+
+export async function verifySemanticAncestry(
+  input: SemanticAncestryInput,
+): Promise<void> {
+  if (!fullShaPattern.test(input.implementationSha)
+    || !fullShaPattern.test(input.candidateSha)) {
+    throw new Error('semantic ancestry requires full lowercase Git SHAs')
+  }
+  const changedSemanticPath = input.changedPaths.find((file) => (
+    input.semanticPaths.some((semanticPath) => matchesSemanticPath(file, semanticPath))
+  ))
+  if (changedSemanticPath) {
+    throw new Error(
+      `semantic path changed after implementation SHA: ${changedSemanticPath}`,
+    )
+  }
+}
+
+export async function verifyExactMetadataBoundary(input: {
+  implementationSha: string
+  metadataSha: string
+  expectedPaths: readonly string[]
+  directParentsOf: LedgerRepositoryState['directParentsOf']
+  changedPathsBetween: LedgerRepositoryState['changedPathsBetween']
+  label: string
+}): Promise<void> {
+  const parents = await input.directParentsOf(input.metadataSha)
+  if (parents.length !== 1 || parents[0] !== input.implementationSha) {
+    throw new Error(
+      `${input.label} metadata SHA ${input.metadataSha} must have exactly one parent ${input.implementationSha}`,
+    )
+  }
+  const changedPaths = [
+    ...await input.changedPathsBetween(input.implementationSha, input.metadataSha),
+  ].sort(compareCodePoints)
+  const expectedPaths = [...input.expectedPaths].sort(compareCodePoints)
+  if (JSON.stringify(changedPaths) !== JSON.stringify(expectedPaths)) {
+    throw new Error(`${input.label} requires the exact acceptance metadata path set`)
+  }
+}
+
+export async function checkLedgerOffline(
+  input: unknown,
+  state: LedgerRepositoryState,
+): Promise<LedgerCheckResult> {
+  const base = checkLedger({ input, ...state })
+  if (!base.ledger) return base
+  const errors = [...base.errors]
+  const hasBatch3B = base.ledger.entries.some(({ batch }) => batch === '3B')
+  const hasBatch3C = base.ledger.entries.some(({ batch }) => batch === '3C')
+  const hasWebProduct = base.ledger.entries.some(({ batch }) => batch === 'Web')
+
+  if (!fullShaPattern.test(state.currentHeadSha)) {
+    errors.push('Current repository HEAD must be a full lowercase SHA')
+  }
+  if (base.ledger.entries.some(({ batch }) => batch === '2A')) {
+    if (state.questionSemanticHash !== state.classificationSemanticHash) {
+      errors.push('classification manifest question semantic hash is inconsistent')
+    }
+    if (state.fixtureManifestHash !== state.classificationFixtureManifestHash) {
+      errors.push('classification manifest observable-trace fixture manifest hash is inconsistent')
     }
   }
-}
 
-export function recordSuccessfulCi(
-  input: unknown,
-  batch: string,
-  verifiedRun: AuthenticatedSuccessfulCiRun,
-): MigrationLedger {
-  const ledger = migrationLedgerSchema.parse(input)
-  if (typeof verifiedRun !== 'object'
-    || verifiedRun === null
-    || verifiedRun[authenticatedRun] !== true) {
-    throw new Error('CI promotion requires an authenticated GitHub Actions run')
+  const batch2B = base.ledger.entries.find(({ batch }) => batch === '2B')
+  if (batch2B) {
+    if (batch2B.fixtureManifestHash !== state.persistenceFixtureManifestHash) {
+      errors.push('Batch 2B fixture manifest hash is inconsistent with tracked bytes')
+    }
+    if (state.classificationPersistenceFixtureManifestHash
+      !== state.persistenceFixtureManifestHash) {
+      errors.push('classification manifest persistence fixture manifest hash is inconsistent')
+    }
+    if (batch2B.status === 'complete' && batch2B.acceptanceBoundary) {
+      const boundary = batch2B.acceptanceBoundary
+      const parents = await state.directParentsOf(boundary.metadataSha)
+      if (parents.length !== 1 || parents[0] !== boundary.implementationSha) {
+        errors.push(
+          `Batch 2B accepted metadata SHA ${boundary.metadataSha} must have exactly one parent ${boundary.implementationSha}`,
+        )
+      }
+      const boundaryChangedPaths = [
+        ...await state.changedPathsBetween(
+          boundary.implementationSha,
+          boundary.metadataSha,
+        ),
+      ].sort(compareCodePoints)
+      const expectedBoundaryPaths = [...batch2BAcceptanceMetadataPaths]
+        .sort(compareCodePoints)
+      if (JSON.stringify(boundaryChangedPaths) !== JSON.stringify(expectedBoundaryPaths)) {
+        errors.push('Batch 2B accepted boundary requires the exact acceptance metadata path set')
+      }
+      if (!await state.isCommitAncestor(boundary.metadataSha, state.currentHeadSha)) {
+        errors.push(
+          `Batch 2B accepted metadata SHA ${boundary.metadataSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+        )
+      } else {
+        const changedPaths = await state.changedPathsBetween(
+          boundary.metadataSha,
+          state.currentHeadSha,
+        )
+        const identityMaintenance = batch2B.persistenceIdentityMaintenance
+        for (const file of changedPaths) {
+          if (batch2BProtectedPersistencePaths.some(
+            (path) => matchesSemanticPath(file, path),
+          ) && !(hasBatch3B && batch3BApprovedDependencyTestPaths.includes(
+            file as typeof batch3BApprovedDependencyTestPaths[number],
+          )) && !identityMaintenance?.paths.includes(
+            file as typeof identityMaintenance.paths[number],
+          )) {
+            errors.push(
+              `Batch 2B protected persistence path changed after accepted metadata SHA: ${file}`,
+            )
+          }
+        }
+
+        if (identityMaintenance) {
+          const parents = await state.directParentsOf(identityMaintenance.changeSha)
+          if (parents.length !== 1 || parents[0] !== identityMaintenance.changeParentSha) {
+            errors.push(
+              `Batch 2B persistence identity change SHA ${identityMaintenance.changeSha} must have exactly one parent ${identityMaintenance.changeParentSha}`,
+            )
+          }
+          const payloadPaths = [
+            ...await state.changedPathsBetween(
+              identityMaintenance.changeParentSha,
+              identityMaintenance.changeSha,
+            ),
+          ].sort(compareCodePoints)
+          const expectedPayloadPaths = [...identityMaintenance.paths].sort(compareCodePoints)
+          if (JSON.stringify(payloadPaths) !== JSON.stringify(expectedPayloadPaths)) {
+            errors.push('Batch 2B persistence identity payload requires its exact one-file diff')
+          }
+          if (!await state.isCommitAncestor(
+            identityMaintenance.changeSha,
+            state.currentHeadSha,
+          )) {
+            errors.push(
+              `Batch 2B persistence identity change SHA ${identityMaintenance.changeSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+            )
+          } else {
+            const changedAfterPayload = await state.changedPathsBetween(
+              identityMaintenance.changeSha,
+              state.currentHeadSha,
+            )
+            for (const file of changedAfterPayload) {
+              if (batch2BProtectedPersistencePaths.some(
+                (path) => matchesSemanticPath(file, path),
+              ) && !(hasBatch3B && batch3BApprovedDependencyTestPaths.includes(
+                file as typeof batch3BApprovedDependencyTestPaths[number],
+              ))) errors.push(
+                `Batch 2B protected persistence path changed after identity payload SHA: ${file}`,
+              )
+            }
+          }
+          if (state.persistenceFixtureCasesHash !== identityMaintenance.casesHash) {
+            errors.push(
+              'Batch 2B persistence identity cases hash is inconsistent with tracked manifest',
+            )
+          }
+          if (state.persistenceFixtureExtractorHash
+            !== identityMaintenance.maintainedExtractorHash) {
+            errors.push(
+              'Batch 2B persistence identity extractor hash is inconsistent with tracked manifest',
+            )
+          }
+        }
+      }
+
+      const maintenance = batch2B.boundaryMaintenance
+      if (maintenance?.status === 'complete') {
+        if (!await state.isCommitAncestor(maintenance.maintenanceSha, state.currentHeadSha)) {
+          errors.push(
+            `Batch 2B boundary maintenance SHA ${maintenance.maintenanceSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+          )
+        } else if (!base.ledger.entries.some(({ batch }) => batch === '3A')) {
+          const completionPaths = await state.changedPathsBetween(
+            maintenance.maintenanceSha,
+            state.currentHeadSha,
+          )
+          if (completionPaths.length === 0
+            || completionPaths.some((file) => !batch2BAcceptanceMetadataPaths.includes(
+              file as typeof batch2BAcceptanceMetadataPaths[number],
+            ))) {
+            errors.push(
+              'Batch 2B boundary maintenance completion requires a non-empty acceptance-metadata-only diff',
+            )
+          }
+        }
+      }
+    }
   }
-  const target = ledger.entries.find((entry) => entry.batch === batch)
-  if (!target) throw new Error(`Unknown ledger batch ${batch}`)
-  if (target.status !== 'in-review') throw new Error(`Batch ${batch} is not in review`)
-  const gate = `batch${batch.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-remote-ci`
-  if (target.verification.some((item) => item.gate === gate)) {
-    throw new Error(`Batch ${batch} already records remote CI`)
+
+  const batch3A = base.ledger.entries.find(({ batch }) => batch === '3A')
+  if (batch3A) {
+    if (batch3A.fixtureManifestHash !== state.styleFixtureManifestHash) {
+      errors.push('Batch 3A fixture manifest hash is inconsistent with tracked bytes')
+    }
+    if (state.classificationStyleFixtureManifestHash !== state.styleFixtureManifestHash) {
+      errors.push('classification manifest style fixture manifest hash is inconsistent')
+    }
+    if (batch3A.status === 'complete' && batch3A.implementationSha) {
+      if (hasBatch3B) {
+        const parents = await state.directParentsOf(acceptedBatch3AMetadataSha)
+        if (parents.length !== 1 || parents[0] !== batch3A.implementationSha) {
+          errors.push(
+            `Batch 3A accepted metadata SHA ${acceptedBatch3AMetadataSha} must have exactly one parent ${batch3A.implementationSha}`,
+          )
+        }
+        const acceptedPaths = [
+          ...await state.changedPathsBetween(
+            batch3A.implementationSha,
+            acceptedBatch3AMetadataSha,
+          ),
+        ].sort(compareCodePoints)
+        const expectedPaths = [...batch3AAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(acceptedPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3A accepted boundary requires the exact acceptance metadata path set')
+        }
+        if (!await state.isCommitAncestor(acceptedBatch3AMetadataSha, state.currentHeadSha)) {
+          errors.push(
+            `Batch 3A accepted metadata SHA ${acceptedBatch3AMetadataSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+          )
+        } else {
+          const changedAfterAcceptance = await state.changedPathsBetween(
+            acceptedBatch3AMetadataSha,
+            state.currentHeadSha,
+          )
+          for (const file of changedAfterAcceptance) {
+            if (batch3AProtectedStylePaths.some(
+              (path) => matchesSemanticPath(file, path),
+            ) && !batch3BApprovedDependencyTestPaths.includes(
+              file as typeof batch3BApprovedDependencyTestPaths[number],
+            )) errors.push(
+              `Batch 3A protected style path changed after accepted metadata SHA: ${file}`,
+            )
+          }
+        }
+      } else if (!await state.isCommitAncestor(batch3A.implementationSha, state.currentHeadSha)) {
+        errors.push(
+          `Batch 3A implementation SHA ${batch3A.implementationSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+        )
+      } else {
+        const completionPaths = [
+          ...await state.changedPathsBetween(
+            batch3A.implementationSha,
+            state.currentHeadSha,
+          ),
+        ].sort(compareCodePoints)
+        const frozenPath = completionPaths.find((file) => (
+          [
+            ...(batch3A.implementationPaths ?? []),
+            ...(batch3A.verificationPaths ?? []),
+          ].some(
+            (path) => matchesSemanticPath(file, path),
+          )
+        ))
+        if (frozenPath) errors.push(
+          `Batch 3A candidate completion changed a frozen path: ${frozenPath}`,
+        )
+        const expectedPaths = [...batch3AAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(completionPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3A completion requires the exact acceptance metadata path set')
+        }
+      }
+    }
   }
 
-  return migrationLedgerSchema.parse({
-    ...ledger,
-    entries: ledger.entries.map((entry) => entry.batch === batch ? {
-      ...entry,
-      status: 'complete',
-      verification: [
-        ...entry.verification,
-        {
-          gate,
-          command: 'GitHub Actions CI / verify',
-          outcome: 'passed',
-          evidence: 'the pushed acceptance candidate completed the Node 24 verify job successfully',
-          commitSha: verifiedRun.sha,
-          runUrl: verifiedRun.runUrl,
-        },
-      ],
-    } : entry),
-  })
-}
+  const batch3B = base.ledger.entries.find(({ batch }) => batch === '3B')
+  if (batch3B) {
+    if (!batch3A || batch3A.status !== 'complete') {
+      errors.push('Batch 3B requires completed Batch 3A')
+    }
+    if (batch3B.scoringFixtureManifestHash !== state.scoringFixtureManifestHash) {
+      errors.push('Batch 3B scoring fixture manifest hash is inconsistent with tracked bytes')
+    }
+    if (state.classificationScoringFixtureManifestHash
+      !== state.scoringFixtureManifestHash) {
+      errors.push('classification manifest scoring fixture manifest hash is inconsistent')
+    }
+    if (batch3B.status === 'complete' && batch3B.implementationSha) {
+      if (hasBatch3C) {
+        const parents = await state.directParentsOf(acceptedBatch3BMetadataSha)
+        if (parents.length !== 1 || parents[0] !== batch3B.implementationSha) {
+          errors.push(
+            `Batch 3B accepted metadata SHA ${acceptedBatch3BMetadataSha} must have exactly one parent ${batch3B.implementationSha}`,
+          )
+        }
+        const acceptedPaths = [
+          ...await (state.committedChangedPathsBetween ?? state.changedPathsBetween)(
+            batch3B.implementationSha,
+            acceptedBatch3BMetadataSha,
+          ),
+        ].sort(compareCodePoints)
+        const expectedPaths = [...batch3BAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(acceptedPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3B accepted boundary requires the exact acceptance metadata path set')
+        }
+        if (!await state.isCommitAncestor(acceptedBatch3BMetadataSha, state.currentHeadSha)) {
+          errors.push(
+            `Batch 3B accepted metadata SHA ${acceptedBatch3BMetadataSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+          )
+        } else {
+          const changedAfterAcceptance = await state.changedPathsBetween(
+            acceptedBatch3BMetadataSha,
+            state.currentHeadSha,
+          )
+          for (const file of changedAfterAcceptance) {
+            if ([
+              ...(batch3B.implementationPaths ?? []),
+              ...(batch3B.verificationPaths ?? []),
+            ].some((path) => matchesSemanticPath(file, path))
+              && ![
+                ...batch3CImplementationPaths,
+                ...batch3CVerificationPaths,
+              ].some((path) => matchesSemanticPath(file, path))) errors.push(
+              `Batch 3B protected scoring path changed after accepted metadata SHA: ${file}`,
+            )
+          }
+        }
+      } else if (!await state.isCommitAncestor(batch3B.implementationSha, state.currentHeadSha)) {
+        errors.push(
+          `Batch 3B implementation SHA ${batch3B.implementationSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+        )
+      } else {
+        const completionPaths = [
+          ...await state.changedPathsBetween(
+            batch3B.implementationSha,
+            state.currentHeadSha,
+          ),
+        ].sort(compareCodePoints)
+        const frozenPath = completionPaths.find((file) => (
+          [
+            ...(batch3B.implementationPaths ?? []),
+            ...(batch3B.verificationPaths ?? []),
+          ].some((path) => matchesSemanticPath(file, path))
+          && !(hasBatch3C && [
+            ...batch3CImplementationPaths,
+            ...batch3CVerificationPaths,
+          ].some((path) => matchesSemanticPath(file, path)))
+        ))
+        if (frozenPath) errors.push(
+          `Batch 3B candidate completion changed a frozen path: ${frozenPath}`,
+        )
+        const expectedPaths = [...batch3BAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(completionPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3B completion requires the exact acceptance metadata path set')
+        }
+        if (state.currentHeadSha !== batch3B.implementationSha) {
+          try {
+            await verifyExactMetadataBoundary({
+              implementationSha: batch3B.implementationSha,
+              metadataSha: state.currentHeadSha,
+              expectedPaths: batch3BAcceptanceMetadataPaths,
+              directParentsOf: state.directParentsOf,
+              changedPathsBetween: state.changedPathsBetween,
+              label: 'Batch 3B completion',
+            })
+          } catch (error) {
+            errors.push(error instanceof Error ? error.message : String(error))
+          }
+        }
+      }
+    }
+  }
 
-export async function verifyAndRecordSuccessfulCi(
-  input: unknown,
-  batch: string,
-  proofInput: unknown,
-  expectedCandidateSha: string,
-): Promise<MigrationLedger> {
-  const verifiedRun = await verifySuccessfulCiProof(
-    proofInput,
-    expectedCandidateSha,
-    globalThis.fetch,
-  )
-  return recordSuccessfulCi(input, batch, verifiedRun)
+  const batch3C = base.ledger.entries.find(({ batch }) => batch === '3C')
+  if (batch3C) {
+    if (!batch3B || batch3B.status !== 'complete') {
+      errors.push('Batch 3C requires completed Batch 3B')
+    }
+    if (batch3C.eligibilityFixtureManifestHash !== state.eligibilityFixtureManifestHash) {
+      errors.push('Batch 3C eligibility fixture manifest hash is inconsistent with tracked bytes')
+    }
+    if (state.classificationEligibilityFixtureManifestHash
+      !== state.eligibilityFixtureManifestHash) {
+      errors.push('classification manifest eligibility fixture manifest hash is inconsistent')
+    }
+    if (batch3C.status === 'complete' && batch3C.implementationSha) {
+      if (hasWebProduct) {
+        const parents = await state.directParentsOf(acceptedBatch3CMetadataSha)
+        if (parents.length !== 1 || parents[0] !== batch3C.implementationSha) {
+          errors.push(
+            `Batch 3C accepted metadata SHA ${acceptedBatch3CMetadataSha} must have exactly one parent ${batch3C.implementationSha}`,
+          )
+        }
+        const acceptedPaths = [
+          ...await (state.committedChangedPathsBetween ?? state.changedPathsBetween)(
+            batch3C.implementationSha,
+            acceptedBatch3CMetadataSha,
+          ),
+        ].sort(compareCodePoints)
+        const expectedPaths = [...batch3CAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(acceptedPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3C accepted boundary requires the exact acceptance metadata path set')
+        }
+        if (!await state.isCommitAncestor(acceptedBatch3CMetadataSha, state.currentHeadSha)) {
+          errors.push(
+            `Batch 3C accepted metadata SHA ${acceptedBatch3CMetadataSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+          )
+        } else {
+          const changedAfterAcceptance = await state.changedPathsBetween(
+            acceptedBatch3CMetadataSha,
+            state.currentHeadSha,
+          )
+          for (const file of changedAfterAcceptance) {
+            if ([
+              ...(batch3C.implementationPaths ?? []),
+              ...(batch3C.verificationPaths ?? []),
+            ].some((path) => matchesSemanticPath(file, path))
+              && !webProductProtectedMaintenancePaths.some(
+                (path) => matchesSemanticPath(file, path),
+              )) errors.push(
+              `Batch 3C protected eligibility path changed after accepted metadata SHA: ${file}`,
+            )
+          }
+        }
+      } else if (!await state.isCommitAncestor(batch3C.implementationSha, state.currentHeadSha)) {
+        errors.push(
+          `Batch 3C implementation SHA ${batch3C.implementationSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+        )
+      } else {
+        const completionPaths = [
+          ...await state.changedPathsBetween(
+            batch3C.implementationSha,
+            state.currentHeadSha,
+          ),
+        ].sort(compareCodePoints)
+        const frozenPath = completionPaths.find((file) => (
+          [
+            ...(batch3C.implementationPaths ?? []),
+            ...(batch3C.verificationPaths ?? []),
+          ].some((path) => matchesSemanticPath(file, path))
+        ))
+        if (frozenPath) errors.push(
+          `Batch 3C candidate completion changed a frozen path: ${frozenPath}`,
+        )
+        const expectedPaths = [...batch3CAcceptanceMetadataPaths].sort(compareCodePoints)
+        if (JSON.stringify(completionPaths) !== JSON.stringify(expectedPaths)) {
+          errors.push('Batch 3C completion requires the exact acceptance metadata path set')
+        }
+        if (state.currentHeadSha !== batch3C.implementationSha) {
+          try {
+            await verifyExactMetadataBoundary({
+              implementationSha: batch3C.implementationSha,
+              metadataSha: state.currentHeadSha,
+              expectedPaths: batch3CAcceptanceMetadataPaths,
+              directParentsOf: state.directParentsOf,
+              changedPathsBetween: state.changedPathsBetween,
+              label: 'Batch 3C completion',
+            })
+          } catch (error) {
+            errors.push(error instanceof Error ? error.message : String(error))
+          }
+        }
+      }
+    }
+  }
+
+  for (const entry of base.ledger.entries) {
+    for (const incident of entry.incidents ?? []) {
+      if (!state.repoFiles.has(incident) || !state.existingFiles.has(incident)) {
+        errors.push(
+          `Batch ${entry.batch} incident is not an existing regular repository file: ${incident}`,
+        )
+      }
+    }
+    const verificationEvidence = [
+      ...entry.verification,
+      ...(entry.maintenance?.verification ?? []),
+    ]
+    for (const evidence of verificationEvidence) {
+      if (!evidence.gate.endsWith('-remote-ci') || !evidence.commitSha) continue
+      if (!await state.isCommitAncestor(evidence.commitSha, state.currentHeadSha)) {
+        errors.push(
+          `Recorded remote CI commit ${evidence.commitSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+        )
+      }
+    }
+    if (entry.maintenance) {
+      if (!state.questionBaseline) {
+        errors.push('Batch 2A maintenance protected baseline is unavailable')
+      } else {
+        for (const key of Object.keys(protectedQuestionBaseline) as Array<
+          keyof typeof protectedQuestionBaseline
+        >) {
+          if (state.questionBaseline[key] !== entry.maintenance.baseline[key]) {
+            errors.push(`Batch 2A maintenance protected baseline mismatch: ${key}`)
+          }
+        }
+      }
+    }
+    if (entry.batch !== '2A' || entry.status !== 'complete' || !entry.implementationSha) {
+      continue
+    }
+    if (!await state.isCommitAncestor(entry.implementationSha, state.currentHeadSha)) {
+      errors.push(
+        `Batch 2A implementation SHA ${entry.implementationSha} is not an ancestor of current HEAD ${state.currentHeadSha}`,
+      )
+      continue
+    }
+    const changedPaths = await state.changedPathsBetween(
+      entry.implementationSha,
+      state.currentHeadSha,
+    )
+    if (entry.maintenance) {
+      if (changedProtectedMaintenancePath(
+        changedPaths,
+        entry.semanticPaths ?? [],
+        entry.maintenance.paths,
+      )) {
+        errors.push('Batch 2A maintenance changed a protected question path')
+      }
+      continue
+    }
+    try {
+      await verifySemanticAncestry({
+        implementationSha: entry.implementationSha,
+        candidateSha: state.currentHeadSha,
+        semanticPaths: entry.semanticPaths ?? [],
+        changedPaths,
+      })
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  return {
+    ...base,
+    ok: errors.length === 0,
+    errors: errors.sort(compareCodePoints),
+  }
 }
 
 export function checkLedger(input: LedgerCheckInput): LedgerCheckResult {
@@ -332,10 +704,36 @@ export function checkLedger(input: LedgerCheckInput): LedgerCheckResult {
   }
 
   const errors: string[] = []
-  const allOwners = new Set(parsed.data.entries.flatMap((entry) => entry.newOwners))
+  const maintenanceOwners = parsed.data.entries.flatMap((entry) => {
+    const maintenancePaths = entry.maintenance?.paths
+    if (!maintenancePaths) return []
+    return [...input.repoFiles]
+      .filter((file) => maintenancePaths.some(
+        (path) => matchesSemanticPath(file, path),
+      ))
+      .map((file) => ({ batch: entry.batch, file }))
+  })
+  const allOwners = new Set([
+    ...parsed.data.entries.flatMap((entry) => entry.newOwners),
+    ...maintenanceOwners.map(({ file }) => file),
+  ])
+  const retiredOwners = new Set(parsed.data.entries.flatMap(
+    (entry) => entry.retiredOwners ?? [],
+  ))
+  for (const owner of maintenanceOwners) {
+    if (!input.existingFiles.has(owner.file)) {
+      errors.push(
+        `Batch ${owner.batch} maintenance owner is not an existing repository file: ${owner.file}`,
+      )
+    }
+  }
   for (const entry of parsed.data.entries) {
     for (const owner of entry.newOwners) {
-      if (!input.repoFiles.has(owner) || !input.existingFiles.has(owner)) {
+      if (retiredOwners.has(owner)) {
+        if (input.repoFiles.has(owner) || input.existingFiles.has(owner)) {
+          errors.push(`Retired migration-ledger owner still exists: ${owner}`)
+        }
+      } else if (!input.repoFiles.has(owner) || !input.existingFiles.has(owner)) {
         errors.push(`Batch ${entry.batch} owner is not an existing repository file: ${owner}`)
       }
     }

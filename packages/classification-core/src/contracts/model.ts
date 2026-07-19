@@ -1,10 +1,11 @@
-import type { DefinitionBundleSource } from '../compiler/source-schema.js'
+import type { DeepReadonly } from './deep-freeze.js'
+import type { CompiledEligibilityPolicy } from './eligibility-policy.js'
+import type { CompiledQuestion, CompiledQuestionModel } from './question-model.js'
+import type { ClassificationSourceProvenance } from './provenance.js'
+import type { CompiledScoringPolicy } from './scoring-policy.js'
+import type { CompiledStyleModel } from './style-model.js'
 
-export type DeepReadonly<T> = T extends readonly (infer Item)[]
-  ? readonly DeepReadonly<Item>[]
-  : T extends object
-    ? { readonly [Key in keyof T]: DeepReadonly<T[Key]> }
-    : T
+export type { DeepReadonly } from './deep-freeze.js'
 
 export type ConceptKind = 'question' | 'option' | 'style' | 'intensity' | 'noodle' | 'policy'
 export type ConceptKey = `${ConceptKind}/${string}`
@@ -13,16 +14,19 @@ export interface ConceptRecord {
   readonly key: ConceptKey
   readonly kind: ConceptKind
   readonly id: string
+  readonly ownerQuestionId?: string
   readonly sourceFile: string
   readonly messageIds: readonly string[]
 }
 
 export interface ClassificationModel {
-  readonly mode: DefinitionBundleSource['mode']
   readonly modelVersion: string
   readonly dataVersion: string
-  readonly questions: DeepReadonly<DefinitionBundleSource['questions']>
-  readonly styles: DeepReadonly<DefinitionBundleSource['styles']>
-  readonly policy: DeepReadonly<DefinitionBundleSource['policy']>
+  readonly provenance: DeepReadonly<ClassificationSourceProvenance>
+  readonly questionModel: CompiledQuestionModel
+  readonly questions: DeepReadonly<readonly CompiledQuestion[]>
+  readonly styleModel: CompiledStyleModel
+  readonly policy: CompiledScoringPolicy
+  readonly eligibilityPolicy: CompiledEligibilityPolicy
   readonly inventory: readonly ConceptRecord[]
 }

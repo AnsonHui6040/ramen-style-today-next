@@ -24,10 +24,53 @@ function isCoreSpecifier(value: string) {
   return value === corePackage || value.startsWith(`${corePackage}/`)
 }
 
-function importsClassificationBehavior(source: string, relativePath: string) {
-  const preprocessedCoreImports = ts.preProcessFile(source, true, true).importedFiles.filter(
-    ({ fileName }) => isCoreSpecifier(fileName),
+export function scanImportSpecifiers(source: string) {
+  return scanModuleLoads(source).specifiers
+}
+
+export type DynamicModuleLoadKind = 'import' | 'require'
+
+export interface ModuleLoadScan {
+  readonly specifiers: readonly string[]
+  readonly nonliteralDynamicLoads: readonly DynamicModuleLoadKind[]
+}
+
+export function scanModuleLoads(source: string, fileName = 'source.ts'): ModuleLoadScan {
+  const specifiers = ts.preProcessFile(source, true, true)
+    .importedFiles.map(({ fileName: specifier }) => specifier)
+  const nonliteralDynamicLoads: DynamicModuleLoadKind[] = []
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
   )
+
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node)) {
+      const kind = node.expression.kind === ts.SyntaxKind.ImportKeyword
+        ? 'import'
+        : ts.isIdentifier(node.expression) && node.expression.text === 'require'
+          ? 'require'
+          : undefined
+      if (kind) {
+        const target = node.arguments[0]
+        if (!target || !ts.isStringLiteralLike(target)) {
+          nonliteralDynamicLoads.push(kind)
+        } else if (!specifiers.includes(target.text)) {
+          specifiers.push(target.text)
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+
+  return { specifiers, nonliteralDynamicLoads }
+}
+
+function importsClassificationBehavior(source: string, relativePath: string) {
+  const preprocessedCoreImports = scanImportSpecifiers(source).filter(isCoreSpecifier)
   if (preprocessedCoreImports.length === 0) return false
 
   const sourceFile = ts.createSourceFile(

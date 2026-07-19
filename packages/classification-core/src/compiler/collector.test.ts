@@ -93,4 +93,54 @@ describe('structured diagnostics', () => {
       }],
     })).toThrow('diagnostic related references')
   })
+
+  test('deduplicates only exact five-field diagnostic identities', () => {
+    const collector = new DiagnosticCollector()
+    const exact = {
+      code: 'STRUCTURE_INVALID' as const,
+      sourceFile: 'packages/core/styles.ts',
+      path: '/definitions/0',
+      entityId: 'demo-style',
+      message: 'Invalid style',
+    }
+    collector.error(exact)
+    collector.error(exact)
+    collector.error({ ...exact, message: 'Different message' })
+    collector.error({ ...exact, entityId: 'other-style' })
+
+    expect(collector.toArray()).toHaveLength(3)
+  })
+
+  test('produces byte-identical diagnostics from reversed invalid input', () => {
+    const findings = [
+      {
+        code: 'STRUCTURE_INVALID' as const,
+        sourceFile: 'packages/core/styles.ts',
+        path: '/definitions/0',
+        entityId: 'beta',
+        message: 'Unknown beta option',
+      },
+      {
+        code: 'STRUCTURE_INVALID' as const,
+        sourceFile: 'packages/core/styles.ts',
+        path: '/definitions/0',
+        entityId: 'alpha',
+        message: 'Unknown zeta option',
+      },
+      {
+        code: 'STRUCTURE_INVALID' as const,
+        sourceFile: 'packages/core/styles.ts',
+        path: '/definitions/0',
+        entityId: 'alpha',
+        message: 'Unknown alpha option',
+      },
+    ]
+    const collect = (values: typeof findings) => {
+      const collector = new DiagnosticCollector()
+      for (const finding of values) collector.error(finding)
+      return JSON.stringify(collector.toArray())
+    }
+
+    expect(collect(findings)).toBe(collect([...findings].reverse()))
+  })
 })
