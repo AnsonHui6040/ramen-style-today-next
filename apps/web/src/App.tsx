@@ -64,12 +64,12 @@ function usePage() {
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <a className={`brand${compact ? ' brand--compact' : ''}`} href="/" onClick={(event) => {
+    <a className={`rl-brand${compact ? ' rl-brand--compact' : ''}`} href="/" onClick={(event) => {
       event.preventDefault()
       window.history.pushState({}, '', '/')
       window.dispatchEvent(new PopStateEvent('popstate'))
     }}>
-      <span className="brand__stamp" aria-hidden="true">麵</span>
+      <span className="rl-brand__stamp" aria-hidden="true">麵</span>
       <span><strong>今天，吃哪一碗？</strong><small>RAMEN STYLE FINDER</small></span>
     </a>
   )
@@ -89,33 +89,33 @@ function HomePage({
   onReset(): void
 }) {
   return (
-    <main className="home-shell">
-      <section className="noren" aria-labelledby="home-title">
-        <div className="noren__mark">今日<br />一碗</div>
-        <div className="noren__copy">
-          <p className="eyebrow">8 QUESTIONS · REAL CLASSIFICATION</p>
+    <main className="rl-home-shell">
+      <section className="rl-noren" aria-labelledby="home-title">
+        <div className="rl-noren__mark">今日<br />一碗</div>
+        <div className="rl-noren__copy">
+          <p className="rl-eyebrow">8 QUESTIONS · REAL CLASSIFICATION</p>
           <h1 id="home-title">從口味出發，<br />找到今天的拉麵風格。</h1>
           <p>不是人氣排行。回答八個關於湯、麵與偏好的問題，由真實分類模型計算主要及替代結果。</p>
         </div>
       </section>
-      <section className="home-action" aria-label="開始問卷">
+      <section className="rl-home-action" aria-label="開始問卷">
         <Brand />
-        <div className="bowl-orbit" aria-hidden="true"><span>湯</span></div>
-        <div className="home-action__copy">
+        <div className="rl-bowl-orbit" aria-hidden="true"><span>湯</span></div>
+        <div className="rl-home-action__copy">
           <p>大約 2 分鐘</p>
           <h2>{completed ? '上次的結果還在。' : hasProgress ? '接著上次的位置繼續。' : '準備好選今天這一碗？'}</h2>
         </div>
         {hasProgress ? (
-          <button className="button button--primary" type="button" onClick={onContinue}>
+          <button className="rl-button rl-button--primary" type="button" onClick={onContinue}>
             {completed ? '查看上次結果' : '繼續問卷'}
           </button>
         ) : (
-          <button className="button button--primary" type="button" onClick={onStart}>開始尋找拉麵風格</button>
+          <button className="rl-button rl-button--primary" type="button" onClick={onStart}>開始尋找拉麵風格</button>
         )}
         {hasProgress && (
-          <button className="button button--text" type="button" onClick={onReset}>重新開始</button>
+          <button className="rl-button rl-button--text" type="button" onClick={onReset}>重新開始</button>
         )}
-        <p className="home-note">結果提供風格參考；排除條件不構成食物安全或醫療保證。</p>
+        <p className="rl-home-note">結果提供風格參考；排除條件不構成食物安全或醫療保證。</p>
       </section>
     </main>
   )
@@ -173,40 +173,40 @@ function QuestionnairePage({
     : '請選擇一個選項後繼續。'
 
   return (
-    <main className="quiz-shell">
-      <header className="topbar"><Brand compact /><span className="step-label">第 {index + 1}／{questionModel.questions.length} 題</span></header>
-      <div className="progress-track" aria-label={`問卷進度 ${progress}%`}><span style={{ width: `${progress}%` }} /></div>
-      <section className="question-card" aria-labelledby="question-title">
-        <div className="question-heading">
-          <span className="question-number">{String(index + 1).padStart(2, '0')}</span>
+    <main className="rl-quiz-shell">
+      <header className="rl-topbar"><Brand compact /><span className="rl-step-label">第 {index + 1}／{questionModel.questions.length} 題</span></header>
+      <div className="rl-progress-track" aria-label={`問卷進度 ${progress}%`}><span style={{ width: `${progress}%` }} /></div>
+      <section className="rl-question-card" aria-labelledby="question-title">
+        <div className="rl-question-heading">
+          <span className="rl-question-number">{String(index + 1).padStart(2, '0')}</span>
           <div>
-            <p className="eyebrow">YOUR BOWL · {question.selection.type === 'multiple' ? `最多選 ${pendingState.maxSelections} 個` : '選擇 1 個'}</p>
+            <p className="rl-eyebrow">YOUR BOWL · {question.selection.type === 'multiple' ? `最多選 ${pendingState.maxSelections} 個` : '選擇 1 個'}</p>
             <h1 id="question-title">{questionCopy[currentQuestionId].title}</h1>
             <p>{questionCopy[currentQuestionId].description}</p>
           </div>
         </div>
-        <p className="selection-hint" id="selection-hint">{selectionHint}</p>
-        <div className="option-grid" role="group" aria-labelledby="question-title" aria-describedby="selection-hint question-validation">
+        <p className="rl-selection-hint" id="selection-hint">{selectionHint}</p>
+        <div className="rl-option-grid" role="group" aria-labelledby="question-title" aria-describedby="selection-hint question-validation">
           {question.options.filter(({ id }) => allowed.has(id)).map((option) => {
             const selected = pending.includes(option.id)
             return (
               <button
-                className={`option${selected ? ' option--selected' : ''}`}
+                className={`rl-option${selected ? ' rl-option--selected' : ''}`}
                 key={option.id}
                 aria-pressed={selected}
                 type="button"
                 onClick={() => select(option.id)}
               >
-                <span className="option__indicator" aria-hidden="true">{selected ? '✓' : ''}</span>
+                <span className="rl-option__indicator" aria-hidden="true">{selected ? '✓' : ''}</span>
                 <strong>{optionLabel(currentQuestionId, option.id)}</strong>
               </button>
             )
           })}
         </div>
-        <p className="validation" id="question-validation" role="alert" aria-live="polite">{message || (!canProceed ? '選擇符合題目要求後，即可繼續。' : '')}</p>
-        <footer className="question-actions">
-          <button className="button button--secondary" type="button" onClick={() => onBack(currentQuestionId)}>上一步</button>
-          <button className="button button--primary" type="button" disabled={!canProceed} aria-describedby="question-validation" onClick={next}>
+        <p className="rl-validation" id="question-validation" role="alert" aria-live="polite">{message || (!canProceed ? '選擇符合題目要求後，即可繼續。' : '')}</p>
+        <footer className="rl-question-actions">
+          <button className="rl-button rl-button--secondary" type="button" onClick={() => onBack(currentQuestionId)}>上一步</button>
+          <button className="rl-button rl-button--primary" type="button" disabled={!canProceed} aria-describedby="question-validation" onClick={next}>
             {index === interactiveIds.length - 1 ? '完成並看結果' : '下一步'}
           </button>
         </footer>
@@ -224,19 +224,19 @@ function CandidateCard({
 }) {
   if (candidate.availability === 'unavailable') {
     return (
-      <article className="result-card result-card--unavailable">
-        <p className="eyebrow">{label}</p>
+      <article className="rl-result-card rl-result-card--unavailable">
+        <p className="rl-eyebrow">{label}</p>
         <h3>顯示資料尚未提供</h3>
         <p>分類結果已保留，但這個風格目前沒有對應的展示資料。</p>
       </article>
     )
   }
   return (
-    <article className="result-card" style={{ '--accent': candidate.accent } as CSSProperties}>
-      <div className="result-card__top"><p className="eyebrow">{label}</p><span>{candidate.decision === 'eligible' ? '可推薦' : '已阻擋'}</span></div>
+    <article className="rl-result-card" style={{ '--rl-result-accent': candidate.accent } as CSSProperties}>
+      <div className="rl-result-card__top"><p className="rl-eyebrow">{label}</p><span>{candidate.decision === 'eligible' ? '可推薦' : '已阻擋'}</span></div>
       <h3>{candidate.styleDisplayName}</h3>
       <p>{candidate.shortDescription}</p>
-      <dl className="result-facts">
+      <dl className="rl-result-facts">
         <div><dt>輪廓</dt><dd>{candidate.coreDisplayName}</dd></div>
         <div><dt>麵型</dt><dd>{candidate.subtypeDisplayName}</dd></div>
         <div><dt>分數</dt><dd>{candidate.score}</dd></div>
@@ -267,50 +267,50 @@ function ResultsPage({
   const presentation = adaptEligibilityResults(result.eligibility)
   const blocked = result.eligibility.blockedCandidates
   return (
-    <main className="results-shell">
-      <header className="results-hero">
+    <main className="rl-results-shell">
+      <header className="rl-results-hero">
         <Brand compact />
-        <div><p className="eyebrow">YOUR RAMEN PROFILE</p><h1>今天，從這一碗開始。</h1><p>以下結果由完整問卷、評分與排除條件檢查產生。</p></div>
+        <div><p className="rl-eyebrow">YOUR RAMEN PROFILE</p><h1>今天，從這一碗開始。</h1><p>以下結果由完整問卷、評分與排除條件檢查產生。</p></div>
       </header>
       {blocked.length > 0 && (
-        <section className="warning" data-testid="eligibility-warning">
+        <section className="rl-warning" data-testid="eligibility-warning">
           <strong>已套用排除條件</strong>
           <p>所選排除條件與部分候選風格標籤衝突，因此這些候選不會作為正常推薦。</p>
           <p>觸發項目：{[...new Set(blocked.flatMap(({ reasons }) => reasons.map(({ exclusionOptionId }) => exclusionLabel(exclusionOptionId))))].join('、')}</p>
         </section>
       )}
-      <section className="result-section">
-        <div className="section-heading"><p className="eyebrow">PRIMARY</p><h2>主要推薦</h2></div>
+      <section className="rl-result-section">
+        <div className="rl-section-heading"><p className="rl-eyebrow">PRIMARY</p><h2>主要推薦</h2></div>
         {presentation.primary.length ? (
-          <div className="primary-grid">
+          <div className="rl-primary-grid">
             {presentation.primary.map((candidate, index) => (
               <CandidateCard candidate={candidate} label={`推薦 ${index + 1}`} key={candidate.styleId} />
             ))}
           </div>
         ) : (
-          <div className="empty-result"><h3>沒有符合條件的主要推薦</h3><p>替代推薦如有可用，仍會在下方顯示；系統不會自行改選被阻擋的首選。</p></div>
+          <div className="rl-empty-result"><h3>沒有符合條件的主要推薦</h3><p>替代推薦如有可用，仍會在下方顯示；系統不會自行改選被阻擋的首選。</p></div>
         )}
       </section>
-      <section className="result-section">
-        <div className="section-heading"><p className="eyebrow">ALTERNATIVES</p><h2>也可以試試</h2></div>
-        <div className="alternative-grid">
+      <section className="rl-result-section">
+        <div className="rl-section-heading"><p className="rl-eyebrow">ALTERNATIVES</p><h2>也可以試試</h2></div>
+        <div className="rl-alternative-grid">
           {presentation.alternatives.map((candidate, index) => (
             <CandidateCard candidate={candidate} label={`替代 ${index + 1}`} key={candidate.styleId} />
           ))}
         </div>
       </section>
       {result.eligibility.blockedLead && (
-        <section className="blocked-lead">
-          <p className="eyebrow">BLOCKED LEAD</p>
+        <section className="rl-blocked-lead">
+          <p className="rl-eyebrow">BLOCKED LEAD</p>
           <h2>原本的高分候選已被排除</h2>
           <p>{adaptCandidateForPresentation(result.eligibility.blockedLead).availability === 'available'
             ? (adaptCandidateForPresentation(result.eligibility.blockedLead) as Extract<PresentationCandidate, { availability: 'available' }>).styleDisplayName
             : result.eligibility.blockedLead.styleId} 僅作為衝突提示，不列入正常推薦。</p>
         </section>
       )}
-      <footer className="results-actions">
-        {result.eligibility.selectedPrimary && <button className="button button--primary" type="button" onClick={onFinder}>以這個風格尋找拉麵</button>}
-        <button className="button button--secondary" type="button" onClick={onRestart}>重新作答</button>
+      <footer className="rl-results-actions">
+        {result.eligibility.selectedPrimary && <button className="rl-button rl-button--primary" type="button" onClick={onFinder}>以這個風格尋找拉麵</button>}
+        <button className="rl-button rl-button--secondary" type="button" onClick={onRestart}>重新作答</button>
       </footer>
     </main>
   )
@@ -338,25 +338,25 @@ function FinderPage({
   const candidate = result.eligibility.selectedPrimary
   const presentation = candidate ? adaptCandidateForPresentation(candidate) : null
   return (
-    <main className="finder-shell">
+    <main className="rl-finder-shell">
       <Brand compact />
-      <section className="finder-panel">
-        <p className="eyebrow">FINDER PREVIEW</p>
+      <section className="rl-finder-panel">
+        <p className="rl-eyebrow">FINDER PREVIEW</p>
         <h1>用這個風格繼續找</h1>
         {projection.availability === 'available' && presentation?.availability === 'available' ? (
           <>
-            <div className="finder-token"><span>初始風格</span><strong>{presentation.styleDisplayName}</strong><code>{projection.initialFilterId}</code></div>
+            <div className="rl-finder-token"><span>初始風格</span><strong>{presentation.styleDisplayName}</strong><code>{projection.initialFilterId}</code></div>
             <p>這個篩選身份已由可推薦的主要結果建立。地圖、定位與店舖搜尋將在下一階段接上。</p>
           </>
         ) : <p>目前沒有可用的主要推薦，因此不建立Finder篩選。</p>}
-        <button className="button button--secondary" type="button" onClick={onBack}>回到結果</button>
+        <button className="rl-button rl-button--secondary" type="button" onClick={onBack}>回到結果</button>
       </section>
     </main>
   )
 }
 
 function ErrorPanel({ message }: { message: string }) {
-  return <main className="error-shell"><Brand compact /><section><h1>目前無法顯示</h1><p>{message}</p><a className="button button--primary" href="/">回到首頁</a></section></main>
+  return <main className="rl-error-shell"><Brand compact /><section><h1>目前無法顯示</h1><p>{message}</p><a className="rl-button rl-button--primary" href="/">回到首頁</a></section></main>
 }
 
 function StatePanel({
@@ -371,13 +371,13 @@ function StatePanel({
   onAction(): void
 }) {
   return (
-    <main className="error-shell">
+    <main className="rl-error-shell">
       <Brand compact />
       <section>
-        <p className="eyebrow">RAMEN STYLE FINDER</p>
+        <p className="rl-eyebrow">RAMEN STYLE FINDER</p>
         <h1>{title}</h1>
         <p>{message}</p>
-        <button className="button button--primary" type="button" onClick={onAction}>{actionLabel}</button>
+        <button className="rl-button rl-button--primary" type="button" onClick={onAction}>{actionLabel}</button>
       </section>
     </main>
   )
