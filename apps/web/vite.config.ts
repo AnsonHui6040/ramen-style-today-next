@@ -4,7 +4,11 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const isGitHubPages = process.env.GITHUB_PAGES === 'true'
+const base = isGitHubPages ? '/ramen-style-today-next/' : '/'
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     {
@@ -17,6 +21,12 @@ export default defineConfig({
           copyFileSync(
             resolve(clientDirectory, 'index.html'),
             resolve(routeDirectory, 'index.html'),
+          )
+        }
+        if (isGitHubPages) {
+          copyFileSync(
+            resolve(clientDirectory, 'index.html'),
+            resolve(clientDirectory, '404.html'),
           )
         }
         const serverDirectory = resolve(import.meta.dirname, 'dist/server')

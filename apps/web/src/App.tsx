@@ -35,8 +35,25 @@ import {
 type Page = 'home' | 'quiz' | 'results' | 'finder' | 'not-found'
 type NavigablePage = Exclude<Page, 'not-found'>
 
-function pageFromPath(path: string): Page {
-  const normalized = path.replace(/\/+$/, '') || '/'
+const deploymentBasePath = import.meta.env.BASE_URL
+
+function normalizedBasePath(basePath: string) {
+  const normalized = `/${basePath.replace(/^\/+|\/+$/g, '')}`
+  return normalized === '/' ? '/' : `${normalized}/`
+}
+
+export function pageFromPath(path: string, basePath = deploymentBasePath): Page {
+  const base = normalizedBasePath(basePath)
+  const baseWithoutTrailingSlash = base === '/' ? '/' : base.slice(0, -1)
+  const relativePath = base === '/'
+    ? path
+    : path === baseWithoutTrailingSlash || path === base
+      ? '/'
+      : path.startsWith(base)
+        ? `/${path.slice(base.length)}`
+        : undefined
+  if (relativePath === undefined) return 'not-found'
+  const normalized = relativePath.replace(/\/+$/, '') || '/'
   if (normalized === '/') return 'home'
   if (normalized === '/questionnaire') return 'quiz'
   if (normalized === '/results') return 'results'
@@ -44,8 +61,11 @@ function pageFromPath(path: string): Page {
   return 'not-found'
 }
 
-function pathFor(page: NavigablePage) {
-  return ({ home: '/', quiz: '/questionnaire', results: '/results', finder: '/finder' })[page]
+export function pathFor(page: NavigablePage, basePath = deploymentBasePath) {
+  const base = normalizedBasePath(basePath)
+  const route = ({ home: '', quiz: 'questionnaire', results: 'results', finder: 'finder' })[page]
+  if (!route) return base
+  return base === '/' ? `/${route}` : `${base}${route}/`
 }
 
 function usePage() {
@@ -63,10 +83,11 @@ function usePage() {
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
+  const homePath = pathFor('home')
   return (
-    <a className={`rl-brand${compact ? ' rl-brand--compact' : ''}`} href="/" onClick={(event) => {
+    <a className={`rl-brand${compact ? ' rl-brand--compact' : ''}`} href={homePath} onClick={(event) => {
       event.preventDefault()
-      window.history.pushState({}, '', '/')
+      window.history.pushState({}, '', homePath)
       window.dispatchEvent(new PopStateEvent('popstate'))
     }}>
       <span className="rl-brand__stamp" aria-hidden="true">麵</span>
@@ -356,7 +377,7 @@ function FinderPage({
 }
 
 function ErrorPanel({ message }: { message: string }) {
-  return <main className="rl-error-shell"><Brand compact /><section><h1>目前無法顯示</h1><p>{message}</p><a className="rl-button rl-button--primary" href="/">回到首頁</a></section></main>
+  return <main className="rl-error-shell"><Brand compact /><section><h1>目前無法顯示</h1><p>{message}</p><a className="rl-button rl-button--primary" href={pathFor('home')}>回到首頁</a></section></main>
 }
 
 function StatePanel({

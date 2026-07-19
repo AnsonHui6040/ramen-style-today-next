@@ -332,6 +332,7 @@ export const batch3CNewOwners = [
 ] as const
 
 export const webProductNewOwners = [
+  '.github/workflows/pages.yml',
   'apps/web/.openai/hosting.json',
   'apps/web/e2e/runnable-product.spec.ts',
   'apps/web/index.html',
@@ -339,6 +340,7 @@ export const webProductNewOwners = [
   'apps/web/playwright.config.ts',
   'apps/web/public/favicon.svg',
   'apps/web/sites-worker.js',
+  'apps/web/src/App.test.ts',
   'apps/web/src/App.tsx',
   'apps/web/src/catalog-adapter.test.ts',
   'apps/web/src/catalog-adapter.ts',
