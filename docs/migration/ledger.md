@@ -774,11 +774,13 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 
 ### New owners
 
+- `apps/web/.openai/hosting.json`
 - `apps/web/e2e/runnable-product.spec.ts`
 - `apps/web/index.html`
 - `apps/web/package.json`
 - `apps/web/playwright.config.ts`
 - `apps/web/public/favicon.svg`
+- `apps/web/sites-worker.js`
 - `apps/web/src/App.tsx`
 - `apps/web/src/catalog-adapter.test.ts`
 - `apps/web/src/catalog-adapter.ts`
