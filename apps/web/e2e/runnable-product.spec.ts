@@ -75,7 +75,10 @@ test('normal completion uses the real flow, scoring and eligibility runtimes', a
   await expect(page.getByRole('heading', { name: '還沒有可顯示的結果' })).toBeVisible()
   await page.goto('/finder')
   await expect(page.getByRole('heading', { name: '還沒有可用的Finder風格' })).toBeVisible()
-  await page.goto('/not-a-route')
+  await page.evaluate(() => {
+    window.history.pushState({}, '', '/not-a-route')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  })
   await expect(page.getByRole('heading', { name: '找不到這個頁面' })).toBeVisible()
   await page.goto('/questionnaire')
   await expect(page.getByRole('heading', { name: '今天想吃哪一種？' })).toBeVisible()
