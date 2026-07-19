@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const previewBaseUrl = process.env.PREVIEW_BASE_URL
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -9,11 +11,11 @@ export default defineConfig({
   reporter: 'line',
   outputDir: '../../output/playwright/artifacts',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: previewBaseUrl ?? 'http://127.0.0.1:4173',
     trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], channel: 'chrome' } }],
-  webServer: {
+  webServer: previewBaseUrl ? undefined : {
     command: 'npm run dev --workspace @ramen-style/web -- --port 4173',
     cwd: '../..',
     url: 'http://127.0.0.1:4173',

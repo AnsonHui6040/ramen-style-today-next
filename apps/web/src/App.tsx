@@ -32,16 +32,19 @@ import {
   saveWebState,
 } from './web-persistence.js'
 
-type Page = 'home' | 'quiz' | 'results' | 'finder'
+type Page = 'home' | 'quiz' | 'results' | 'finder' | 'not-found'
+type NavigablePage = Exclude<Page, 'not-found'>
 
 function pageFromPath(path: string): Page {
-  if (path.startsWith('/questionnaire')) return 'quiz'
-  if (path.startsWith('/results')) return 'results'
-  if (path.startsWith('/finder')) return 'finder'
-  return 'home'
+  const normalized = path.replace(/\/+$/, '') || '/'
+  if (normalized === '/') return 'home'
+  if (normalized === '/questionnaire') return 'quiz'
+  if (normalized === '/results') return 'results'
+  if (normalized === '/finder') return 'finder'
+  return 'not-found'
 }
 
-function pathFor(page: Page) {
+function pathFor(page: NavigablePage) {
   return ({ home: '/', quiz: '/questionnaire', results: '/results', finder: '/finder' })[page]
 }
 
@@ -52,7 +55,7 @@ function usePage() {
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
-  const navigate = (next: Page, replace = false) => {
+  const navigate = (next: NavigablePage, replace = false) => {
     window.history[replace ? 'replaceState' : 'pushState']({}, '', pathFor(next))
     setPageState(next)
   }
@@ -103,14 +106,14 @@ function HomePage({
           <h2>{completed ? '上次的結果還在。' : hasProgress ? '接著上次的位置繼續。' : '準備好選今天這一碗？'}</h2>
         </div>
         {hasProgress ? (
-          <button className="button button--primary" onClick={onContinue}>
+          <button className="button button--primary" type="button" onClick={onContinue}>
             {completed ? '查看上次結果' : '繼續問卷'}
           </button>
         ) : (
-          <button className="button button--primary" onClick={onStart}>開始尋找拉麵風格</button>
+          <button className="button button--primary" type="button" onClick={onStart}>開始尋找拉麵風格</button>
         )}
         {hasProgress && (
-          <button className="button button--text" onClick={onReset}>重新開始</button>
+          <button className="button button--text" type="button" onClick={onReset}>重新開始</button>
         )}
         <p className="home-note">結果提供風格參考；排除條件不構成食物安全或醫療保證。</p>
       </section>
@@ -162,6 +165,12 @@ function QuestionnairePage({
     }
     onSubmit(currentQuestionId, pending)
   }
+  const canProceed = pending.length >= pendingState.minSelections
+    && pending.length <= pendingState.maxSelections
+  const hasExclusiveOption = pendingState.exclusiveOptionIds.length > 0
+  const selectionHint = question.selection.type === 'multiple'
+    ? `請選 ${pendingState.minSelections}–${pendingState.maxSelections} 個選項${hasExclusiveOption ? '；「沒有」或「不確定」會取代其他選項。' : '。'}`
+    : '請選擇一個選項後繼續。'
 
   return (
     <main className="quiz-shell">
@@ -176,7 +185,8 @@ function QuestionnairePage({
             <p>{questionCopy[currentQuestionId].description}</p>
           </div>
         </div>
-        <div className="option-grid" role="group" aria-labelledby="question-title">
+        <p className="selection-hint" id="selection-hint">{selectionHint}</p>
+        <div className="option-grid" role="group" aria-labelledby="question-title" aria-describedby="selection-hint question-validation">
           {question.options.filter(({ id }) => allowed.has(id)).map((option) => {
             const selected = pending.includes(option.id)
             return (
@@ -184,6 +194,7 @@ function QuestionnairePage({
                 className={`option${selected ? ' option--selected' : ''}`}
                 key={option.id}
                 aria-pressed={selected}
+                type="button"
                 onClick={() => select(option.id)}
               >
                 <span className="option__indicator" aria-hidden="true">{selected ? '✓' : ''}</span>
@@ -192,10 +203,10 @@ function QuestionnairePage({
             )
           })}
         </div>
-        <p className="validation" role="alert">{message}</p>
+        <p className="validation" id="question-validation" role="alert" aria-live="polite">{message || (!canProceed ? '選擇符合題目要求後，即可繼續。' : '')}</p>
         <footer className="question-actions">
-          <button className="button button--secondary" onClick={() => onBack(currentQuestionId)}>上一步</button>
-          <button className="button button--primary" onClick={next}>
+          <button className="button button--secondary" type="button" onClick={() => onBack(currentQuestionId)}>上一步</button>
+          <button className="button button--primary" type="button" disabled={!canProceed} aria-describedby="question-validation" onClick={next}>
             {index === interactiveIds.length - 1 ? '完成並看結果' : '下一步'}
           </button>
         </footer>
@@ -245,7 +256,14 @@ function ResultsPage({
   onFinder(): void
 }) {
   const result = composeRuntimeResult(draft)
-  if (!result.ok) return <ErrorPanel message={result.message} />
+  if (!result.ok) return (
+    <StatePanel
+      title="還沒有可顯示的結果"
+      message="完成問卷後，主要推薦、替代選擇與排除條件檢查會顯示在這裡。"
+      actionLabel="開始問卷"
+      onAction={onRestart}
+    />
+  )
   const presentation = adaptEligibilityResults(result.eligibility)
   const blocked = result.eligibility.blockedCandidates
   return (
@@ -291,16 +309,31 @@ function ResultsPage({
         </section>
       )}
       <footer className="results-actions">
-        {result.eligibility.selectedPrimary && <button className="button button--primary" onClick={onFinder}>以這個風格找拉麵</button>}
-        <button className="button button--secondary" onClick={onRestart}>重新作答</button>
+        {result.eligibility.selectedPrimary && <button className="button button--primary" type="button" onClick={onFinder}>以這個風格尋找拉麵</button>}
+        <button className="button button--secondary" type="button" onClick={onRestart}>重新作答</button>
       </footer>
     </main>
   )
 }
 
-function FinderPage({ draft, onBack }: { draft: AnswerDraft; onBack(): void }) {
+function FinderPage({
+  draft,
+  onBack,
+  onRestart,
+}: {
+  draft: AnswerDraft
+  onBack(): void
+  onRestart(): void
+}) {
   const result = composeRuntimeResult(draft)
-  if (!result.ok) return <ErrorPanel message={result.message} />
+  if (!result.ok) return (
+    <StatePanel
+      title="還沒有可用的Finder風格"
+      message="先完成問卷，Finder才會從可推薦的主要結果建立初始風格。"
+      actionLabel="開始問卷"
+      onAction={onRestart}
+    />
+  )
   const projection = deriveFinderProjection(result.eligibility.selectedPrimary)
   const candidate = result.eligibility.selectedPrimary
   const presentation = candidate ? adaptCandidateForPresentation(candidate) : null
@@ -316,7 +349,7 @@ function FinderPage({ draft, onBack }: { draft: AnswerDraft; onBack(): void }) {
             <p>這個篩選身份已由可推薦的主要結果建立。地圖、定位與店舖搜尋將在下一階段接上。</p>
           </>
         ) : <p>目前沒有可用的主要推薦，因此不建立Finder篩選。</p>}
-        <button className="button button--secondary" onClick={onBack}>回到結果</button>
+        <button className="button button--secondary" type="button" onClick={onBack}>回到結果</button>
       </section>
     </main>
   )
@@ -324,6 +357,30 @@ function FinderPage({ draft, onBack }: { draft: AnswerDraft; onBack(): void }) {
 
 function ErrorPanel({ message }: { message: string }) {
   return <main className="error-shell"><Brand compact /><section><h1>目前無法顯示</h1><p>{message}</p><a className="button button--primary" href="/">回到首頁</a></section></main>
+}
+
+function StatePanel({
+  title,
+  message,
+  actionLabel,
+  onAction,
+}: {
+  title: string
+  message: string
+  actionLabel: string
+  onAction(): void
+}) {
+  return (
+    <main className="error-shell">
+      <Brand compact />
+      <section>
+        <p className="eyebrow">RAMEN STYLE FINDER</p>
+        <h1>{title}</h1>
+        <p>{message}</p>
+        <button className="button button--primary" type="button" onClick={onAction}>{actionLabel}</button>
+      </section>
+    </main>
+  )
 }
 
 export function App() {
@@ -395,9 +452,17 @@ export function App() {
   const reset = () => begin()
 
   const hasProgress = Object.keys(draft).length > 0
+  if (page === 'not-found') return (
+    <StatePanel
+      title="找不到這個頁面"
+      message="網址可能已變更；回到首頁即可重新開始或繼續已保存的問卷。"
+      actionLabel="回到首頁"
+      onAction={() => navigate('home', true)}
+    />
+  )
   if (page === 'home') return <HomePage hasProgress={hasProgress} completed={flow.status === 'complete'} onStart={begin} onContinue={resume} onReset={reset} />
   if (page === 'results') return <ResultsPage draft={draft} onRestart={reset} onFinder={() => navigate('finder')} />
-  if (page === 'finder') return <FinderPage draft={draft} onBack={() => navigate('results')} />
+  if (page === 'finder') return <FinderPage draft={draft} onBack={() => navigate('results')} onRestart={reset} />
   const questionId = currentQuestionId ?? getFirstActionableQuestion(flow)
   if (!questionId || flow.status !== 'incomplete') {
     return flow.status === 'complete'

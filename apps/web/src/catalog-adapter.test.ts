@@ -10,6 +10,7 @@ import {
   adaptCandidateForPresentation,
   adaptEligibilityResults,
   createPresentationCatalog,
+  presentationCatalog,
 } from './catalog-adapter.js'
 
 const normalAnswers = {
@@ -32,6 +33,20 @@ function outcome() {
 }
 
 describe('presentation catalog adapter', () => {
+  test('provides complete Traditional Chinese presentation copy for all 18 styles', () => {
+    const catalog = createPresentationCatalog([
+      ...presentationCatalog.values(),
+    ])
+    expect(catalog.ok).toBe(true)
+    if (catalog.ok) {
+      expect(catalog.catalog.size).toBe(18)
+      for (const record of catalog.catalog.values()) {
+        expect(record.styleDisplayName).not.toBe('')
+        expect(record.shortDescription).not.toBe('')
+      }
+    }
+  })
+
   test('fails closed for duplicate stable identities', () => {
     const duplicate = {
       styleId: 'shoyu-chintan',

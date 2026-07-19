@@ -50,6 +50,7 @@ test('saves and restores a validated answer draft by stable identity', () => {
 })
 
 test.each([
+  ['invalid JSON', '{'],
   ['unknown schema', { schemaVersion: 2 }],
   ['wrong classification identity', { schemaVersion: 1, classificationDataVersion: 'old' }],
   ['invalid answer draft', {
@@ -62,7 +63,7 @@ test.each([
   }],
 ])('fails closed for %s', (_label, value) => {
   const storage = memoryStorage()
-  storage.setItem(webStateStorageKey, JSON.stringify(value))
+  storage.setItem(webStateStorageKey, typeof value === 'string' ? value : JSON.stringify(value))
   expect(restoreWebState(storage)).toEqual({ ok: false, code: 'WEB_STATE_INVALID' })
 })
 

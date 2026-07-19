@@ -3,8 +3,18 @@ import { resolve } from 'node:path'
 
 import { expect, test, type Page } from '@playwright/test'
 
-const screenshots = resolve(import.meta.dirname, '../../../output/playwright/screenshots')
+const isPreview = Boolean(process.env.PREVIEW_BASE_URL)
+const screenshots = resolve(
+  import.meta.dirname,
+  isPreview
+    ? '../../../output/playwright/preview-screenshots'
+    : '../../../output/playwright/screenshots',
+)
 mkdirSync(screenshots, { recursive: true })
+
+function screenshotName(name: string) {
+  return resolve(screenshots, `${isPreview ? 'preview-' : ''}${name}.png`)
+}
 
 const normalSelections = [
   '湯拉麵',
@@ -34,7 +44,21 @@ function collectBrowserErrors(page: Page) {
     if (message.type() === 'error') errors.push(message.text())
   })
   page.on('pageerror', (error) => errors.push(error.message))
+  page.on('requestfailed', (request) => {
+    errors.push(`request failed: ${request.method()} ${request.url()}`)
+  })
+  page.on('response', (response) => {
+    if (response.status() >= 400) {
+      errors.push(`response ${response.status()}: ${response.request().method()} ${response.url()}`)
+    }
+  })
   return errors
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  expect(await page.evaluate(() => (
+    document.documentElement.scrollWidth - document.documentElement.clientWidth
+  ))).toBeLessThanOrEqual(1)
 }
 
 async function answerCurrentQuestion(page: Page, label: string) {
@@ -46,24 +70,35 @@ async function answerCurrentQuestion(page: Page, label: string) {
 
 test('normal completion uses the real flow, scoring and eligibility runtimes', async ({ page }) => {
   const browserErrors = collectBrowserErrors(page)
-  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/results')
+  await expect(page.getByRole('heading', { name: '還沒有可顯示的結果' })).toBeVisible()
+  await page.goto('/finder')
+  await expect(page.getByRole('heading', { name: '還沒有可用的Finder風格' })).toBeVisible()
+  await page.goto('/not-a-route')
+  await expect(page.getByRole('heading', { name: '找不到這個頁面' })).toBeVisible()
+  await page.goto('/questionnaire')
+  await expect(page.getByRole('heading', { name: '今天想吃哪一種？' })).toBeVisible()
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /從口味出發/ })).toBeVisible()
-  await page.screenshot({ path: resolve(screenshots, 'desktop-home.png'), fullPage: true })
+  await expectNoHorizontalOverflow(page)
+  await page.screenshot({ path: screenshotName('desktop-home'), fullPage: true })
   await page.getByRole('button', { name: '開始尋找拉麵風格' }).click()
   await expect(page.getByRole('heading', { name: '今天想吃哪一種？' })).toBeVisible()
-  await page.screenshot({ path: resolve(screenshots, 'desktop-questionnaire.png'), fullPage: true })
+  await page.screenshot({ path: screenshotName('desktop-questionnaire'), fullPage: true })
   for (const selection of normalSelections) await answerCurrentQuestion(page, selection)
   await expect(page).toHaveURL(/\/results$/)
   await expect(page.getByRole('heading', { name: '主要推薦' })).toBeVisible()
   await expect(page.getByRole('heading', { name: '也可以試試' })).toBeVisible()
   await expect(page.getByText('分數', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('信心', { exact: true }).first()).toBeVisible()
-  await page.screenshot({ path: resolve(screenshots, 'desktop-results.png'), fullPage: true })
-  await page.getByRole('button', { name: '以這個風格找拉麵' }).click()
+  await expectNoHorizontalOverflow(page)
+  await page.screenshot({ path: screenshotName('desktop-results'), fullPage: true })
+  await page.getByRole('button', { name: '以這個風格尋找拉麵' }).click()
   await expect(page).toHaveURL(/\/finder$/)
   await expect(page.getByText('初始風格')).toBeVisible()
   await expect(page.getByText(/^style:/)).toBeVisible()
+  await page.screenshot({ path: screenshotName('finder'), fullPage: true })
   expect(browserErrors).toEqual([])
 })
 
@@ -78,9 +113,11 @@ test('eligibility conflicts remain warnings and never become safety guarantees',
   await expect(page.getByText('原本的高分候選已被排除')).toBeVisible()
   await expect(page.getByText(/無過敏原|安全保證/)).toHaveCount(0)
   await page.screenshot({
-    path: resolve(screenshots, 'eligibility-blocked-result.png'),
+    path: screenshotName('eligibility-blocked'),
     fullPage: true,
   })
+  await page.getByRole('button', { name: '以這個風格尋找拉麵' }).click()
+  await expect(page.getByText(/^style:tonkotsu$/)).toHaveCount(0)
   expect(browserErrors).toEqual([])
 })
 
@@ -88,20 +125,49 @@ test('reload resumes a partial mobile questionnaire and rebuilds completed resul
   const browserErrors = collectBrowserErrors(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
+  await page.screenshot({ path: screenshotName('mobile-home'), fullPage: true })
+  const storageKey = 'ramen-style-today-next:web-state:v1'
+  for (const invalidState of [
+    '{',
+    JSON.stringify({ schemaVersion: 99 }),
+    JSON.stringify({
+      schemaVersion: 1,
+      classificationDataVersion: 'outdated',
+      answerDraft: {},
+      currentQuestionId: null,
+      completed: false,
+      updatedAt: '2026-07-18T00:00:00.000Z',
+    }),
+  ]) {
+    await page.evaluate(({ key, value }) => localStorage.setItem(key, value), {
+      key: storageKey,
+      value: invalidState,
+    })
+    await page.reload()
+    await expect(page.getByRole('heading', { name: /從口味出發/ })).toBeVisible()
+    expect(await page.evaluate((key) => localStorage.getItem(key), storageKey)).toBeNull()
+  }
   await page.getByRole('button', { name: '開始尋找拉麵風格' }).click()
   for (const selection of normalSelections.slice(0, 3)) {
     await answerCurrentQuestion(page, selection)
   }
   await expect(page.getByRole('heading', { name: '哪種出汁或主角最明顯？' })).toBeVisible()
-  await page.screenshot({ path: resolve(screenshots, 'mobile-questionnaire.png'), fullPage: true })
+  await expectNoHorizontalOverflow(page)
+  await page.screenshot({ path: screenshotName('mobile-questionnaire'), fullPage: true })
   await page.reload()
   await expect(page.getByRole('heading', { name: '哪種出汁或主角最明顯？' })).toBeVisible()
   for (const selection of normalSelections.slice(3)) await answerCurrentQuestion(page, selection)
   await expect(page).toHaveURL(/\/results$/)
-  await page.screenshot({ path: resolve(screenshots, 'mobile-results.png'), fullPage: true })
+  await expectNoHorizontalOverflow(page)
+  await page.screenshot({ path: screenshotName('mobile-results'), fullPage: true })
   const primaryName = await page.locator('.primary-grid .result-card h3').first().textContent()
   await page.reload()
   await expect(page).toHaveURL(/\/results$/)
   await expect(page.locator('.primary-grid .result-card h3').first()).toHaveText(primaryName ?? '')
+  await page.setViewportSize({ width: 430, height: 932 })
+  await expectNoHorizontalOverflow(page)
+  await page.getByRole('button', { name: '重新作答' }).click()
+  await expect(page).toHaveURL(/\/questionnaire$/)
+  expect(await page.evaluate((key) => localStorage.getItem(key), storageKey)).toBeNull()
   expect(browserErrors).toEqual([])
 })
