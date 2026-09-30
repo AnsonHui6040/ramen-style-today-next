@@ -11,10 +11,12 @@ consumers, messages, migrations, and tests; never edit that index or
 | Diagnostic identity | `packages/classification-core/src/contracts/diagnostic-codes.ts` | mutation test asserting code and JSON Pointer |
 | Semantic reference or policy invariant | `packages/classification-core/src/compiler/compile.ts` | compiler mutation test and `classification:validate` |
 | Concept-to-file relationship | `tools/documentation/relations.ts` | documentation tests and `classification:index:check` |
+| Question, option, branch, restriction, auto-advance or selection limit | `packages/classification-core/src/definitions/questions.ts` | `npm run parity`, flow tests, index regeneration |
+| Flow rules (reset, selection, completion, navigation) | `packages/classification-core/src/flow/` | `npm run parity`, `npm run parity:legacy -- <legacy checkout>`, flow tests |
 | Migration provenance | `docs/migration/ledger.json` | ledger tests and `migration:ledger:check` |
 
-Batch 1 contains synthetic definitions only. Production question changes begin
-in Batch 2A; persistence begins in Batch 2B; style and scoring changes begin in
+Questions and flow are migrated legacy data (Batch 2A); styles and policy are
+still synthetic proof data. Persistence begins in Batch 2B; style and scoring changes begin in
 Batch 3. When those owners exist, add their exact paths to the generated index
 relations in the same commit as the change.
 

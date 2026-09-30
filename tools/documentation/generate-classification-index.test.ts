@@ -19,6 +19,22 @@ import { expect, test } from 'vitest'
 import { installGeneratedOutputs } from './generate-classification-index.js'
 
 const sourceRoot = resolve(import.meta.dirname, '../..')
+const stubFiles = [
+  'packages/classification-core/src/definitions/bundle.ts',
+  'packages/classification-core/src/compiler/source-schema.ts',
+  'packages/classification-core/src/compiler/compile.ts',
+  'packages/classification-core/src/compiler/compile.test.ts',
+  'packages/classification-core/src/definitions/questions.ts',
+  'packages/classification-core/src/definitions/synthetic.ts',
+  'packages/classification-core/src/flow/options.ts',
+  'packages/classification-core/src/flow/complete.ts',
+  'packages/classification-core/src/flow/flow.test.ts',
+  'tools/parity/questions-flow.test.ts',
+]
+const consumerStubs = [
+  'tools/parity/generate.ts',
+  'tools/parity/new-engine.ts',
+]
 
 test('write mode rejects an owned output symlink before changing any output', () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'ramen-index-cli-'))
@@ -35,19 +51,16 @@ test('write mode rejects an owned output symlink before changing any output', ()
       cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
     }
 
-    for (const file of [
-      'packages/classification-core/src/definitions/synthetic.ts',
-      'packages/classification-core/src/compiler/source-schema.ts',
-      'packages/classification-core/src/compiler/compile.ts',
-      'packages/classification-core/src/compiler/compile.test.ts',
-    ]) {
+    for (const file of stubFiles) {
       const target = join(repoRoot, file)
       mkdirSync(resolve(target, '..'), { recursive: true })
       writeFileSync(target, '')
     }
-    const validation = join(repoRoot, 'tools/validation/validate-classification.ts')
-    mkdirSync(resolve(validation, '..'), { recursive: true })
-    writeFileSync(validation, "import '@ramen-style/classification-core/compiler'\n")
+    for (const file of [...consumerStubs, 'tools/validation/validate-classification.ts']) {
+      const consumer = join(repoRoot, file)
+      mkdirSync(resolve(consumer, '..'), { recursive: true })
+      writeFileSync(consumer, "import '@ramen-style/classification-core/compiler'\n")
+    }
 
     writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
     symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
@@ -99,19 +112,16 @@ test('write mode rejects a symlinked classification root without writing outside
       cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
     }
 
-    for (const file of [
-      'packages/classification-core/src/definitions/synthetic.ts',
-      'packages/classification-core/src/compiler/source-schema.ts',
-      'packages/classification-core/src/compiler/compile.ts',
-      'packages/classification-core/src/compiler/compile.test.ts',
-    ]) {
+    for (const file of stubFiles) {
       const target = join(repoRoot, file)
       mkdirSync(resolve(target, '..'), { recursive: true })
       writeFileSync(target, '')
     }
-    const validation = join(repoRoot, 'tools/validation/validate-classification.ts')
-    mkdirSync(resolve(validation, '..'), { recursive: true })
-    writeFileSync(validation, "import '@ramen-style/classification-core/compiler'\n")
+    for (const file of [...consumerStubs, 'tools/validation/validate-classification.ts']) {
+      const consumer = join(repoRoot, file)
+      mkdirSync(resolve(consumer, '..'), { recursive: true })
+      writeFileSync(consumer, "import '@ramen-style/classification-core/compiler'\n")
+    }
 
     writeFileSync(join(repoRoot, '.gitignore'), 'node_modules/\n')
     symlinkSync(join(sourceRoot, 'node_modules'), join(repoRoot, 'node_modules'), 'dir')
@@ -190,19 +200,16 @@ test('Git inventory preserves a newline-containing eligible consumer path', () =
       cpSync(join(sourceRoot, 'tools/documentation', file), join(documentationRoot, file))
     }
 
-    for (const file of [
-      'packages/classification-core/src/definitions/synthetic.ts',
-      'packages/classification-core/src/compiler/source-schema.ts',
-      'packages/classification-core/src/compiler/compile.ts',
-      'packages/classification-core/src/compiler/compile.test.ts',
-    ]) {
+    for (const file of stubFiles) {
       const target = join(repoRoot, file)
       mkdirSync(resolve(target, '..'), { recursive: true })
       writeFileSync(target, '')
     }
-    const validation = join(repoRoot, 'tools/validation/validate-classification.ts')
-    mkdirSync(resolve(validation, '..'), { recursive: true })
-    writeFileSync(validation, "import '@ramen-style/classification-core/compiler'\n")
+    for (const file of [...consumerStubs, 'tools/validation/validate-classification.ts']) {
+      const consumer = join(repoRoot, file)
+      mkdirSync(resolve(consumer, '..'), { recursive: true })
+      writeFileSync(consumer, "import '@ramen-style/classification-core/compiler'\n")
+    }
     const newlineConsumer = join(repoRoot, 'apps/web/line\nbreak.ts')
     mkdirSync(resolve(newlineConsumer, '..'), { recursive: true })
     writeFileSync(newlineConsumer, "import '@ramen-style/classification-core'\n")

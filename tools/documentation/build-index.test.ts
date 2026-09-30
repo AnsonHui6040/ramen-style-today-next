@@ -4,13 +4,15 @@ import { describe, expect, test } from 'vitest'
 
 import { compileClassification, syntheticDefinition } from '@ramen-style/classification-core/compiler'
 import { buildDocumentation } from './build-index.js'
-import { documentationRelations } from './relations.js'
+import { documentationRelationsFor } from './relations.js'
 
 const compiled = compileClassification(
   syntheticDefinition,
   'packages/classification-core/src/definitions/synthetic.ts',
 )
 if (!compiled.ok) throw new Error('synthetic model did not compile')
+const documentationRelations = documentationRelationsFor(compiled.model)
+const detectedConsumers = new Set(documentationRelations.flatMap((item) => item.consumers))
 
 function deterministicSnapshot(locale: string) {
   const script = String.raw`
@@ -34,9 +36,10 @@ function deterministicSnapshot(locale: string) {
           selectionType: 'single',
           minSelections: 1,
           maxSelections: 1,
-          weight: 50,
+          legacyWeight: 50,
+          autoSelectSingleOption: false,
           dependsOn: [],
-          options: [{ id: 'y-option', messageId: 'option-y-demo' }],
+          optionSet: { kind: 'flat', options: [{ id: 'y-option', messageId: 'option-y-demo' }] },
         },
         {
           sourceFile,
@@ -46,9 +49,10 @@ function deterministicSnapshot(locale: string) {
           selectionType: 'single',
           minSelections: 1,
           maxSelections: 1,
-          weight: 50,
+          legacyWeight: 50,
+          autoSelectSingleOption: false,
           dependsOn: [],
-          options: [{ id: 'j-option', messageId: 'option-j-demo' }],
+          optionSet: { kind: 'flat', options: [{ id: 'j-option', messageId: 'option-j-demo' }] },
         },
       ],
       styles: [
@@ -159,7 +163,7 @@ describe('classification documentation index', () => {
     const result = buildDocumentation(
       compiled.model,
       documentationRelations,
-      new Set(['tools/validation/validate-classification.ts']),
+      detectedConsumers,
       paths,
     )
 
@@ -171,7 +175,7 @@ describe('classification documentation index', () => {
     const reversed = buildDocumentation(
       { ...compiled.model, inventory: [...compiled.model.inventory].reverse() },
       [...documentationRelations].reverse(),
-      new Set(['tools/validation/validate-classification.ts']),
+      detectedConsumers,
       paths,
     )
     expect(reversed.manifest).toBe(result.manifest)
@@ -205,7 +209,7 @@ describe('classification documentation index', () => {
         { ...first },
         { ...first, conceptKey: 'question/unknown' },
       ],
-      new Set(['tools/validation/validate-classification.ts']),
+      detectedConsumers,
       paths,
     )
     expect(result.diagnostics.filter((item) => item.entityId === first.conceptKey)).not.toEqual([])
@@ -220,7 +224,7 @@ describe('classification documentation index', () => {
         { ...first, validators: ['../outside.ts'] },
         ...documentationRelations.slice(1),
       ],
-      new Set(['tools/validation/validate-classification.ts']),
+      detectedConsumers,
       new Set([
         '../outside.ts',
         ...documentationRelations.flatMap((item) => [

@@ -100,3 +100,24 @@ npm run parity:extract -- \
 ```
 
 The extractor must refuse a dirty legacy worktree, a mismatched commit or a mismatched lockfile checksum. CI consumes the committed fixtures and never depends on the neighboring legacy checkout.
+
+## Verified legacy questionnaire behavior (Batch 2A, Task 1)
+
+Recorded from `src/App.tsx`, `src/config/questions.ts`, `src/data/questions.json`, `src/domain/questionRules.ts` and `src/domain/schema.ts` at `eebf00b`, and reproduced exactly by `tools/parity`.
+
+| Rule | Legacy behavior | New owner |
+| --- | --- | --- |
+| Order | array order of `questions.json`: `form`, `archetype`, `tare`, `source`, `body`, `noodle`, `signature`, `exclusions` | `order` in `definitions/questions.ts` |
+| Branching | `archetype` options depend on the chosen `form` (3 branches); no form means no options | `optionSet.kind: 'branch'` |
+| Option restriction | `optionValuesByArchetype` filters `tare`, `source`, `body`, `noodle`, `signature` for six tsukemen and dry archetypes, keeping option order | `restriction` |
+| Selection limits | `single` 1/1; `source` 1–2; `signature` 1–2; `exclusions` 1–8 | `minSelections`, `maxSelections` |
+| Exclusive options | `source.unsure`, `signature.no-preference`, `exclusions.none` replace and are replaced by other choices | `exclusive` |
+| Empty fallback | emptying `exclusions` restores `none`; initial `exclusions` is `none` | `emptyFallbackOptionId` |
+| Auto-advance | steps 3–7 (`tare` … `signature`) whose restricted options leave exactly one are answered automatically; `form`, `archetype`, `exclusions` never are | `autoSelectSingleOption` |
+| Skip on back | going back skips automatically answered steps | `previousQuestionId` |
+| Reset | choosing a different `form` clears `archetype` and steps 3–7; choosing a different `archetype` clears steps 3–7; `exclusions` is kept; re-choosing the same value changes nothing | derived from `dependsOn` |
+| Continue | requires at least `minSelections` currently offered selections | `canContinue` |
+| Completion | answers are deduplicated, unknown values dropped, an exclusive option combined with others is dropped, empty `exclusions` becomes `none`; then every question must be within its offered options and limits | `completeAnswers` |
+| `weight` | question weight totalling 100; scoring data | carried as opaque `legacyWeight`, never interpreted (Batch 3B) |
+
+Known intentional non-differences: selecting an option that is not currently offered is ignored by the new flow (the legacy UI could not produce it), and legacy persisted-state repair (`restoreUserAnswers`, the `seafood` alias, step clamping) belongs to Batch 2B.

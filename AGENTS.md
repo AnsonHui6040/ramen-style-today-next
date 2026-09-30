@@ -6,7 +6,7 @@ This monorepo replaces the low-level architecture of `ramen-style-today` through
 
 ## Current phase
 
-Batch 1 is complete. The repository has strict contracts, structured diagnostics, a deterministic compiler shell, checked classification indexes, migration-ledger validation, and CI; all current classification definitions remain synthetic proof data. Run `npm run verify` before every handoff. Batch 2A may replace the synthetic question inventory only under its separately approved plan; no production scoring, persistence, catalog, Finder, or React behavior is owned here yet.
+Batch 1 is complete. Batch 2A (questions and flow) is implemented under its approved plan and awaits remote CI evidence before it is marked complete: the legacy question inventory, branching, option restrictions, selection limits and pure questionnaire flow are canonical in `packages/classification-core/src/definitions/questions.ts` and `packages/classification-core/src/flow/`, with exhaustive legacy parity in `tools/parity`. Styles and policy remain synthetic proof data. Run `npm run verify` before every handoff; `npm run parity:legacy -- <legacy checkout at eebf00b>` regenerates the parity evidence from the legacy oracle. No production scoring, persistence, catalog, Finder, or React behavior is owned here yet. Question `legacyWeight` is opaque legacy metadata that nothing may interpret before Batch 3B.
 
 ## Source-of-truth hierarchy
 

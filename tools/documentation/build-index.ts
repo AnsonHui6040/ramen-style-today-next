@@ -166,7 +166,11 @@ export function buildDocumentation(
   const markdown = [
     '# Classification Index',
     '',
-    '> Synthetic inventory — not production classification data.',
+    model.mode === 'synthetic'
+      ? '> Synthetic inventory — not production classification data.'
+      : model.mode === 'questions-production'
+        ? '> Questions and flow are migrated legacy data (Batch 2A); styles and policy are synthetic proof data.'
+        : '> Production classification data.',
     '',
     `Model version: \`${model.modelVersion}\`<br>`,
     `Data version: \`${model.dataVersion}\``,
@@ -180,7 +184,7 @@ export function buildDocumentation(
   return {
     manifest: stableJson({
       schemaVersion: 1,
-      synthetic: model.mode === 'synthetic',
+      synthetic: model.mode !== 'production',
       modelVersion: model.modelVersion,
       dataVersion: model.dataVersion,
       concepts,

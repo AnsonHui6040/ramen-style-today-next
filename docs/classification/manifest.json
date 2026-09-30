@@ -3,14 +3,16 @@
     {
       "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
-      "id": "demo-shoyu:standard",
-      "key": "intensity/demo-shoyu:standard",
+      "id": "proof-shoyu:standard",
+      "key": "intensity/proof-shoyu:standard",
       "kind": "intensity",
       "messageIds": [],
       "migrations": [],
@@ -25,14 +27,16 @@
     {
       "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
-      "id": "demo-shoyu:medium-thin-straight",
-      "key": "noodle/demo-shoyu:medium-thin-straight",
+      "id": "proof-shoyu:medium-thin-straight",
+      "key": "noodle/proof-shoyu:medium-thin-straight",
       "kind": "noodle",
       "messageIds": [],
       "migrations": [],
@@ -45,104 +49,1600 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
-      "id": "demo-aburasoba",
-      "key": "option/demo-aburasoba",
+      "id": "archetype:aburasoba",
+      "key": "option/archetype:aburasoba",
       "kind": "option",
       "messageIds": [
-        "option-demo-aburasoba"
+        "option-archetype-aburasoba"
       ],
       "migrations": [],
       "tests": [
-        "packages/classification-core/src/compiler/compile.test.ts"
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
       ],
       "validators": [
         "packages/classification-core/src/compiler/compile.ts",
-        "packages/classification-core/src/compiler/source-schema.ts"
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
-      "id": "demo-chintan",
-      "key": "option/demo-chintan",
+      "id": "archetype:chintan",
+      "key": "option/archetype:chintan",
       "kind": "option",
       "messageIds": [
-        "option-demo-chintan"
+        "option-archetype-chintan"
       ],
       "migrations": [],
       "tests": [
-        "packages/classification-core/src/compiler/compile.test.ts"
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
       ],
       "validators": [
         "packages/classification-core/src/compiler/compile.ts",
-        "packages/classification-core/src/compiler/source-schema.ts"
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
-      "id": "demo-dry",
-      "key": "option/demo-dry",
+      "id": "archetype:dry-other",
+      "key": "option/archetype:dry-other",
       "kind": "option",
       "messageIds": [
-        "option-demo-dry"
+        "option-archetype-dry-other"
       ],
       "migrations": [],
       "tests": [
-        "packages/classification-core/src/compiler/compile.test.ts"
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
       ],
       "validators": [
         "packages/classification-core/src/compiler/compile.ts",
-        "packages/classification-core/src/compiler/source-schema.ts"
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
-      "id": "demo-soup",
-      "key": "option/demo-soup",
+      "id": "archetype:gyokai-rich",
+      "key": "option/archetype:gyokai-rich",
       "kind": "option",
       "messageIds": [
-        "option-demo-soup"
+        "option-archetype-gyokai-rich"
       ],
       "migrations": [],
       "tests": [
-        "packages/classification-core/src/compiler/compile.test.ts"
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
       ],
       "validators": [
         "packages/classification-core/src/compiler/compile.ts",
-        "packages/classification-core/src/compiler/source-schema.ts"
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "archetype:konbusui-light",
+      "key": "option/archetype:konbusui-light",
+      "kind": "option",
+      "messageIds": [
+        "option-archetype-konbusui-light"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "archetype:miso-rich",
+      "key": "option/archetype:miso-rich",
+      "kind": "option",
+      "messageIds": [
+        "option-archetype-miso-rich"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "archetype:paitan",
+      "key": "option/archetype:paitan",
+      "kind": "option",
+      "messageIds": [
+        "option-archetype-paitan"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "archetype:soupless-tantan",
+      "key": "option/archetype:soupless-tantan",
+      "kind": "option",
+      "messageIds": [
+        "option-archetype-soupless-tantan"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "archetype:taiwan-mazesoba",
+      "key": "option/archetype:taiwan-mazesoba",
+      "kind": "option",
+      "messageIds": [
+        "option-archetype-taiwan-mazesoba"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "archetype:tsukemen-other",
+      "key": "option/archetype:tsukemen-other",
+      "kind": "option",
+      "messageIds": [
+        "option-archetype-tsukemen-other"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "body:backfat-heavy",
+      "key": "option/body:backfat-heavy",
+      "kind": "option",
+      "messageIds": [
+        "option-body-backfat-heavy"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "body:balanced",
+      "key": "option/body:balanced",
+      "kind": "option",
+      "messageIds": [
+        "option-body-balanced"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "body:light",
+      "key": "option/body:light",
+      "kind": "option",
+      "messageIds": [
+        "option-body-light"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "body:rich",
+      "key": "option/body:rich",
+      "kind": "option",
+      "messageIds": [
+        "option-body-rich"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "body:ultra-heavy",
+      "key": "option/body:ultra-heavy",
+      "kind": "option",
+      "messageIds": [
+        "option-body-ultra-heavy"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:beef",
+      "key": "option/exclusions:beef",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-beef"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:chicken",
+      "key": "option/exclusions:chicken",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-chicken"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:dairy",
+      "key": "option/exclusions:dairy",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-dairy"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:duck",
+      "key": "option/exclusions:duck",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-duck"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:fish-seafood",
+      "key": "option/exclusions:fish-seafood",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-fish-seafood"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:none",
+      "key": "option/exclusions:none",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-none"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:pork",
+      "key": "option/exclusions:pork",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-pork"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:shellfish",
+      "key": "option/exclusions:shellfish",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-shellfish"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions:shrimp-crab",
+      "key": "option/exclusions:shrimp-crab",
+      "kind": "option",
+      "messageIds": [
+        "option-exclusions-shrimp-crab"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "form:dry",
+      "key": "option/form:dry",
+      "kind": "option",
+      "messageIds": [
+        "option-form-dry"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "form:soup",
+      "key": "option/form:soup",
+      "kind": "option",
+      "messageIds": [
+        "option-form-soup"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "form:tsukemen",
+      "key": "option/form:tsukemen",
+      "kind": "option",
+      "messageIds": [
+        "option-form-tsukemen"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "noodle:extra-thick",
+      "key": "option/noodle:extra-thick",
+      "kind": "option",
+      "messageIds": [
+        "option-noodle-extra-thick"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "noodle:medium-thick-straight",
+      "key": "option/noodle:medium-thick-straight",
+      "kind": "option",
+      "messageIds": [
+        "option-noodle-medium-thick-straight"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "noodle:medium-thick-wavy",
+      "key": "option/noodle:medium-thick-wavy",
+      "kind": "option",
+      "messageIds": [
+        "option-noodle-medium-thick-wavy"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "noodle:medium-thin-straight",
+      "key": "option/noodle:medium-thin-straight",
+      "kind": "option",
+      "messageIds": [
+        "option-noodle-medium-thin-straight"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "noodle:thin-straight",
+      "key": "option/noodle:thin-straight",
+      "kind": "option",
+      "messageIds": [
+        "option-noodle-thin-straight"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "signature:bean-sprout-garlic-backfat",
+      "key": "option/signature:bean-sprout-garlic-backfat",
+      "kind": "option",
+      "messageIds": [
+        "option-signature-bean-sprout-garlic-backfat"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "signature:corn-butter",
+      "key": "option/signature:corn-butter",
+      "kind": "option",
+      "messageIds": [
+        "option-signature-corn-butter"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "signature:fish-kombu",
+      "key": "option/signature:fish-kombu",
+      "kind": "option",
+      "messageIds": [
+        "option-signature-fish-kombu"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "signature:no-preference",
+      "key": "option/signature:no-preference",
+      "kind": "option",
+      "messageIds": [
+        "option-signature-no-preference"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "signature:nori-spinach",
+      "key": "option/signature:nori-spinach",
+      "kind": "option",
+      "messageIds": [
+        "option-signature-nori-spinach"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "signature:yuzu-citrus",
+      "key": "option/signature:yuzu-citrus",
+      "kind": "option",
+      "messageIds": [
+        "option-signature-yuzu-citrus"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:beef",
+      "key": "option/source:beef",
+      "kind": "option",
+      "messageIds": [
+        "option-source-beef"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:chicken",
+      "key": "option/source:chicken",
+      "kind": "option",
+      "messageIds": [
+        "option-source-chicken"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:duck",
+      "key": "option/source:duck",
+      "kind": "option",
+      "messageIds": [
+        "option-source-duck"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:fish-seafood",
+      "key": "option/source:fish-seafood",
+      "kind": "option",
+      "messageIds": [
+        "option-source-fish-seafood"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:mixed",
+      "key": "option/source:mixed",
+      "kind": "option",
+      "messageIds": [
+        "option-source-mixed"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:pork",
+      "key": "option/source:pork",
+      "kind": "option",
+      "messageIds": [
+        "option-source-pork"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:shellfish",
+      "key": "option/source:shellfish",
+      "kind": "option",
+      "messageIds": [
+        "option-source-shellfish"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:shrimp-crab",
+      "key": "option/source:shrimp-crab",
+      "kind": "option",
+      "messageIds": [
+        "option-source-shrimp-crab"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:unsure",
+      "key": "option/source:unsure",
+      "kind": "option",
+      "messageIds": [
+        "option-source-unsure"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source:vegetable",
+      "key": "option/source:vegetable",
+      "kind": "option",
+      "messageIds": [
+        "option-source-vegetable"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "tare:miso",
+      "key": "option/tare:miso",
+      "kind": "option",
+      "messageIds": [
+        "option-tare-miso"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "tare:none",
+      "key": "option/tare:none",
+      "kind": "option",
+      "messageIds": [
+        "option-tare-none"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "tare:shio",
+      "key": "option/tare:shio",
+      "kind": "option",
+      "messageIds": [
+        "option-tare-shio"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "tare:shoyu",
+      "key": "option/tare:shoyu",
+      "kind": "option",
+      "messageIds": [
+        "option-tare-shoyu"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "tare:spicy-sesame",
+      "key": "option/tare:spicy-sesame",
+      "kind": "option",
+      "messageIds": [
+        "option-tare-spicy-sesame"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
       ]
     },
     {
       "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
@@ -163,67 +1663,261 @@
       ]
     },
     {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
-      "id": "demo-archetype",
-      "key": "question/demo-archetype",
+      "id": "archetype",
+      "key": "question/archetype",
       "kind": "question",
       "messageIds": [
-        "question-demo-archetype"
+        "question-archetype"
       ],
       "migrations": [],
       "tests": [
-        "packages/classification-core/src/compiler/compile.test.ts"
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
       ],
       "validators": [
         "packages/classification-core/src/compiler/compile.ts",
-        "packages/classification-core/src/compiler/source-schema.ts"
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "body",
+      "key": "question/body",
+      "kind": "question",
+      "messageIds": [
+        "question-body"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "exclusions",
+      "key": "question/exclusions",
+      "kind": "question",
+      "messageIds": [
+        "question-exclusions"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "form",
+      "key": "question/form",
+      "kind": "question",
+      "messageIds": [
+        "question-form"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "noodle",
+      "key": "question/noodle",
+      "kind": "question",
+      "messageIds": [
+        "question-noodle"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "signature",
+      "key": "question/signature",
+      "kind": "question",
+      "messageIds": [
+        "question-signature"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "source",
+      "key": "question/source",
+      "kind": "question",
+      "messageIds": [
+        "question-source"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
+      ]
+    },
+    {
+      "canonicalSource": "packages/classification-core/src/definitions/questions.ts",
+      "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
+        "tools/validation/validate-classification.ts"
+      ],
+      "generatedOwners": [
+        "docs/classification/index.md",
+        "docs/classification/manifest.json"
+      ],
+      "id": "tare",
+      "key": "question/tare",
+      "kind": "question",
+      "messageIds": [
+        "question-tare"
+      ],
+      "migrations": [],
+      "tests": [
+        "packages/classification-core/src/compiler/compile.test.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "tools/parity/questions-flow.test.ts"
+      ],
+      "validators": [
+        "packages/classification-core/src/compiler/compile.ts",
+        "packages/classification-core/src/compiler/source-schema.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/options.ts"
       ]
     },
     {
       "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
       "consumers": [
+        "tools/parity/generate.ts",
+        "tools/parity/new-engine.ts",
         "tools/validation/validate-classification.ts"
       ],
       "generatedOwners": [
         "docs/classification/index.md",
         "docs/classification/manifest.json"
       ],
-      "id": "demo-form",
-      "key": "question/demo-form",
-      "kind": "question",
-      "messageIds": [
-        "question-demo-form"
-      ],
-      "migrations": [],
-      "tests": [
-        "packages/classification-core/src/compiler/compile.test.ts"
-      ],
-      "validators": [
-        "packages/classification-core/src/compiler/compile.ts",
-        "packages/classification-core/src/compiler/source-schema.ts"
-      ]
-    },
-    {
-      "canonicalSource": "packages/classification-core/src/definitions/synthetic.ts",
-      "consumers": [
-        "tools/validation/validate-classification.ts"
-      ],
-      "generatedOwners": [
-        "docs/classification/index.md",
-        "docs/classification/manifest.json"
-      ],
-      "id": "demo-shoyu",
-      "key": "style/demo-shoyu",
+      "id": "proof-shoyu",
+      "key": "style/proof-shoyu",
       "kind": "style",
       "messageIds": [
-        "style-demo-shoyu"
+        "style-proof-shoyu"
       ],
       "migrations": [],
       "tests": [
@@ -235,8 +1929,8 @@
       ]
     }
   ],
-  "dataVersion": "684e1a257e576a1f786b99573504cabc07c3064dcf8100881bbe4ab103182096",
-  "modelVersion": "batch1.0.0",
+  "dataVersion": "fc5192f348f43430d539781afc52332be4bfdbc5ac8f6894bc6de3a51e96d328",
+  "modelVersion": "batch2a.0.0",
   "schemaVersion": 1,
   "synthetic": true
 }

@@ -169,20 +169,45 @@
     },
     {
       "batch": "2A",
-      "status": "in-review",
+      "status": "in-progress",
       "legacySources": [
+        "src/App.tsx",
+        "src/config/questions.ts",
         "src/data/questions.json",
         "src/domain/questionRules.ts",
-        "src/config/questions.ts",
+        "src/domain/schema.ts",
         "src/domain/types.ts"
       ],
       "ownedScopes": [],
       "newOwners": [
-        "docs/superpowers/plans/2026-09-30-batch-2a-questions-and-flow.md"
+        "docs/superpowers/plans/2026-09-30-batch-2a-questions-and-flow.md",
+        "packages/classification-core/src/definitions/bundle.ts",
+        "packages/classification-core/src/definitions/questions.ts",
+        "packages/classification-core/src/flow/answers.ts",
+        "packages/classification-core/src/flow/complete.ts",
+        "packages/classification-core/src/flow/flow.test.ts",
+        "packages/classification-core/src/flow/index.ts",
+        "packages/classification-core/src/flow/navigation.ts",
+        "packages/classification-core/src/flow/options.ts",
+        "packages/classification-core/src/flow/types.ts",
+        "tools/parity/engine.ts",
+        "tools/parity/fixtures/questions-flow.json",
+        "tools/parity/generate.ts",
+        "tools/parity/legacy-engine.ts",
+        "tools/parity/new-engine.ts",
+        "tools/parity/questions-flow.test.ts",
+        "tools/parity/scenarios.ts"
       ],
-      "transformation": "Draft implementation plan for migrating questions and flow; no runtime code or product data migrated until the plan is approved.",
-      "behavior": "no-runtime-change",
-      "verification": []
+      "transformation": "Legacy questions.json, questionRules.ts and the questionnaire logic in App.tsx and schema.ts were normalized into explicit question, branch, restriction, selection-policy and auto-advance data plus a pure flow API. legacy weight is carried only as opaque legacyWeight. Styles, scoring, persistence, catalog, Finder, React and localized message catalogs are not migrated.",
+      "behavior": "parity-preserved",
+      "verification": [
+        {
+          "gate": "batch2a-legacy-parity",
+          "command": "npm run parity:legacy -- <legacy checkout at eebf00b>",
+          "outcome": "passed",
+          "evidence": "new flow matched the legacy oracle for all recorded tables: 8 questions, 352 option and 352 forced-answer rows, 80 navigation rows, 55310 selection transitions, 66 reset rows and 13560 completion rows"
+        }
+      ]
     }
   ]
 }

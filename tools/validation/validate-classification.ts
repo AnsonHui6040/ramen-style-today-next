@@ -1,10 +1,10 @@
 import {
   compileClassification,
-  syntheticDefinition,
+  classificationDefinition,
 } from '@ramen-style/classification-core/compiler'
 
-const sourceFile = 'packages/classification-core/src/definitions/synthetic.ts'
-const result = compileClassification(syntheticDefinition, sourceFile)
+const sourceFile = 'packages/classification-core/src/definitions/bundle.ts'
+const result = compileClassification(classificationDefinition, sourceFile)
 
 if (!result.ok) {
   console.error(JSON.stringify(result.diagnostics, null, 2))

@@ -45,6 +45,11 @@ const completionGatePolicies = new Map<string, ReadonlySet<string>>([
     'batch1-local-verify',
     'batch1-remote-ci',
   ])],
+  ['2A', new Set([
+    'batch2a-legacy-parity',
+    'batch2a-local-verify',
+    'batch2a-remote-ci',
+  ])],
 ])
 
 const entrySchema = z.strictObject({

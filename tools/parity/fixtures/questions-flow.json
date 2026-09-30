@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "repository": "AnsonHui6040/ramen-style-today",
+    "commit": "eebf00b7ddfbbe6f01ff598e57f1e17197068a37"
+  },
+  "legacySourceSha256": {
+    "src/App.tsx": "fcc56466e6f1cdf970295857efe1aafa0be9a980cc70fb043c7e36b6bdddc244",
+    "src/config/questions.ts": "4ee41855fa849d650e0d970cc3e39114ff5f73c648833613e700846bff764906",
+    "src/data/questions.json": "0136f6f71fdc0f09da8da045aa97303069631882ef2a240dd1a9fbc48a8992f2",
+    "src/domain/questionRules.ts": "465a0575ef45ee93cf1843acc1e102802ff28d3203a32bc33f8ab49411742385",
+    "src/domain/schema.ts": "7c0abe9767fd57d7bbde3209cd4241eafbe0f5c63415947e1efea6ac718cc0a9"
+  },
+  "sections": {
+    "questions": {
+      "count": 8,
+      "sha256": "2167d5eb95b2e985578db1839386f0e9b31c7c700b51d5016f7911fac2a95111"
+    },
+    "options": {
+      "count": 352,
+      "sha256": "f8deb9e016f835552ee5de7724bc673493b4189c224093ab8229fcd02f2ae51d"
+    },
+    "forced": {
+      "count": 352,
+      "sha256": "b1ef0c006413d36b6be022e7e4015c7a2b32254cec8b642a429d68d43e35091b"
+    },
+    "navigation": {
+      "count": 80,
+      "sha256": "2c54e4d3132733b259ab4c5555ac4a0723f81405d001674e598c1436ced11450"
+    },
+    "selection": {
+      "count": 55310,
+      "sha256": "7ada0d29ee7311d472034f67c0c6a21ec445a2ea170c69dcce3654b52f3830ae"
+    },
+    "reset": {
+      "count": 66,
+      "sha256": "b8c7a3d428b9c71baf778d20b449279b6ce0127e4bcc465ff702b5763e932ada"
+    },
+    "completion": {
+      "count": 13560,
+      "sha256": "3497a5b5e550ecd99a179cf7ac486afa1b8c4f037189c1cb629597af06afc38c"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Batch 2A: Questions and Flow Implementation Plan
 
-**Status:** DRAFT — review required. This document is not implementation permission. Do not start any task below until the user has approved it in writing (AGENTS.md: "Do not start an implementation batch until its written design or plan has the required approval").
+**Status:** Approved by the user for implementation. Approval decisions: scope and out-of-scope list approved; `weight` semantics deferred to Batch 3B and carried only as opaque legacy metadata that no flow, validation, dependency compilation, completion logic or public API may interpret; no intentional behavior changes.
 
 **Baseline:** `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a37`
 
@@ -65,8 +65,6 @@ Out of scope (owned by later batches): styles, scoring, `weight` semantics, excl
 
 ## 5. Approval
 
-Requested from the user before Task 1 begins:
-
-- [ ] Scope and out-of-scope list approved
-- [ ] Decision on `weight`: carry as opaque migrated data now, or defer to Batch 3B
-- [ ] Any intentional behavior change (none proposed)
+- [x] Scope and out-of-scope list approved
+- [x] `weight`: opaque legacy metadata only (`legacyWeight`); Batch 3B owns its semantics
+- [x] Intentional behavior changes: none approved; legacy questionnaire behavior is preserved exactly

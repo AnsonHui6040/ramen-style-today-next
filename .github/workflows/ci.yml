@@ -19,6 +19,12 @@ jobs:
           node-version: 24.18.0
           cache: npm
       - run: npm ci
+      - name: Check out the frozen legacy baseline for parity
+        run: |
+          git init --quiet "$RUNNER_TEMP/legacy"
+          git -C "$RUNNER_TEMP/legacy" fetch --quiet --depth=1 https://github.com/AnsonHui6040/ramen-style-today.git eebf00b7ddfbbe6f01ff598e57f1e17197068a37
+          git -C "$RUNNER_TEMP/legacy" checkout --quiet FETCH_HEAD
+      - run: npm run parity:legacy -- "$RUNNER_TEMP/legacy"
       - run: npm run verify
         env:
           GITHUB_TOKEN: ${{ github.token }}

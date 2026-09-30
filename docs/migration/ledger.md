@@ -117,22 +117,40 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `3cd7ac638f650d783b33f27feb993fbadf35493f`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883
 
-## Batch 2A — in-review
+## Batch 2A — in-progress
 
-- Behavior: `no-runtime-change`
-- Transformation: Draft implementation plan for migrating questions and flow; no runtime code or product data migrated until the plan is approved.
+- Behavior: `parity-preserved`
+- Transformation: Legacy questions.json, questionRules.ts and the questionnaire logic in App.tsx and schema.ts were normalized into explicit question, branch, restriction, selection-policy and auto-advance data plus a pure flow API. legacy weight is carried only as opaque legacyWeight. Styles, scoring, persistence, catalog, Finder, React and localized message catalogs are not migrated.
 
 ### Legacy sources
 
+- `src/App.tsx`
 - `src/config/questions.ts`
 - `src/data/questions.json`
 - `src/domain/questionRules.ts`
+- `src/domain/schema.ts`
 - `src/domain/types.ts`
 
 ### New owners
 
 - `docs/superpowers/plans/2026-09-30-batch-2a-questions-and-flow.md`
+- `packages/classification-core/src/definitions/bundle.ts`
+- `packages/classification-core/src/definitions/questions.ts`
+- `packages/classification-core/src/flow/answers.ts`
+- `packages/classification-core/src/flow/complete.ts`
+- `packages/classification-core/src/flow/flow.test.ts`
+- `packages/classification-core/src/flow/index.ts`
+- `packages/classification-core/src/flow/navigation.ts`
+- `packages/classification-core/src/flow/options.ts`
+- `packages/classification-core/src/flow/types.ts`
+- `tools/parity/engine.ts`
+- `tools/parity/fixtures/questions-flow.json`
+- `tools/parity/generate.ts`
+- `tools/parity/legacy-engine.ts`
+- `tools/parity/new-engine.ts`
+- `tools/parity/questions-flow.test.ts`
+- `tools/parity/scenarios.ts`
 
 ### Verification
 
-- Pending.
+- `batch2a-legacy-parity`: `npm run parity:legacy -- <legacy checkout at eebf00b>` — passed; new flow matched the legacy oracle for all recorded tables: 8 questions, 352 option and 352 forced-answer rows, 80 navigation rows, 55310 selection transitions, 66 reset rows and 13560 completion rows

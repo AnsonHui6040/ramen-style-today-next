@@ -20,7 +20,10 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p packages/classification-core/tsconfig.json && tsc --noEmit -p tools/tsconfig.json",
     "build": "tsc -b packages/classification-core",
-    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run classification:index:check && npm run migration:ledger:check"
+    "verify": "npm run lint && npm test && npm run typecheck && npm run build && npm run classification:validate && npm run parity && npm run classification:index:check && npm run migration:ledger:check",
+    "parity": "vitest run tools/parity",
+    "parity:legacy": "tsx tools/parity/generate.ts --check",
+    "parity:regenerate": "tsx tools/parity/generate.ts --write"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

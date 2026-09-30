@@ -9,6 +9,7 @@ import type {
 import { compareCodePoints } from '../contracts/source-path.js'
 import { DiagnosticCollector } from './collector.js'
 import { parseDefinitionBundle } from './parse.js'
+import type { DefinitionBundleSource } from './source-schema.js'
 import { stableJson } from './stable-json.js'
 
 export type CompileResult =
@@ -51,6 +52,14 @@ function flowHasCycle(questions: readonly { id: string; dependsOn: readonly stri
   return [...graph.keys()].some(visit)
 }
 
+type QuestionSource = DefinitionBundleSource['questions'][number]
+
+export function questionOptionList(question: QuestionSource) {
+  return question.optionSet.kind === 'flat'
+    ? question.optionSet.options
+    : question.optionSet.branches.flatMap((branch) => branch.options)
+}
+
 function inventoryKey(kind: ConceptRecord['kind'], id: string): ConceptKey {
   return `${kind}/${id}`
 }
@@ -65,11 +74,11 @@ function buildInventory(definition: NonNullable<ReturnType<typeof parseDefinitio
       sourceFile: question.sourceFile,
       messageIds: [question.messageId],
     })
-    for (const option of question.options) {
+    for (const option of questionOptionList(question)) {
       records.push({
-        key: inventoryKey('option', option.id),
+        key: inventoryKey('option', `${question.id}:${option.id}`),
         kind: 'option',
-        id: option.id,
+        id: `${question.id}:${option.id}`,
         sourceFile: question.sourceFile,
         messageIds: [option.messageId],
       })
@@ -108,6 +117,110 @@ function buildInventory(definition: NonNullable<ReturnType<typeof parseDefinitio
   return records.sort((left, right) => compareCodePoints(left.key, right.key))
 }
 
+function validateFlow(
+  definition: DefinitionBundleSource,
+  collector: DiagnosticCollector,
+) {
+  const byId = new Map(definition.questions.map((question) => [question.id, question]))
+  const orders = definition.questions.map((question) => String(question.order))
+  for (const order of duplicateValues(orders)) {
+    collector.error({
+      code: 'FLOW_ORDER_INVALID',
+      sourceFile: definition.questions[0]!.sourceFile,
+      path: '/questions',
+      message: `Question order ${order} is used more than once`,
+    })
+  }
+  for (const [index, question] of definition.questions.entries()) {
+    const at = (suffix: string) => `/questions/${index}${suffix}`
+    const fail = (
+      code: 'REFERENCE_UNKNOWN' | 'FLOW_ORDER_INVALID' | 'FLOW_BRANCH_INCOMPLETE',
+      suffix: string,
+      message: string,
+    ) => collector.error({
+      code,
+      sourceFile: question.sourceFile,
+      path: at(suffix),
+      entityId: question.id,
+      message,
+    })
+    for (const [dependencyIndex, dependency] of question.dependsOn.entries()) {
+      const target = byId.get(dependency)
+      if (target && target.order >= question.order) fail(
+        'FLOW_ORDER_INVALID',
+        `/dependsOn/${dependencyIndex}`,
+        `Question ${question.id} must come after its dependency ${dependency}`,
+      )
+    }
+    const universe = new Set(questionOptionList(question).map((option) => option.id))
+    if (question.emptyFallbackOptionId && !universe.has(question.emptyFallbackOptionId)) fail(
+      'REFERENCE_UNKNOWN',
+      '/emptyFallbackOptionId',
+      `Unknown fallback option ${question.emptyFallbackOptionId}`,
+    )
+    const selector = (
+      by: string,
+      suffix: string,
+    ) => {
+      if (!question.dependsOn.includes(by)) fail(
+        'REFERENCE_UNKNOWN',
+        suffix,
+        `Question ${question.id} selects by ${by} without depending on it`,
+      )
+      const target = byId.get(by)
+      return target ? new Set(questionOptionList(target).map((option) => option.id)) : undefined
+    }
+    if (question.optionSet.kind === 'branch') {
+      const selectorOptions = selector(question.optionSet.by, '/optionSet/by')
+      const seen = new Set<string>()
+      for (const [branchIndex, branch] of question.optionSet.branches.entries()) {
+        if (selectorOptions && !selectorOptions.has(branch.when)) fail(
+          'REFERENCE_UNKNOWN',
+          `/optionSet/branches/${branchIndex}/when`,
+          `Unknown branch selector option ${branch.when}`,
+        )
+        if (seen.has(branch.when)) fail(
+          'FLOW_BRANCH_INCOMPLETE',
+          `/optionSet/branches/${branchIndex}/when`,
+          `Branch ${branch.when} is defined more than once`,
+        )
+        seen.add(branch.when)
+      }
+      for (const option of selectorOptions ?? []) {
+        if (!seen.has(option)) fail(
+          'FLOW_BRANCH_INCOMPLETE',
+          '/optionSet/branches',
+          `No branch defined for selector option ${option}`,
+        )
+      }
+    }
+    if (question.restriction) {
+      const selectorOptions = selector(question.restriction.by, '/restriction/by')
+      const seen = new Set<string>()
+      for (const [allowIndex, allow] of question.restriction.allow.entries()) {
+        if (selectorOptions && !selectorOptions.has(allow.when)) fail(
+          'REFERENCE_UNKNOWN',
+          `/restriction/allow/${allowIndex}/when`,
+          `Unknown restriction selector option ${allow.when}`,
+        )
+        if (seen.has(allow.when)) fail(
+          'FLOW_BRANCH_INCOMPLETE',
+          `/restriction/allow/${allowIndex}/when`,
+          `Restriction for ${allow.when} is defined more than once`,
+        )
+        seen.add(allow.when)
+        for (const [optionIndex, optionId] of allow.optionIds.entries()) {
+          if (!universe.has(optionId)) fail(
+            'REFERENCE_UNKNOWN',
+            `/restriction/allow/${allowIndex}/optionIds/${optionIndex}`,
+            `Restriction allows unknown option ${optionId}`,
+          )
+        }
+      }
+    }
+  }
+}
+
 export function compileClassification(input: unknown, sourceFile: string): CompileResult {
   const parsed = parseDefinitionBundle(input, sourceFile)
   if (!parsed.definition) return { ok: false, diagnostics: parsed.diagnostics }
@@ -117,9 +230,17 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
   for (const id of duplicateValues(definition.questions.map((item) => item.id))) {
     collector.error({ code: 'QUESTION_DUPLICATE_ID', sourceFile, path: '/questions', entityId: id, message: `Duplicate question ${id}` })
   }
-  const optionIds = definition.questions.flatMap((question) => question.options.map((item) => item.id))
-  for (const id of duplicateValues(optionIds)) {
-    collector.error({ code: 'OPTION_DUPLICATE_ID', sourceFile, path: '/questions', entityId: id, message: `Duplicate option ${id}` })
+  const optionIds = definition.questions.flatMap((question) => questionOptionList(question).map((item) => item.id))
+  for (const [index, question] of definition.questions.entries()) {
+    for (const id of duplicateValues(questionOptionList(question).map((item) => item.id))) {
+      collector.error({
+        code: 'OPTION_DUPLICATE_ID',
+        sourceFile: question.sourceFile,
+        path: `/questions/${index}/optionSet`,
+        entityId: `${question.id}:${id}`,
+        message: `Duplicate option ${id} in question ${question.id}`,
+      })
+    }
   }
   for (const id of duplicateValues(definition.styles.map((item) => item.id))) {
     collector.error({ code: 'STYLE_DUPLICATE_ID', sourceFile, path: '/styles', entityId: id, message: `Duplicate style ${id}` })
@@ -153,15 +274,7 @@ export function compileClassification(input: unknown, sourceFile: string): Compi
     path: '/questions',
     message: 'Question dependency graph contains a cycle',
   })
-  const totalWeight = definition.questions.reduce((sum, question) => sum + question.weight, 0)
-  if (totalWeight !== 100) collector.error({
-    code: 'POLICY_WEIGHT_TOTAL',
-    sourceFile: definition.policy.sourceFile,
-    path: '/questions',
-    message: `Question weights total ${totalWeight}, expected 100`,
-    expected: 100,
-    received: totalWeight,
-  })
+  validateFlow(definition, collector)
 
   const inventory = buildInventory(definition)
   for (const key of duplicateValues(inventory.map((item) => item.key))) {

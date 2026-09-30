@@ -4,7 +4,7 @@
 
 ## Current status
 
-Batch 1 已完成：repository 現在具備 strict TypeScript contracts、structured diagnostics、deterministic compiler shell、雙向檢查的分類索引、migration ledger validator 和 CI。所有分類內容仍是 synthetic proof inventory；正式 questions 與 flow 只會由 Batch 2A 開始遷移。
+Batch 1 已完成。Batch 2A（questions and flow）已依核准計畫實作：舊版 8 題、form → archetype 分支、archetype 選項限制、選擇上限、自動前進、返回跳過與完成判定，皆以純函式流程遷移到 `@ramen-style/classification-core`，並用 `tools/parity` 對舊版 oracle 做窮舉比對；待遠端 CI 證據後才會標記完成。Styles 與 policy 仍是 synthetic proof data；scoring、persistence、catalog、Finder 與 React 尚未遷移。`weight` 只作為不被解讀的 `legacyWeight` 保留，語意留待 Batch 3B。
 
 舊版 production 與行為基準仍在 [`AnsonHui6040/ramen-style-today`](https://github.com/AnsonHui6040/ramen-style-today)，凍結比較基準為 commit `eebf00b`。
 

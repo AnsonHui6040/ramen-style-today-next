@@ -12,3 +12,4 @@ export type {
   ConceptKind,
   ConceptRecord,
 } from './contracts/model.js'
+export * from './flow/index.js'
