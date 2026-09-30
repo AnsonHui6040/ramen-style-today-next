@@ -204,3 +204,23 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `batch2b-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed acceptance candidate completed the Node 24 verify job successfully
   - Commit: `6645cc02a5a0af1547f52aa95271b791f944abf6`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/36707004157
+
+## Batch 3A — in-review
+
+- Behavior: `no-runtime-change`
+- Transformation: Draft implementation plan for migrating style definitions and their compilation; no runtime code or product data is migrated until the plan is approved.
+
+### Legacy sources
+
+- `src/config/styles.ts`
+- `src/data/styles.json`
+- `src/domain/schema.ts`
+- `src/domain/types.ts`
+
+### New owners
+
+- `docs/superpowers/plans/2026-09-30-batch-3a-style-compilation.md`
+
+### Verification
+
+- Pending.

@@ -282,6 +282,23 @@
           "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/36707004157"
         }
       ]
+    },
+    {
+      "batch": "3A",
+      "status": "in-review",
+      "legacySources": [
+        "src/data/styles.json",
+        "src/domain/types.ts",
+        "src/domain/schema.ts",
+        "src/config/styles.ts"
+      ],
+      "ownedScopes": [],
+      "newOwners": [
+        "docs/superpowers/plans/2026-09-30-batch-3a-style-compilation.md"
+      ],
+      "transformation": "Draft implementation plan for migrating style definitions and their compilation; no runtime code or product data is migrated until the plan is approved.",
+      "behavior": "no-runtime-change",
+      "verification": []
     }
   ]
 }
