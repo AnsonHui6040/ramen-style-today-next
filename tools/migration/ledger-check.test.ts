@@ -510,6 +510,11 @@ describe('migration ledger repository checks', () => {
 
   test('accepts authenticated historical evidence that is an ancestor of current HEAD', async () => {
     const historicalLedger = structuredClone(ledger)
+    // Isolate Batch 1: later batches record their own authenticated runs, which this stub does not serve.
+    for (const entry of historicalLedger.entries.slice(2)) {
+      entry.status = 'in-review'
+      entry.verification = entry.verification.filter((item) => !item.gate.endsWith('-remote-ci'))
+    }
     const remote = historicalLedger.entries[1]!.verification.find(
       (item) => item.gate === 'batch1-remote-ci',
     )!

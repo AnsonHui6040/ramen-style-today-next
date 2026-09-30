@@ -117,7 +117,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `3cd7ac638f650d783b33f27feb993fbadf35493f`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883
 
-## Batch 2A — in-progress
+## Batch 2A — complete
 
 - Behavior: `parity-preserved`
 - Transformation: Legacy questions.json, questionRules.ts and the questionnaire logic in App.tsx and schema.ts were normalized into explicit question, branch, restriction, selection-policy and auto-advance data plus a pure flow API. legacy weight is carried only as opaque legacyWeight. Styles, scoring, persistence, catalog, Finder, React and localized message catalogs are not migrated.
@@ -154,3 +154,7 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 ### Verification
 
 - `batch2a-legacy-parity`: `npm run parity:legacy -- <legacy checkout at eebf00b>` — passed; new flow matched the legacy oracle for all recorded tables: 8 questions, 352 option and 352 forced-answer rows, 80 navigation rows, 55310 selection transitions, 66 reset rows and 13560 completion rows
+- `batch2a-local-verify`: `npm run verify` — passed; full local gate passed with exit code 0 (lint, 84 tests, typecheck, build, classification validation, parity, index drift and authenticated ledger check) on the acceptance candidate b7988b1d8d2556f75ac3a0e7f2b66dd4f652bbc8 with ledger status in-review; run with NODE_USE_ENV_PROXY=1 so Node fetch uses the sandbox proxy for the GitHub API
+- `batch2a-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed acceptance candidate completed the Node 24 verify job successfully
+  - Commit: `b7988b1d8d2556f75ac3a0e7f2b66dd4f652bbc8`
+  - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/36689124188

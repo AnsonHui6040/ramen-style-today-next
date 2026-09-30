@@ -169,7 +169,7 @@
     },
     {
       "batch": "2A",
-      "status": "in-progress",
+      "status": "complete",
       "legacySources": [
         "src/App.tsx",
         "src/config/questions.ts",
@@ -206,6 +206,20 @@
           "command": "npm run parity:legacy -- <legacy checkout at eebf00b>",
           "outcome": "passed",
           "evidence": "new flow matched the legacy oracle for all recorded tables: 8 questions, 352 option and 352 forced-answer rows, 80 navigation rows, 55310 selection transitions, 66 reset rows and 13560 completion rows"
+        },
+        {
+          "gate": "batch2a-local-verify",
+          "command": "npm run verify",
+          "outcome": "passed",
+          "evidence": "full local gate passed with exit code 0 (lint, 84 tests, typecheck, build, classification validation, parity, index drift and authenticated ledger check) on the acceptance candidate b7988b1d8d2556f75ac3a0e7f2b66dd4f652bbc8 with ledger status in-review; run with NODE_USE_ENV_PROXY=1 so Node fetch uses the sandbox proxy for the GitHub API"
+        },
+        {
+          "gate": "batch2a-remote-ci",
+          "command": "GitHub Actions CI / verify",
+          "outcome": "passed",
+          "evidence": "the pushed acceptance candidate completed the Node 24 verify job successfully",
+          "commitSha": "b7988b1d8d2556f75ac3a0e7f2b66dd4f652bbc8",
+          "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/36689124188"
         }
       ]
     }
