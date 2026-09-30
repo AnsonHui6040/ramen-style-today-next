@@ -16,10 +16,19 @@ Sources inspected at the baseline commit:
 - `src/domain/types.ts`: closed value unions and `QuestionDefinition` with `copyByForm` / `descriptionByForm` display overrides.
 - `src/i18n.ts`: zh-TW, English and Japanese translated copy, including `copyByForm` / `descriptionByForm`.
 
-Open items to resolve during Task 1 (not yet verified):
+Flow rules found in `src/App.tsx` (read-only audit, baseline commit):
 
-- Whether the legacy UI ever skips a question (for example when the allow-list leaves one option) or auto-advances; this must be read from `src/App.tsx` and `src/features/questionnaire/`.
-- Whether `weight` is question-level scoring data (belongs to Batch 3B, so it is carried only as opaque migrated data or deferred).
+- Question order is the array order of `questions.json`; the flow is index-based (`stepIndex`). The new model must make this order explicit data.
+- **Forced answers:** for steps with index 2 through 6 (`tare` … `signature`), if the archetype allow-list leaves exactly one option, the app writes that value automatically and advances (`getForcedQuestionValue`, `applyForcedAnswersFromStep`). `form`, `archetype` and `exclusions` are never forced. The forced answer is always a single-value array for `source` and `signature`. Going back skips forced steps (`getPreviousInteractiveStep`).
+- **Reset:** choosing `form` clears `archetype`; choosing `form` or `archetype` also clears `tare`, `source`, `body`, `noodle` and `signature` (`resetPreferenceAnswers`); `exclusions` is kept.
+- **Multi-select** (`source`, `signature`, `exclusions`): limits come from `maxSelectionsByQuestion` data (2, 2, 8); options may be flagged `exclusive` (selecting one clears the others, and selecting others clears it); selections outside the currently allowed options are dropped; `exclusions` falls back to `['none']` when emptied. Proceeding requires `minSelections`.
+- Completion is reaching the last question (`exclusions`) and confirming.
+
+Exclusive options (from `questions.json`): `source.unsure`, `signature.no-preference`, `exclusions.none`.
+
+Items still to verify in Task 1:  restored-state clamping of `stepIndex` (belongs to Batch 2B, only noted here).
+
+Decision needed: `weight` is question-level scoring data; proposed default is to carry it as opaque migrated data without interpreting it, leaving semantics to Batch 3B.
 
 ## 2. Scope
 
