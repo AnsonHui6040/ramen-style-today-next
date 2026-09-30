@@ -121,3 +121,31 @@ Recorded from `src/App.tsx`, `src/config/questions.ts`, `src/data/questions.json
 | `weight` | question weight totalling 100; scoring data | carried as opaque `legacyWeight`, never interpreted (Batch 3B) |
 
 Known intentional non-differences: selecting an option that is not currently offered is ignored by the new flow (the legacy UI could not produce it), and legacy persisted-state repair (`restoreUserAnswers`, the `seafood` alias, step clamping) belongs to Batch 2B.
+
+## Verified legacy persistence behavior (Batch 2B, Task 1)
+
+Recorded from `src/App.tsx` (`readStoredState`, `saveStoredState`, `clearStoredState`, `getStoredStepIndex`, `applyForcedAnswersFromStep`, `startFlow`, `reviewAnswers`, `restart`), `src/domain/schema.ts` (`restoreUserAnswers`, `normalizeExclusiveValues`, `toCompletedAnswers`) and `src/App.test.tsx` at `eebf00b`. The full audit and the approved design are in `docs/superpowers/plans/2026-09-30-batch-2b-persistence-and-repair.md`.
+
+| Item | Legacy behavior |
+| --- | --- |
+| Storage | one key, `ramen-style-today.state.v1`; the `.v1` suffix is part of the key name, not a payload version; there is no payload version field and no migration chain |
+| Payload | `JSON.stringify({ phase, stepIndex, answers, locale })`, rewritten after every change, including the first render after restore |
+| Failure handling | write errors are caught and shown as a notice; unavailable storage, empty value, invalid JSON and non-object JSON all restore the fallback state (`intro`, step 0, initial answers, `zh-TW`) and never delete the raw value |
+| Answer sanitization | single values must be strings in the field's global value set; multi values must be arrays, unknown values dropped, duplicates removed keeping first; exclusive values removed when combined with others; retired `seafood` exclusion expanded to `fish-seafood`, `shellfish`, `shrimp-crab`; empty `exclusions` becomes `none`; no cross-field or selection-limit checks |
+| `phase` and `locale` | kept only for known values, otherwise `intro` and `zh-TW` |
+| `stepIndex` | kept only for integers `>= 0`, clamped to the last question, otherwise `0` |
+| Results snapshot | incomplete answers fall back to `intro` at step 0 keeping the restored answers and locale |
+| `intro` snapshot | returned as is, including a non-zero `stepIndex` and unsettled forced answers |
+| `questions` snapshot | forced answers are settled from the clamped step; nothing else is repaired |
+| Known defects | stale or over-limit answers persist invisibly; a restored step can be ahead of missing earlier answers; the last question can be unfinishable and its continue action returns silently |
+
+### Approved divergences (the only intentional differences from legacy)
+
+| ID | Approved difference |
+| --- | --- |
+| BC-1 | stale, unknown, not-offered and over-limit answers are repaired (first N kept in stored order) and dependent answers are cleared |
+| BC-2 | the resume position moves back to the earliest unanswered or invalid required question |
+| BC-3 | states that would be stuck at the final question are repaired to an actionable question |
+| BC-4 | required forced answers are written during restore, including the legacy `intro` and incomplete `results` paths |
+
+Legacy parity fixtures (`tools/parity/fixtures/restore-parity.json`) and approved-divergence fixtures (`tools/parity/fixtures/restore-divergence.json`) are separate; a divergence is never counted as a parity result, and a parity scenario may not differ from legacy.

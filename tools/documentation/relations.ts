@@ -17,15 +17,23 @@ const flowValidators = [
   ...compilerValidators,
   'packages/classification-core/src/flow/options.ts',
   'packages/classification-core/src/flow/complete.ts',
+  'packages/classification-core/src/persistence/migrate.ts',
+  'packages/classification-core/src/persistence/payload-schema.ts',
+  'packages/classification-core/src/persistence/repair.ts',
 ]
 const flowTests = [
   'packages/classification-core/src/compiler/compile.test.ts',
   'packages/classification-core/src/flow/flow.test.ts',
+  'packages/classification-core/src/persistence/persistence.test.ts',
   'tools/parity/questions-flow.test.ts',
+  'tools/parity/restore.test.ts',
 ]
 const coreConsumers = [
   'tools/parity/generate.ts',
   'tools/parity/new-engine.ts',
+  'tools/parity/new-restore-reader.ts',
+  'tools/parity/restore-generate.ts',
+  'tools/parity/restore-tables.ts',
   'tools/validation/validate-classification.ts',
 ]
 

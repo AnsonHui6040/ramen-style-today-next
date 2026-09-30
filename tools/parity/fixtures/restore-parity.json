@@ -1,0 +1,312 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "repository": "AnsonHui6040/ramen-style-today",
+    "commit": "eebf00b7ddfbbe6f01ff598e57f1e17197068a37"
+  },
+  "legacySourceSha256": {
+    "src/App.tsx": "fcc56466e6f1cdf970295857efe1aafa0be9a980cc70fb043c7e36b6bdddc244",
+    "src/config/questions.ts": "4ee41855fa849d650e0d970cc3e39114ff5f73c648833613e700846bff764906",
+    "src/data/questions.json": "0136f6f71fdc0f09da8da045aa97303069631882ef2a240dd1a9fbc48a8992f2",
+    "src/domain/questionRules.ts": "465a0575ef45ee93cf1843acc1e102802ff28d3203a32bc33f8ab49411742385",
+    "src/domain/schema.ts": "7c0abe9767fd57d7bbde3209cd4241eafbe0f5c63415947e1efea6ac718cc0a9",
+    "src/i18n.ts": "0910482554ae6e2d21f9fd1ceef5f7961ddb5f718fa896656e19d23e5b5288b1"
+  },
+  "scenarioCount": 58478,
+  "category": "legacy-parity",
+  "note": "Every scenario not listed as an approved divergence must equal the frozen legacy behavior exactly.",
+  "sanitization": {
+    "count": 58466,
+    "sha256": "85f681e1d160f9ea9ad9fa9655902f0c75c3a55a02c9c66bc4d8b428573d4de4"
+  },
+  "parity": {
+    "count": 4572,
+    "sha256": "ff557bdec2b87fcc8371707b1961d99415c4b6da0eca96dc5f336520914b35e2"
+  },
+  "named": [
+    {
+      "id": "P1 no stored value",
+      "raw": null,
+      "state": {
+        "answers": {
+          "exclusions": [
+            "none"
+          ],
+          "signature": [],
+          "source": []
+        },
+        "locale": "zh-TW",
+        "phase": "intro",
+        "stepIndex": 0
+      }
+    },
+    {
+      "id": "P2 corrupt JSON keeps fallback",
+      "raw": "{\"phase\":",
+      "state": {
+        "answers": {
+          "exclusions": [
+            "none"
+          ],
+          "signature": [],
+          "source": []
+        },
+        "locale": "zh-TW",
+        "phase": "intro",
+        "stepIndex": 0
+      }
+    },
+    {
+      "id": "P3 non-object JSON",
+      "raw": "[1,2]",
+      "state": {
+        "answers": {
+          "exclusions": [
+            "none"
+          ],
+          "signature": [],
+          "source": []
+        },
+        "locale": "zh-TW",
+        "phase": "intro",
+        "stepIndex": 0
+      }
+    },
+    {
+      "id": "P4 fractional step index restores the first question",
+      "raw": "{\"phase\":\"questions\",\"stepIndex\":1.5,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"soup\",\"source\":[],\"signature\":[],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "exclusions": [
+            "none"
+          ],
+          "form": "soup",
+          "signature": [],
+          "source": []
+        },
+        "locale": "zh-TW",
+        "phase": "questions",
+        "stepIndex": 0
+      }
+    },
+    {
+      "id": "P5 negative step index",
+      "raw": "{\"phase\":\"questions\",\"stepIndex\":-3,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"soup\",\"archetype\":\"paitan\",\"tare\":\"shoyu\",\"source\":[\"pork\",\"chicken\"],\"body\":\"rich\",\"noodle\":\"medium-thick-straight\",\"signature\":[\"nori-spinach\"],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "archetype": "paitan",
+          "body": "rich",
+          "exclusions": [
+            "none"
+          ],
+          "form": "soup",
+          "noodle": "medium-thick-straight",
+          "signature": [
+            "nori-spinach"
+          ],
+          "source": [
+            "pork",
+            "chicken"
+          ],
+          "tare": "shoyu"
+        },
+        "locale": "zh-TW",
+        "phase": "questions",
+        "stepIndex": 0
+      }
+    },
+    {
+      "id": "P6 oversized step index is clamped",
+      "raw": "{\"phase\":\"questions\",\"stepIndex\":99,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"soup\",\"archetype\":\"paitan\",\"tare\":\"shoyu\",\"source\":[\"pork\",\"chicken\"],\"body\":\"rich\",\"noodle\":\"medium-thick-straight\",\"signature\":[\"nori-spinach\"],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "archetype": "paitan",
+          "body": "rich",
+          "exclusions": [
+            "none"
+          ],
+          "form": "soup",
+          "noodle": "medium-thick-straight",
+          "signature": [
+            "nori-spinach"
+          ],
+          "source": [
+            "pork",
+            "chicken"
+          ],
+          "tare": "shoyu"
+        },
+        "locale": "zh-TW",
+        "phase": "questions",
+        "stepIndex": 7
+      }
+    },
+    {
+      "id": "P7 unknown phase and locale",
+      "raw": "{\"phase\":\"nope\",\"stepIndex\":3,\"locale\":\"fr\",\"answers\":{\"form\":\"soup\",\"archetype\":\"paitan\",\"tare\":\"shoyu\",\"source\":[\"pork\",\"chicken\"],\"body\":\"rich\",\"noodle\":\"medium-thick-straight\",\"signature\":[\"nori-spinach\"],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "archetype": "paitan",
+          "body": "rich",
+          "exclusions": [
+            "none"
+          ],
+          "form": "soup",
+          "noodle": "medium-thick-straight",
+          "signature": [
+            "nori-spinach"
+          ],
+          "source": [
+            "pork",
+            "chicken"
+          ],
+          "tare": "shoyu"
+        },
+        "locale": "zh-TW",
+        "phase": "intro",
+        "stepIndex": 3
+      }
+    },
+    {
+      "id": "P8 seafood alias expansion",
+      "raw": "{\"phase\":\"questions\",\"stepIndex\":7,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"soup\",\"archetype\":\"paitan\",\"tare\":\"shoyu\",\"source\":[\"pork\",\"chicken\"],\"body\":\"rich\",\"noodle\":\"medium-thick-straight\",\"signature\":[\"nori-spinach\"],\"exclusions\":[\"seafood\",\"dairy\"]}}",
+      "state": {
+        "answers": {
+          "archetype": "paitan",
+          "body": "rich",
+          "exclusions": [
+            "fish-seafood",
+            "shellfish",
+            "shrimp-crab",
+            "dairy"
+          ],
+          "form": "soup",
+          "noodle": "medium-thick-straight",
+          "signature": [
+            "nori-spinach"
+          ],
+          "source": [
+            "pork",
+            "chicken"
+          ],
+          "tare": "shoyu"
+        },
+        "locale": "zh-TW",
+        "phase": "questions",
+        "stepIndex": 7
+      }
+    },
+    {
+      "id": "P9 duplicate and unknown values",
+      "raw": "{\"phase\":\"questions\",\"stepIndex\":3,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"soup\",\"archetype\":\"paitan\",\"tare\":\"shoyu\",\"source\":[\"pork\",\"pork\",\"zzz\"],\"body\":\"rich\",\"noodle\":\"medium-thick-straight\",\"signature\":[\"nori-spinach\"],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "archetype": "paitan",
+          "body": "rich",
+          "exclusions": [
+            "none"
+          ],
+          "form": "soup",
+          "noodle": "medium-thick-straight",
+          "signature": [
+            "nori-spinach"
+          ],
+          "source": [
+            "pork"
+          ],
+          "tare": "shoyu"
+        },
+        "locale": "zh-TW",
+        "phase": "questions",
+        "stepIndex": 3
+      }
+    },
+    {
+      "id": "P10 exclusive value with others",
+      "raw": "{\"phase\":\"questions\",\"stepIndex\":3,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"soup\",\"archetype\":\"paitan\",\"tare\":\"shoyu\",\"source\":[\"unsure\",\"pork\"],\"body\":\"rich\",\"noodle\":\"medium-thick-straight\",\"signature\":[\"no-preference\",\"corn-butter\"],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "archetype": "paitan",
+          "body": "rich",
+          "exclusions": [
+            "none"
+          ],
+          "form": "soup",
+          "noodle": "medium-thick-straight",
+          "signature": [
+            "corn-butter"
+          ],
+          "source": [
+            "pork"
+          ],
+          "tare": "shoyu"
+        },
+        "locale": "zh-TW",
+        "phase": "questions",
+        "stepIndex": 3
+      }
+    },
+    {
+      "id": "P11 valid results snapshot",
+      "raw": "{\"phase\":\"results\",\"stepIndex\":7,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"soup\",\"archetype\":\"paitan\",\"tare\":\"shoyu\",\"source\":[\"pork\",\"chicken\"],\"body\":\"rich\",\"noodle\":\"medium-thick-straight\",\"signature\":[\"nori-spinach\"],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "archetype": "paitan",
+          "body": "rich",
+          "exclusions": [
+            "none"
+          ],
+          "form": "soup",
+          "noodle": "medium-thick-straight",
+          "signature": [
+            "nori-spinach"
+          ],
+          "source": [
+            "pork",
+            "chicken"
+          ],
+          "tare": "shoyu"
+        },
+        "locale": "zh-TW",
+        "phase": "results",
+        "stepIndex": 7
+      }
+    },
+    {
+      "id": "P12 healthy questions snapshot at a forced-skipping step",
+      "raw": "{\"phase\":\"questions\",\"stepIndex\":2,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"dry\",\"archetype\":\"soupless-tantan\",\"tare\":\"spicy-sesame\",\"source\":[],\"signature\":[],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "archetype": "soupless-tantan",
+          "exclusions": [
+            "none"
+          ],
+          "form": "dry",
+          "signature": [],
+          "source": [],
+          "tare": "spicy-sesame"
+        },
+        "locale": "zh-TW",
+        "phase": "questions",
+        "stepIndex": 3
+      }
+    },
+    {
+      "id": "P13 incomplete results snapshot falls back to intro",
+      "raw": "{\"phase\":\"results\",\"stepIndex\":0,\"locale\":\"zh-TW\",\"answers\":{\"form\":\"soup\",\"source\":[],\"signature\":[],\"exclusions\":[\"none\"]}}",
+      "state": {
+        "answers": {
+          "exclusions": [
+            "none"
+          ],
+          "form": "soup",
+          "signature": [],
+          "source": []
+        },
+        "locale": "zh-TW",
+        "phase": "intro",
+        "stepIndex": 0
+      }
+    }
+  ]
+}

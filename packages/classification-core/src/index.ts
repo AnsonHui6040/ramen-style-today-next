@@ -13,3 +13,4 @@ export type {
   ConceptRecord,
 } from './contracts/model.js'
 export * from './flow/index.js'
+export * from './persistence/index.js'

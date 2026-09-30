@@ -159,22 +159,44 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
   - Commit: `b7988b1d8d2556f75ac3a0e7f2b66dd4f652bbc8`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/36689124188
 
-## Batch 2B — in-review
+## Batch 2B — in-progress
 
-- Behavior: `no-runtime-change`
-- Transformation: Draft implementation plan for migrating persistence and repair; no runtime code or product data is migrated until the plan is approved.
+- Behavior: `parity-preserved (approved divergences BC-1 to BC-4 only)`
+- Transformation: Legacy persistence, restore and sanitization behavior (App.tsx readStoredState, schema.ts restoreUserAnswers and toCompletedAnswers) was normalized into a versioned, browser-independent classification payload (schema version 1) with a sequential migration registry, deterministic repair built on the Batch 2A flow, and a restore API returning diagnostics and a resume question. Repair intentionally diverges from legacy only for the approved BC-1 to BC-4; every other legacy behavior is reproduced. The browser envelope, localStorage adapter and React integration are deferred to Batch 5A.
 
 ### Legacy sources
 
 - `src/App.tsx`
+- `src/config/questions.ts`
 - `src/domain/questionRules.ts`
 - `src/domain/schema.ts`
 - `src/domain/types.ts`
+- `src/i18n.ts`
 
 ### New owners
 
 - `docs/superpowers/plans/2026-09-30-batch-2b-persistence-and-repair.md`
+- `packages/classification-core/src/persistence/contracts.ts`
+- `packages/classification-core/src/persistence/freeze.ts`
+- `packages/classification-core/src/persistence/index.ts`
+- `packages/classification-core/src/persistence/legacy.ts`
+- `packages/classification-core/src/persistence/migrate.ts`
+- `packages/classification-core/src/persistence/options.ts`
+- `packages/classification-core/src/persistence/payload-schema.ts`
+- `packages/classification-core/src/persistence/persistence.test.ts`
+- `packages/classification-core/src/persistence/repair.ts`
+- `packages/classification-core/src/persistence/restore.ts`
+- `tools/parity/fixtures/restore-divergence.json`
+- `tools/parity/fixtures/restore-parity.json`
+- `tools/parity/legacy-restore-engine.ts`
+- `tools/parity/legacy.ts`
+- `tools/parity/new-restore-reader.ts`
+- `tools/parity/restore-classify.ts`
+- `tools/parity/restore-generate.ts`
+- `tools/parity/restore-scenarios.ts`
+- `tools/parity/restore-tables.ts`
+- `tools/parity/restore.test.ts`
 
 ### Verification
 
-- Pending.
+- `batch2b-legacy-parity`: `npm run parity:legacy -- <legacy checkout at eebf00b>` — passed; 58478 deterministic restore scenarios were run against the frozen legacy readStoredState and restoreUserAnswers: sanitization matched for every scenario, 4572 legacy-parity scenarios matched exactly, and 53906 scenarios differed only by the approved divergences (BC-1 52811, BC-2 32017, BC-3 9958, BC-4 2369 label occurrences) with no unapproved difference; named divergence fixtures D1 to D8 and parity fixtures P1 to P13 verified; four mutation checks (over-limit last-N, forced answers not written, dependents not cleared, seafood alias narrowed) were each detected

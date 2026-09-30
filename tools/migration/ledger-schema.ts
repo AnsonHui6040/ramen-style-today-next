@@ -45,6 +45,11 @@ const completionGatePolicies = new Map<string, ReadonlySet<string>>([
     'batch1-local-verify',
     'batch1-remote-ci',
   ])],
+  ['2B', new Set([
+    'batch2b-legacy-parity',
+    'batch2b-local-verify',
+    'batch2b-remote-ci',
+  ])],
   ['2A', new Set([
     'batch2a-legacy-parity',
     'batch2a-local-verify',
