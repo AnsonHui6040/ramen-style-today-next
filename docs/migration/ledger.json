@@ -222,6 +222,23 @@
           "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/36689124188"
         }
       ]
+    },
+    {
+      "batch": "2B",
+      "status": "in-review",
+      "legacySources": [
+        "src/App.tsx",
+        "src/domain/schema.ts",
+        "src/domain/questionRules.ts",
+        "src/domain/types.ts"
+      ],
+      "ownedScopes": [],
+      "newOwners": [
+        "docs/superpowers/plans/2026-09-30-batch-2b-persistence-and-repair.md"
+      ],
+      "transformation": "Draft implementation plan for migrating persistence and repair; no runtime code or product data is migrated until the plan is approved.",
+      "behavior": "no-runtime-change",
+      "verification": []
     }
   ]
 }

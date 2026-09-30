@@ -158,3 +158,23 @@ Baseline: `AnsonHui6040/ramen-style-today@eebf00b7ddfbbe6f01ff598e57f1e17197068a
 - `batch2a-remote-ci`: `GitHub Actions CI / verify` — passed; the pushed acceptance candidate completed the Node 24 verify job successfully
   - Commit: `b7988b1d8d2556f75ac3a0e7f2b66dd4f652bbc8`
   - Run: https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/36689124188
+
+## Batch 2B — in-review
+
+- Behavior: `no-runtime-change`
+- Transformation: Draft implementation plan for migrating persistence and repair; no runtime code or product data is migrated until the plan is approved.
+
+### Legacy sources
+
+- `src/App.tsx`
+- `src/domain/questionRules.ts`
+- `src/domain/schema.ts`
+- `src/domain/types.ts`
+
+### New owners
+
+- `docs/superpowers/plans/2026-09-30-batch-2b-persistence-and-repair.md`
+
+### Verification
+
+- Pending.
