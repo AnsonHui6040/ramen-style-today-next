@@ -4,7 +4,7 @@
 
 ## Current status
 
-Batch 1 與 Batch 2A 已完成。Batch 2A（questions and flow）把舊版 8 題、form → archetype 分支、archetype 選項限制、選擇上限、自動前進、返回跳過與完成判定，以純函式流程遷移到 `@ramen-style/classification-core`，並用 `tools/parity` 對舊版 oracle 做窮舉比對；本地驗證、legacy parity 與遠端 CI 證據皆已記錄在 [migration ledger](docs/migration/ledger.md)。Styles 與 policy 仍是 synthetic proof data；scoring、persistence、catalog、Finder 與 React 尚未遷移。`weight` 只作為不被解讀的 `legacyWeight` 保留，語意留待 Batch 3B。
+Batch 1、Batch 2A 與 Batch 2B 已完成。Batch 2A（questions and flow）把舊版 8 題、form → archetype 分支、archetype 選項限制、選擇上限、自動前進、返回跳過與完成判定遷移成純函式流程。Batch 2B（persistence and repair）在 `@ramen-style/classification-core` 加入版本化的分類 payload（schema version 1）、含舊版無版本狀態的循序 migration、建立在該流程上的確定性 repair，以及 restore 與 resume 計算；`locale`、`phase`、`savedAt`、瀏覽器 envelope 與 localStorage adapter 留待 Batch 5A。`tools/parity` 以舊版 oracle 做窮舉比對，legacy parity 與已核准的 BC-1 至 BC-4 divergence 分開記錄；本地驗證、legacy parity 與遠端 CI 證據皆已記錄在 [migration ledger](docs/migration/ledger.md)。Styles 與 policy 仍是 synthetic proof data；scoring、catalog、Finder 與 React 尚未遷移。`weight` 只作為不被解讀的 `legacyWeight` 保留，語意留待 Batch 3B。
 
 舊版 production 與行為基準仍在 [`AnsonHui6040/ramen-style-today`](https://github.com/AnsonHui6040/ramen-style-today)，凍結比較基準為 commit `eebf00b`。
 
