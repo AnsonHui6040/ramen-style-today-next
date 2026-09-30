@@ -166,6 +166,23 @@
           "runUrl": "https://github.com/AnsonHui6040/ramen-style-today-next/actions/runs/29182637883"
         }
       ]
+    },
+    {
+      "batch": "2A",
+      "status": "in-review",
+      "legacySources": [
+        "src/data/questions.json",
+        "src/domain/questionRules.ts",
+        "src/config/questions.ts",
+        "src/domain/types.ts"
+      ],
+      "ownedScopes": [],
+      "newOwners": [
+        "docs/superpowers/plans/2026-09-30-batch-2a-questions-and-flow.md"
+      ],
+      "transformation": "Draft implementation plan for migrating questions and flow; no runtime code or product data migrated until the plan is approved.",
+      "behavior": "no-runtime-change",
+      "verification": []
     }
   ]
 }
